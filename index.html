@@ -1251,25 +1251,27 @@ async function loadPendingApprovals(){
   (empRes.data||[]).forEach(function(e){ empMap[e.auth_id]=e.name; });
   var rows = [];
   (r1.data||[]).forEach(function(r){
-    rows.push('<tr><td>LV-'+r.id.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+
-      '<td><button class="btn btn-success btn-sm" onclick="approveItem('leave',''+r.id+'',this)">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem('leave',''+r.id+'',this)">却下</button></td></tr>');
+    var lid = r.id;
+    var lbtn = '<td><button class="btn btn-success btn-sm" onclick="approveItem(this,\'leave\',\''+lid+'\')">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem(this,\'leave\',\''+lid+'\')">却下</button></td>';
+    rows.push('<tr><td>LV-'+lid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+lbtn+'</tr>');
   });
   (r2.data||[]).forEach(function(r){
-    rows.push('<tr><td>OT-'+r.id.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+
-      '<td><button class="btn btn-success btn-sm" onclick="approveItem('overtime',''+r.id+'',this)">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem('overtime',''+r.id+'',this)">却下</button></td></tr>');
+    var oid = r.id;
+    var obtn = '<td><button class="btn btn-success btn-sm" onclick="approveItem(this,\'overtime\',\''+oid+'\')">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem(this,\'overtime\',\''+oid+'\')">却下</button></td>';
+    rows.push('<tr><td>OT-'+oid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+obtn+'</tr>');
   });
   var tbody = document.querySelector('#tab-approve table tbody');
   if(tbody) tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">承認待ちの申請はありません</td></tr>';
 }
 
-async function approveItem(tbl, id, btn){
+async function approveItem(btn, tbl, id){
   var table = tbl==='leave' ? 'leave_requests' : 'overtime_requests';
   await sb.from(table).update({status:'approved',approved_by:currentUser.id,approved_at:new Date().toISOString()}).eq('id',id);
   btn.closest('tr').remove();
   showToast('✅ 承認しました','green');
   loadPendingCountKPI();
 }
-async function rejectItem(tbl, id, btn){
+async function rejectItem(btn, tbl, id){
   var table = tbl==='leave' ? 'leave_requests' : 'overtime_requests';
   await sb.from(table).update({status:'rejected'}).eq('id',id);
   btn.closest('tr').remove();
