@@ -306,10 +306,10 @@ select.form-control{cursor:pointer}
       </table>
     </div>
     <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-      <div style="font-size:13px">月計：<strong style="color:var(--blue)">実働 152.5h</strong> | <strong style="color:var(--amber)">時間外 18.5h</strong> | <strong style="color:var(--green)">有休 3日</strong></div>
+      <div style="font-size:13px" id="tcMonthTotal">月計：集計中...</div>
       <div style="margin-left:auto;display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm">📄 PDF出力</button>
-        <button class="btn btn-outline btn-sm">📊 CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportTimecardCSV()">📊 CSV出力</button>
+        <button class="btn btn-outline btn-sm" onclick="printTimecard()">🖨️ 印刷</button>
       </div>
     </div>
   </div>
@@ -531,45 +531,69 @@ select.form-control{cursor:pointer}
 <div class="page" id="page-reports">
   <div class="tabs">
     <div class="tab active" onclick="switchTab(this,'tab-monthly')">月次集計</div>
-    <div class="tab" onclick="switchTab(this,'tab-overtime-rep')">残業分析</div>
-    <div class="tab" onclick="switchTab(this,'tab-leave-rep')">休暇レポート</div>
+    <div class="tab" onclick="switchTab(this,'tab-overtime-rep');loadOvertimeReport()">残業分析</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-rep');loadLeaveReport()">休暇レポート</div>
   </div>
+
+  <!-- 月次集計 -->
   <div class="tab-content active" id="tab-monthly">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <div class="card-title" style="margin-bottom:0">📅 2026年6月 月次集計</div>
-        <div style="display:flex;gap:8px">
-          <span class="badge badge-amber">未確定</span>
-          <button class="btn btn-primary btn-sm" onclick="confirmMonth()">月次確定</button>
-          <button class="btn btn-outline btn-sm">給与ソフト出力</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin-bottom:0">📅 月次集計</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="changeReportMonth(-1)">← 前月</button>
+          <span id="reportMonthLabel" style="font-size:14px;font-weight:700">2026年6月</span>
+          <button class="btn btn-outline btn-sm" onclick="changeReportMonth(1)">次月 →</button>
+          <select id="reportTarget" class="form-control" style="width:120px;font-size:12px" onchange="loadMonthlyReport()">
+            <option value="me">自分</option>
+            <option value="all">全員（管理者）</option>
+          </select>
         </div>
       </div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
-        <div class="kpi kpi-blue"><div class="kpi-val">49</div><div class="kpi-label">対象人数</div></div>
-        <div class="kpi kpi-green"><div class="kpi-val">7,432h</div><div class="kpi-label">総実働時間</div></div>
-        <div class="kpi kpi-amber"><div class="kpi-val">892h</div><div class="kpi-label">総時間外</div></div>
-        <div class="kpi kpi-red"><div class="kpi-val">3</div><div class="kpi-label">36協定要注意</div></div>
-        <div class="kpi"><div class="kpi-val" style="color:var(--purple)">8</div><div class="kpi-label">エラー残件数</div></div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
+        <div class="kpi kpi-blue"><div class="kpi-val" id="rep-work-h">—</div><div class="kpi-label">実働時間(h)</div></div>
+        <div class="kpi kpi-amber"><div class="kpi-val" id="rep-ot-h">—</div><div class="kpi-label">時間外(h)</div></div>
+        <div class="kpi" style="--kpi-c:var(--purple)"><div class="kpi-val" id="rep-late-h" style="color:var(--purple)">—</div><div class="kpi-label">深夜(h)</div></div>
+        <div class="kpi kpi-green"><div class="kpi-val" id="rep-leave-d">—</div><div class="kpi-label">有休取得(日)</div></div>
+        <div class="kpi kpi-red"><div class="kpi-val" id="rep-work-d">—</div><div class="kpi-label">出勤日数</div></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="monthlyReportTable">
+          <thead>
+            <tr id="monthlyReportHead">
+              <th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>時間外</th><th>深夜</th><th>休暇</th><th>摘要</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyReportBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
+        </table>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="exportTimecardCSV()">📊 CSV出力</button>
+        <button class="btn btn-outline btn-sm" onclick="printTimecard()">🖨️ 印刷</button>
+        <div id="reportMonthTotal" style="margin-left:auto;font-size:13px;color:var(--muted)"></div>
       </div>
     </div>
   </div>
+
+  <!-- 残業分析 -->
   <div class="tab-content" id="tab-overtime-rep">
     <div class="card">
-      <div class="card-title">📈 部署別残業時間（当月）</div>
-      <div id="overtimeChart" style="padding:8px 0"></div>
+      <div class="card-title">⏱ 残業時間 月別推移（過去6ヶ月）</div>
+      <div id="otChartArea"></div>
+      <table style="margin-top:16px">
+        <thead><tr><th>月</th><th>法定内</th><th>法定外</th><th>深夜</th><th>休日</th><th>合計</th><th>36協定上限</th><th>消化率</th></tr></thead>
+        <tbody id="otReportBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
+      </table>
     </div>
   </div>
+
+  <!-- 休暇レポート -->
   <div class="tab-content" id="tab-leave-rep">
     <div class="card">
-      <div class="card-title">🌿 有給取得率（全社）</div>
+      <div class="card-title">🌿 有給取得状況</div>
       <table>
         <thead><tr><th>部署</th><th>対象者</th><th>5日達成</th><th>未達成</th><th>平均取得日数</th><th>達成率</th></tr></thead>
-        <tbody>
-          <tr><td>営業部</td><td>15名</td><td>12名</td><td>3名</td><td>6.2日</td><td><span class="badge badge-green">80%</span></td></tr>
-          <tr><td>開発部</td><td>20名</td><td>18名</td><td>2名</td><td>7.8日</td><td><span class="badge badge-green">90%</span></td></tr>
-          <tr><td>総務部</td><td>8名</td><td>4名</td><td>4名</td><td>3.5日</td><td><span class="badge badge-red">50%</span></td></tr>
-          <tr><td>人事部</td><td>6名</td><td>6名</td><td>0名</td><td>9.2日</td><td><span class="badge badge-green">100%</span></td></tr>
-        </tbody>
+        <tbody id="leaveReportBody"><tr><td colspan="6" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2158,6 +2182,345 @@ function showToast(msg,color='blue'){
       loadWorkRules();
     });
   };
+
+
+  // ═══════════════════════════════════════════════════════
+  // 集計・レポート機能
+  // ═══════════════════════════════════════════════════════
+  var _repYear  = new Date().getFullYear();
+  var _repMonth = new Date().getMonth() + 1;
+  var _repData  = { punches:[], leaves:[], otrequests:[] };
+
+  window.changeReportMonth = function(d) {
+    _repMonth += d;
+    if (_repMonth > 12) { _repMonth = 1; _repYear++; }
+    if (_repMonth < 1)  { _repMonth = 12; _repYear--; }
+    loadMonthlyReport();
+  };
+
+  function loadMonthlyReport() {
+    var lbl = document.getElementById('reportMonthLabel');
+    if (lbl) lbl.textContent = _repYear + '年' + _repMonth + '月';
+    var target = (document.getElementById('reportTarget')||{value:'me'}).value;
+    var lastDay = new Date(_repYear, _repMonth, 0).getDate();
+    var start = _repYear + '-' + p2(_repMonth) + '-01T00:00:00+09:00';
+    var end   = _repYear + '-' + p2(_repMonth) + '-' + p2(lastDay) + 'T23:59:59+09:00';
+    var ms    = _repYear + '-' + p2(_repMonth) + '-01';
+    var me2   = _repYear + '-' + p2(_repMonth) + '-' + p2(lastDay);
+
+    Promise.all([
+      sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',start).lte('punched_at',end).order('punched_at',{ascending:true}),
+      sb.from('leave_requests').select('*').eq('user_id',me.id).eq('status','approved').gte('start_date',ms).lte('start_date',me2),
+      sb.from('overtime_requests').select('*').eq('user_id',me.id).eq('status','approved').gte('overtime_date',ms)
+    ]).then(function(rs) {
+      _repData.punches    = rs[0].data||[];
+      _repData.leaves     = rs[1].data||[];
+      _repData.otrequests = rs[2].data||[];
+      renderMonthlyReport();
+    });
+  }
+
+  function renderMonthlyReport() {
+    var tbody  = document.getElementById('monthlyReportBody'); if(!tb) return;
+    var tbody  = document.getElementById('monthlyReportBody'); if(!tbody) return;
+    var days   = new Date(_repYear, _repMonth, 0).getDate();
+    var wdays  = ['日','月','火','水','木','金','土'];
+    var rows   = [];
+    var totWork=0, totOt=0, totLate=0, totLeave=0, workDays=0;
+
+    for (var d = 1; d <= days; d++) {
+      var wd    = new Date(_repYear, _repMonth-1, d).getDay();
+      var ds    = _repYear + '-' + p2(_repMonth) + '-' + p2(d);
+      var isWE  = wd===0||wd===6;
+      var isToday = ds === jstToday();
+
+      // 休暇チェック
+      var leaveRec = _repData.leaves.find(function(l){ return l.start_date<=ds && l.end_date>=ds; });
+
+      if (isWE) {
+        rows.push('<tr style="background:#fafafa;color:#aaa"><td>'+_repMonth+'/'+d+'</td><td style="color:'+(wd===0?'var(--red)':'var(--blue)')+'">'+wdays[wd]+'</td><td colspan="8" style="text-align:center;font-size:11px">休日</td></tr>');
+        continue;
+      }
+      if (leaveRec) {
+        var unit = leaveRec.unit==='half_am'?'午前休':leaveRec.unit==='half_pm'?'午後休':leaveRec.unit==='hour'?leaveRec.hour_count+'h休':leaveRec.leave_type;
+        totLeave += leaveRec.unit==='half_am'||leaveRec.unit==='half_pm'?0.5:leaveRec.unit==='hour'?(leaveRec.hour_count/8):1;
+        rows.push('<tr style="background:#f0fdf4"><td>'+_repMonth+'/'+d+'</td><td>'+wdays[wd]+'</td><td colspan="7" style="color:var(--green);font-size:12px;text-align:center">'+unit+'</td><td><span class="badge badge-green">休暇</span></td></tr>');
+        continue;
+      }
+
+      var dr   = _repData.punches.filter(function(r){ return jstDate(r.punched_at)===ds; });
+      var inR  = dr.find(function(r){ return r.punch_type==='出勤'; });
+      var outR = dr.find(function(r){ return r.punch_type==='退勤'; });
+      var rb1  = dr.find(function(r){ return r.punch_type==='休憩開始'; });
+      var rb2  = dr.find(function(r){ return r.punch_type==='休憩終了'; });
+      var inT='', outT='', restM=0, workM=0, otM=0, lateM=0;
+
+      if (inR)  inT  = jstTime(inR.punched_at);
+      if (outR) outT = jstTime(outR.punched_at);
+      if (rb1&&rb2) restM = Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000);
+      if (inR&&outR) {
+        workM = Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000) - restM;
+        otM   = Math.max(0, workM - 480);
+        // 深夜計算（22:00〜5:00）
+        var inJST  = new Date(new Date(inR.punched_at).getTime()+9*3600000);
+        var outJST = new Date(new Date(outR.punched_at).getTime()+9*3600000);
+        var lateStart = new Date(outJST); lateStart.setUTCHours(22,0,0,0);
+        var lateEnd   = new Date(outJST); lateEnd.setUTCHours(29,0,0,0); // 翌5:00
+        if (outJST > lateStart) lateM = Math.round((Math.min(outJST,lateEnd)-lateStart)/60000);
+        totWork += workM; totOt += otM; totLate += lateM; workDays++;
+      }
+
+      var hasErr = inT && !outT && !isToday;
+      var badge  = !inT ? '<span class="badge badge-gray" style="font-size:10px">未出勤</span>' :
+                   hasErr ? '<span class="badge badge-red" style="font-size:10px">退勤漏れ</span>' :
+                   '<span class="badge badge-green" style="font-size:10px">正常</span>';
+      rows.push('<tr'+(hasErr?' class="err-row"':'')+(isToday?' style="background:var(--lblue)"':'')+'>'+
+        '<td>'+_repMonth+'/'+d+(isToday?' ★':'')+'</td>'+
+        '<td>'+wdays[wd]+'</td>'+
+        '<td>'+(inT||'—')+'</td><td>'+(outT||'—')+'</td>'+
+        '<td>'+(restM?restM+'分':'—')+'</td>'+
+        '<td>'+(workM?hm(workM):'—')+'</td>'+
+        '<td style="color:'+(otM>0?'var(--amber)':'inherit')+'">'+(otM?hm(otM):'—')+'</td>'+
+        '<td style="color:'+(lateM>0?'var(--purple)':'inherit')+'">'+(lateM?hm(lateM):'—')+'</td>'+
+        '<td>—</td>'+
+        '<td>'+badge+'</td>'+
+      '</tr>');
+    }
+    tbody.innerHTML = rows.join('');
+
+    // KPIカード更新
+    var e1=document.getElementById('rep-work-h'); if(e1) e1.textContent=(totWork/60).toFixed(1);
+    var e2=document.getElementById('rep-ot-h');   if(e2) e2.textContent=(totOt/60).toFixed(1);
+    var e3=document.getElementById('rep-late-h'); if(e3) e3.textContent=(totLate/60).toFixed(1);
+    var e4=document.getElementById('rep-leave-d');if(e4) e4.textContent=totLeave.toFixed(1);
+    var e5=document.getElementById('rep-work-d'); if(e5) e5.textContent=workDays;
+
+    // 月計表示（タイムカード・レポート共通）
+    var total = '月計：実働 '+hm(totWork)+' | 時間外 '+hm(totOt)+' | 有休 '+totLeave.toFixed(1)+'日 | 出勤 '+workDays+'日';
+    var e6=document.getElementById('reportMonthTotal'); if(e6) e6.textContent=total;
+    var e7=document.getElementById('tcMonthTotal');     if(e7) e7.innerHTML=total.replace('月計：','月計：<strong style="color:var(--blue)">').replace(' | ','</strong> | ');
+  }
+
+  // ── タイムカードもレポートと同じデータを使う ────────────────
+  function loadTimecard() {
+    _repYear  = window.tcYear  || new Date().getFullYear();
+    _repMonth = window.tcMonth || (new Date().getMonth()+1);
+    // タイムカードとレポートのラベルを同期
+    var lbl1 = document.getElementById('tcMonthLabel');
+    var lbl2 = document.getElementById('reportMonthLabel');
+    if (lbl1) lbl1.textContent = _repYear + '年' + _repMonth + '月';
+    if (lbl2) lbl2.textContent = _repYear + '年' + _repMonth + '月';
+    // データ取得してタイムカードに表示
+    loadMonthlyReport();
+    // タイムカードのtbodyにも同じデータを流す
+    setTimeout(function() {
+      var tcBody = document.getElementById('timecardBody');
+      var repBody = document.getElementById('monthlyReportBody');
+      if (tcBody && repBody) tcBody.innerHTML = repBody.innerHTML;
+    }, 1500);
+  }
+
+  // ── CSV出力 ──────────────────────────────────────────────
+  window.exportTimecardCSV = function() {
+    var year  = _repYear;
+    var month = _repMonth;
+    var days  = new Date(year, month, 0).getDate();
+    var wdays = ['日','月','火','水','木','金','土'];
+    var rows  = [['日付','曜日','出勤','退勤','休憩(分)','実働','時間外','深夜','休暇種別']];
+
+    for (var d = 1; d <= days; d++) {
+      var wd  = new Date(year, month-1, d).getDay();
+      var ds  = year + '-' + p2(month) + '-' + p2(d);
+      var lr  = _repData.leaves.find(function(l){ return l.start_date<=ds && l.end_date>=ds; });
+      var dr  = _repData.punches.filter(function(r){ return jstDate(r.punched_at)===ds; });
+      var inR = dr.find(function(r){ return r.punch_type==='出勤'; });
+      var outR= dr.find(function(r){ return r.punch_type==='退勤'; });
+      var rb1 = dr.find(function(r){ return r.punch_type==='休憩開始'; });
+      var rb2 = dr.find(function(r){ return r.punch_type==='休憩終了'; });
+      var inT='', outT='', restM=0, workM=0, otM=0, lateM=0;
+      if (inR)  inT  = jstTime(inR.punched_at);
+      if (outR) outT = jstTime(outR.punched_at);
+      if (rb1&&rb2) restM = Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000);
+      if (inR&&outR) { workM=Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-restM; otM=Math.max(0,workM-480); }
+      rows.push([
+        month+'/'+d, wdays[wd],
+        inT||'', outT||'',
+        restM||'',
+        workM?(workM/60).toFixed(2):'',
+        otM?(otM/60).toFixed(2):'',
+        lateM?(lateM/60).toFixed(2):'',
+        lr?lr.leave_type:''
+      ]);
+    }
+    var bom  = '﻿';
+    var csv  = bom + rows.map(function(r){ return r.join(','); }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = year+'年'+month+'月_タイムカード.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if(window.showToast) showToast('✅ CSVをダウンロードしました','green');
+  };
+
+  // ── 印刷 ────────────────────────────────────────────────
+  window.printTimecard = function() {
+    var name = myProfile ? myProfile.name : (me ? me.email : '');
+    var year = _repYear, month = _repMonth;
+    var table = document.getElementById('monthlyReportBody');
+    if (!table) return;
+    var win = window.open('', '_blank');
+    win.document.write('<html><head><title>タイムカード '+year+'年'+month+'月</title>');
+    win.document.write('<style>');
+    win.document.write('body{font-family:Meiryo,sans-serif;font-size:12px;margin:20px}');
+    win.document.write('h2{font-size:16px;margin-bottom:4px}');
+    win.document.write('.meta{color:#666;font-size:11px;margin-bottom:12px}');
+    win.document.write('table{width:100%;border-collapse:collapse}');
+    win.document.write('th,td{border:1px solid #ccc;padding:5px 8px;text-align:center}');
+    win.document.write('th{background:#1a3a5c;color:#fff;font-size:11px}');
+    win.document.write('tr:nth-child(even){background:#f9f9f9}');
+    win.document.write('.err{background:#fff0f0}');
+    win.document.write('@media print{button{display:none}}');
+    win.document.write('</style></head><body>');
+    win.document.write('<h2>タイムカード '+year+'年'+month+'月</h2>');
+    win.document.write('<div class="meta">氏名：'+name+'　印刷日：'+jstToday()+'</div>');
+    win.document.write('<table><thead><tr><th>日付</th><th>曜</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>時間外</th><th>深夜</th><th>休暇</th><th>状態</th></tr></thead>');
+    win.document.write('<tbody>'+table.innerHTML+'</tbody></table>');
+    var tot = document.getElementById('tcMonthTotal');
+    if (tot) win.document.write('<p style="margin-top:12px;font-size:12px">'+tot.textContent+'</p>');
+    win.document.write('<p style="margin-top:20px;font-size:11px;color:#999">本人確認署名：___________________　上長確認署名：___________________</p>');
+    win.document.write('</body></html>');
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 500);
+  };
+
+  // ── 残業分析レポート ─────────────────────────────────────
+  function loadOvertimeReport() {
+    var now = new Date();
+    var rows = [];
+    var promises = [];
+    for (var i = 5; i >= 0; i--) {
+      (function(offset) {
+        var d = new Date(now.getFullYear(), now.getMonth()-offset, 1);
+        var y = d.getFullYear(), m = d.getMonth()+1;
+        var ms = y+'-'+p2(m)+'-01', me2 = y+'-'+p2(m)+'-'+p2(new Date(y,m,0).getDate());
+        promises.push(
+          sb.from('punch_records').select('*').eq('user_id',me.id)
+            .gte('punched_at',ms+'T00:00:00+09:00').lte('punched_at',me2+'T23:59:59+09:00')
+            .order('punched_at',{ascending:true})
+            .then(function(r){ return {y:y,m:m,punches:r.data||[]}; })
+        );
+      })(i);
+    }
+    Promise.all(promises).then(function(results) {
+      var tbody = document.getElementById('otReportBody'); if(!tbody) return;
+      var chartHTML = '';
+      tbody.innerHTML = results.map(function(res) {
+        var totalWork=0, totalOt=0, totalLate=0;
+        var dateMap = {};
+        res.punches.forEach(function(p) {
+          var d = jstDate(p.punched_at);
+          if (!dateMap[d]) dateMap[d] = [];
+          dateMap[d].push(p);
+        });
+        Object.keys(dateMap).forEach(function(d) {
+          var dr   = dateMap[d];
+          var inR  = dr.find(function(x){ return x.punch_type==='出勤'; });
+          var outR = dr.find(function(x){ return x.punch_type==='退勤'; });
+          var rb1  = dr.find(function(x){ return x.punch_type==='休憩開始'; });
+          var rb2  = dr.find(function(x){ return x.punch_type==='休憩終了'; });
+          if (inR&&outR) {
+            var rm = (rb1&&rb2)?Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000):0;
+            var wm = Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm;
+            totalWork += wm;
+            totalOt   += Math.max(0,wm-480);
+          }
+        });
+        var otH  = (totalOt/60).toFixed(1);
+        var pct  = Math.round(totalOt/60/45*100);
+        var color = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+        var isThisMonth = res.y===now.getFullYear()&&res.m===(now.getMonth()+1);
+        return '<tr'+(isThisMonth?' style="background:var(--lblue)"':'')+'>'+
+          '<td>'+(isThisMonth?'<strong>':'')+res.y+'年'+res.m+'月'+(isThisMonth?'（今月）</strong>':'')+'</td>'+
+          '<td>—</td><td>'+otH+'h</td><td>—</td><td>—</td>'+
+          '<td><strong style="color:'+color+'">'+otH+'h</strong></td>'+
+          '<td>45h</td>'+
+          '<td><div class="progress" style="width:80px"><div class="progress-bar" style="width:'+Math.min(pct,100)+'%;background:'+color+'"></div></div></td>'+
+        '</tr>';
+      }).join('');
+      // バーチャート
+      var chart = document.getElementById('otChartArea');
+      if (chart) {
+        chart.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;height:120px;padding:8px 0">' +
+          results.map(function(res) {
+            var totalOt2=0;
+            var dm={};
+            res.punches.forEach(function(p){ var d=jstDate(p.punched_at); if(!dm[d])dm[d]=[]; dm[d].push(p); });
+            Object.keys(dm).forEach(function(d){
+              var dr=dm[d], inR=dr.find(function(x){return x.punch_type==='出勤';}), outR=dr.find(function(x){return x.punch_type==='退勤';});
+              if(inR&&outR){ var rm=0; totalOt2+=Math.max(0,Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm-480); }
+            });
+            var h = Math.min((totalOt2/60)/45*100, 100);
+            var color2 = h>=90?'var(--red)':h>=70?'var(--amber)':'var(--blue)';
+            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'+
+              '<div style="font-size:10px;color:var(--muted)">'+(totalOt2/60).toFixed(0)+'h</div>'+
+              '<div style="width:100%;background:'+color2+';height:'+h+'%;border-radius:4px 4px 0 0;min-height:3px"></div>'+
+              '<div style="font-size:10px;color:var(--muted)">'+res.m+'月</div>'+
+            '</div>';
+          }).join('') + '</div>';
+      }
+    });
+  }
+
+  // ── 休暇レポート ─────────────────────────────────────────
+  function loadLeaveReport() {
+    Promise.all([
+      sb.from('employees').select('auth_id,name,department').eq('is_active',true),
+      sb.from('leave_balances').select('*').eq('year',new Date().getFullYear()),
+      sb.from('leave_requests').select('user_id,start_date,end_date,unit,hour_count').eq('status','approved').eq('leave_type','年次有給休暇').gte('start_date',new Date().getFullYear()+'-01-01')
+    ]).then(function(rs) {
+      var emps = rs[0].data||[];
+      var bals = rs[1].data||[];
+      var reqs = rs[2].data||[];
+      var balMap = {}; bals.forEach(function(b){ balMap[b.user_id]=b; });
+      // 使用日数集計
+      var usedMap = {};
+      reqs.forEach(function(r) {
+        if(!usedMap[r.user_id]) usedMap[r.user_id]=0;
+        var d = r.unit==='half_am'||r.unit==='half_pm'?0.5:r.unit==='hour'?(r.hour_count||0)/8:Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
+        usedMap[r.user_id]+=d;
+      });
+      // 部署別集計
+      var deptMap = {};
+      emps.forEach(function(e) {
+        var dept = e.department||'未設定';
+        if (!deptMap[dept]) deptMap[dept]={total:0,achieved:0,totalUsed:0};
+        deptMap[dept].total++;
+        var used = usedMap[e.auth_id]||0;
+        deptMap[dept].totalUsed += used;
+        if (used>=5) deptMap[dept].achieved++;
+      });
+      var tbody = document.getElementById('leaveReportBody'); if(!tbody) return;
+      var depts = Object.keys(deptMap);
+      tbody.innerHTML = depts.map(function(dept) {
+        var d = deptMap[dept];
+        var rate = Math.round(d.achieved/d.total*100);
+        var avg  = (d.totalUsed/d.total).toFixed(1);
+        var bc   = rate>=80?'badge-green':rate>=50?'badge-amber':'badge-red';
+        return '<tr>'+
+          '<td>'+dept+'</td><td>'+d.total+'名</td><td>'+d.achieved+'名</td>'+
+          '<td>'+(d.total-d.achieved)+'名</td><td>'+avg+'日</td>'+
+          '<td><span class="badge '+bc+'">'+rate+'%</span></td>'+
+        '</tr>';
+      }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">データがありません</td></tr>';
+    });
+  }
+
+  // showPage拡張（reportsページ）- loadPageに統合済み
+
 
   // 起動
   document.addEventListener('DOMContentLoaded', function() {
