@@ -208,7 +208,7 @@ select.form-control{cursor:pointer}
 <div class="page active" id="page-dashboard">
   <div id="alertArea"></div>
   <div class="kpi-grid">
-    <div class="kpi kpi-blue"><div class="kpi-val" id="kpi-month-hours">152.5</div><div class="kpi-label">当月実働時間 (h)</div></div>
+    <div class="kpi kpi-blue"><div class="kpi-val" id="kpi-month-hours">—</div><div class="kpi-label">当月実働時間 (h)</div></div>
     <div class="kpi kpi-amber"><div class="kpi-val" id="kpi-overtime">18.5</div><div class="kpi-label">当月残業時間 (h)</div></div>
     <div class="kpi kpi-green"><div class="kpi-val" id="kpi-leave-used">3</div><div class="kpi-label">当月有休取得 (日)</div></div>
     <div class="kpi kpi-red"><div class="kpi-val" id="kpi-errors">2</div><div class="kpi-label">エラー件数</div></div>
@@ -220,63 +220,39 @@ select.form-control{cursor:pointer}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
           <div style="font-size:12px;color:var(--muted)">出勤時刻</div>
-          <div style="font-size:20px;font-weight:800;color:var(--blue)" id="today-in">09:05</div>
+          <div style="font-size:20px;font-weight:800;color:var(--blue)" id="today-in">—</div>
         </div>
         <div style="font-size:24px;color:var(--border)">→</div>
         <div>
-          <div style="font-size:12px;color:var(--muted)">退勤予定</div>
-          <div style="font-size:20px;font-weight:800;color:var(--muted)">18:00</div>
+          <div style="font-size:12px;color:var(--muted)">退勤時刻</div>
+          <div style="font-size:20px;font-weight:800;color:var(--muted)" id="today-out">—</div>
         </div>
         <div>
           <div style="font-size:12px;color:var(--muted)">現在実働</div>
-          <div style="font-size:20px;font-weight:800;color:var(--green)" id="today-worked">6:45</div>
+          <div style="font-size:20px;font-weight:800;color:var(--green)" id="today-worked">—</div>
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted)">36協定 当月進捗</div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
-        <span>18.5h / 45h</span><span style="color:var(--amber)">41%</span>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px" id="ot-progress-label">
+        <span id="ot-used">—</span><span id="ot-pct" style="color:var(--amber)">—</span>
       </div>
-      <div class="progress"><div class="progress-bar" style="width:41%;background:var(--amber)"></div></div>
+      <div class="progress"><div class="progress-bar" id="ot-bar" style="width:0%;background:var(--amber)"></div></div>
     </div>
 
     <div class="card">
-      <div class="card-title">📢 お知らせ</div>
-      <ul class="notif-list">
-        <li class="notif-item"><div class="notif-dot"></div><div><div>残業申請が承認されました</div><div class="notif-meta">2分前 · 山田マネージャー</div></div></li>
-        <li class="notif-item"><div class="notif-dot"></div><div><div>有給休暇残日数が10日を下回りました</div><div class="notif-meta">1時間前 · システム</div></div></li>
-        <li class="notif-item"><div class="notif-dot read"></div><div><div>6月スケジュールが公開されました</div><div class="notif-meta">昨日 · 管理者</div></div></li>
-        <li class="notif-item"><div class="notif-dot read"></div><div><div>5月分の月次集計が確定しました</div><div class="notif-meta">3日前 · 人事部</div></div></li>
+      <div class="card-title">📢 最近の申請状況</div>
+      <ul class="notif-list" id="dashNotifList">
+        <li class="notif-item"><div class="notif-dot read"></div><div><div style="color:#999;font-size:13px">読み込み中...</div></div></li>
       </ul>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">👥 リアルタイム在席状況（部門）</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
-      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">営業部</div>
-        <div style="font-size:22px;font-weight:800;color:var(--green)">12</div>
-        <div style="font-size:11px;color:var(--muted)">在席中 / 15名</div>
-        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:80%;background:var(--green)"></div></div>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">開発部</div>
-        <div style="font-size:22px;font-weight:800;color:var(--green)">18</div>
-        <div style="font-size:11px;color:var(--muted)">在席中 / 20名</div>
-        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:90%;background:var(--green)"></div></div>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">総務部</div>
-        <div style="font-size:22px;font-weight:800;color:var(--amber)">4</div>
-        <div style="font-size:11px;color:var(--muted)">在席中 / 8名</div>
-        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:50%;background:var(--amber)"></div></div>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">人事部</div>
-        <div style="font-size:22px;font-weight:800;color:var(--green)">6</div>
-        <div style="font-size:11px;color:var(--muted)">在席中 / 6名</div>
-        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:100%;background:var(--blue)"></div></div>
-      </div>
+    <div class="card-title">👥 本日の在席状況（部門別）
+      <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px" id="zaisekiUpdated"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px" id="zaisekiGrid">
+      <div style="text-align:center;padding:20px;color:#999;font-size:13px">読み込み中...</div>
     </div>
   </div>
 </div>
@@ -1198,39 +1174,173 @@ function showToast(msg,color='blue'){
   // ダッシュボード
   function loadDashboard() {
     var today = jstToday();
+    var now   = new Date();
+    var ms    = now.getFullYear()+'-'+p2(now.getMonth()+1)+'-01';
+
+    // ── 今日の打刻状況 ────────────────────────────────────
     sb.from('punch_records').select('*').eq('user_id',me.id)
-      .gte('punched_at',today+'T00:00:00+09:00')
-      .lte('punched_at',today+'T23:59:59+09:00')
+      .gte('punched_at', today+'T00:00:00+09:00')
+      .lte('punched_at', today+'T23:59:59+09:00')
       .order('punched_at',{ascending:true})
       .then(function(r) {
-        var data=r.data||[];
-        var inR=data.find(function(x){return x.punch_type==='出勤';});
-        var outR=data.find(function(x){return x.punch_type==='退勤';});
-        var rb1=data.find(function(x){return x.punch_type==='休憩開始';});
-        var rb2=data.find(function(x){return x.punch_type==='休憩終了';});
+        var data = r.data||[];
+        var inR  = data.find(function(x){ return x.punch_type==='出勤'; });
+        var outR = data.find(function(x){ return x.punch_type==='退勤'; });
+        var rb1  = data.find(function(x){ return x.punch_type==='休憩開始'; });
+        var rb2  = data.find(function(x){ return x.punch_type==='休憩終了'; });
+        var inEl  = document.getElementById('today-in');
+        var outEl = document.getElementById('today-out');
+        var wkEl  = document.getElementById('today-worked');
         if (inR) {
-          var e=el('today-in'); if(e) e.textContent=jstTime(inR.punched_at);
-          var endT=outR?new Date(outR.punched_at):new Date();
-          var rm=(rb1&&rb2)?Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000):0;
-          var wm=Math.round((endT-new Date(inR.punched_at))/60000)-rm;
-          if(wm>0){ var e2=el('today-worked'); if(e2) e2.textContent=hm(wm); }
+          if (inEl)  inEl.textContent  = jstTime(inR.punched_at);
+          var endT = outR ? new Date(outR.punched_at) : new Date();
+          var rm   = (rb1&&rb2) ? Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000) : 0;
+          var wm   = Math.round((endT-new Date(inR.punched_at))/60000) - rm;
+          if (wm>0 && wkEl) wkEl.textContent = hm(wm);
+        } else {
+          if (inEl)  inEl.textContent  = '未打刻';
+          if (wkEl)  wkEl.textContent  = '—';
         }
+        if (outR && outEl) outEl.textContent = jstTime(outR.punched_at);
       });
-    var now=new Date(), ms=now.getFullYear()+'-'+p2(now.getMonth()+1)+'-01';
-    sb.from('overtime_requests').select('hours').eq('user_id',me.id).eq('status','approved').gte('overtime_date',ms).then(function(r){
-      var t=(r.data||[]).reduce(function(s,x){return s+(parseFloat(x.hours)||0);},0);
-      var e=el('kpi-overtime'); if(e) e.textContent=t.toFixed(1);
-    });
-    sb.from('leave_requests').select('start_date,end_date').eq('user_id',me.id).eq('status','approved').gte('start_date',ms).then(function(r){
-      var d=(r.data||[]).reduce(function(s,x){return s+Math.round((new Date(x.end_date)-new Date(x.start_date))/86400000)+1;},0);
-      var e=el('kpi-leave-used'); if(e) e.textContent=d;
-    });
+
+    // ── 当月実働時間 ───────────────────────────────────────
+    sb.from('punch_records').select('*').eq('user_id',me.id)
+      .gte('punched_at', ms+'T00:00:00+09:00')
+      .lte('punched_at', now.getFullYear()+'-'+p2(now.getMonth()+1)+'-'+p2(new Date(now.getFullYear(),now.getMonth()+1,0).getDate())+'T23:59:59+09:00')
+      .order('punched_at',{ascending:true})
+      .then(function(r) {
+        var recs = r.data||[];
+        // 日ごとに集計
+        var totalWork = 0;
+        var dateMap = {};
+        recs.forEach(function(x) {
+          var d = jstDate(x.punched_at);
+          if (!dateMap[d]) dateMap[d] = [];
+          dateMap[d].push(x);
+        });
+        Object.keys(dateMap).forEach(function(d) {
+          var dr   = dateMap[d];
+          var inR  = dr.find(function(x){ return x.punch_type==='出勤'; });
+          var outR = dr.find(function(x){ return x.punch_type==='退勤'; });
+          var rb1  = dr.find(function(x){ return x.punch_type==='休憩開始'; });
+          var rb2  = dr.find(function(x){ return x.punch_type==='休憩終了'; });
+          if (inR && outR) {
+            var rm = (rb1&&rb2) ? Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000) : 0;
+            totalWork += Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000) - rm;
+          }
+        });
+        var el = document.getElementById('kpi-month-hours');
+        if (el) el.textContent = (totalWork/60).toFixed(1);
+      });
+
+    // ── 当月残業時間 ───────────────────────────────────────
+    sb.from('overtime_requests').select('hours').eq('user_id',me.id).eq('status','approved').gte('overtime_date',ms)
+      .then(function(r) {
+        var total = (r.data||[]).reduce(function(s,x){ return s+(parseFloat(x.hours)||0); },0);
+        var el = document.getElementById('kpi-overtime');
+        if (el) el.textContent = total.toFixed(1);
+        // 36協定プログレスバー
+        var pct = Math.round(total/45*100);
+        var color = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+        var barEl   = document.getElementById('ot-bar');
+        var pctEl   = document.getElementById('ot-pct');
+        var usedEl  = document.getElementById('ot-used');
+        if (barEl)  barEl.style.width = Math.min(pct,100)+'%';
+        if (barEl)  barEl.style.background = color;
+        if (pctEl)  pctEl.textContent = pct+'%';
+        if (pctEl)  pctEl.style.color = color;
+        if (usedEl) usedEl.textContent = total.toFixed(1)+'h / 45h';
+      });
+
+    // ── 当月有休取得日数 ────────────────────────────────────
+    sb.from('leave_requests').select('start_date,end_date').eq('user_id',me.id).eq('status','approved').gte('start_date',ms)
+      .then(function(r) {
+        var d = (r.data||[]).reduce(function(s,x){
+          return s + Math.round((new Date(x.end_date)-new Date(x.start_date))/86400000)+1;
+        },0);
+        var el = document.getElementById('kpi-leave-used');
+        if (el) el.textContent = d;
+      });
+
+    // ── 承認待ち件数（エラー件数） ─────────────────────────
     Promise.all([
       sb.from('leave_requests').select('id').eq('user_id',me.id).eq('status','pending'),
       sb.from('overtime_requests').select('id').eq('user_id',me.id).eq('status','pending')
-    ]).then(function(rs){
-      var e=el('kpi-errors');
-      if(e) e.textContent=((rs[0].data||[]).length)+((rs[1].data||[]).length);
+    ]).then(function(rs) {
+      var cnt = ((rs[0].data||[]).length)+((rs[1].data||[]).length);
+      var el = document.getElementById('kpi-errors');
+      if (el) el.textContent = cnt;
+    });
+
+    // ── 最近の申請状況（通知） ─────────────────────────────
+    Promise.all([
+      sb.from('leave_requests').select('leave_type,status,created_at').eq('user_id',me.id).order('created_at',{ascending:false}).limit(3),
+      sb.from('overtime_requests').select('overtime_date,hours,status,created_at').eq('user_id',me.id).order('created_at',{ascending:false}).limit(3)
+    ]).then(function(rs) {
+      var all = [];
+      (rs[0].data||[]).forEach(function(x){ all.push({text:x.leave_type+' 申請',status:x.status,date:x.created_at}); });
+      (rs[1].data||[]).forEach(function(x){ all.push({text:'残業申請（'+x.overtime_date+' '+x.hours+'h）',status:x.status,date:x.created_at}); });
+      all.sort(function(a,b){ return b.date.localeCompare(a.date); });
+      var ul = document.getElementById('dashNotifList');
+      if (!ul) return;
+      if (all.length === 0) {
+        ul.innerHTML = '<li class="notif-item"><div class="notif-dot read"></div><div><div style="color:#999;font-size:13px">申請履歴はありません</div></div></li>';
+        return;
+      }
+      ul.innerHTML = all.slice(0,5).map(function(x) {
+        var dot   = x.status==='pending' ? '' : ' read';
+        var label = x.status==='approved'?'承認済 ✅':x.status==='rejected'?'却下 ❌':'承認待ち ⏳';
+        var diff  = Math.round((Date.now()-new Date(x.date))/60000);
+        var ago   = diff<60 ? diff+'分前' : diff<1440 ? Math.floor(diff/60)+'時間前' : Math.floor(diff/1440)+'日前';
+        return '<li class="notif-item"><div class="notif-dot'+dot+'"></div><div>'+
+          '<div>'+x.text+' — '+label+'</div>'+
+          '<div class="notif-meta">'+ago+'</div>'+
+          '</div></li>';
+      }).join('');
+    });
+
+    // ── 在席状況（部門別） ─────────────────────────────────
+    Promise.all([
+      sb.from('employees').select('auth_id,department').eq('is_active',true),
+      sb.from('punch_records').select('user_id,punch_type').gte('punched_at', today+'T00:00:00+09:00').lte('punched_at', today+'T23:59:59+09:00').order('punched_at',{ascending:false})
+    ]).then(function(rs) {
+      var emps  = rs[0].data||[];
+      var punches = rs[1].data||[];
+      // 最新打刻を取得
+      var latestMap = {};
+      punches.forEach(function(p) {
+        if (!latestMap[p.user_id]) latestMap[p.user_id] = p.punch_type;
+      });
+      // 部署別集計
+      var deptMap = {};
+      emps.forEach(function(e) {
+        var dept = e.department||'未設定';
+        if (!deptMap[dept]) deptMap[dept] = {total:0, present:0};
+        deptMap[dept].total++;
+        var latest = latestMap[e.auth_id];
+        if (latest==='出勤' || latest==='休憩終了') deptMap[dept].present++;
+      });
+      var grid = document.getElementById('zaisekiGrid');
+      if (!grid) return;
+      var depts = Object.keys(deptMap);
+      if (depts.length === 0) {
+        grid.innerHTML = '<div style="text-align:center;padding:20px;color:#999;font-size:13px">従業員データがありません</div>';
+        return;
+      }
+      grid.innerHTML = depts.map(function(dept) {
+        var info = deptMap[dept];
+        var pct  = info.total>0 ? Math.round(info.present/info.total*100) : 0;
+        var color = pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">'+
+          '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">'+dept+'</div>'+
+          '<div style="font-size:22px;font-weight:800;color:'+color+'">'+info.present+'</div>'+
+          '<div style="font-size:11px;color:var(--muted)">在席中 / '+info.total+'名</div>'+
+          '<div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+        '</div>';
+      }).join('');
+      var upd = document.getElementById('zaisekiUpdated');
+      if (upd) upd.textContent = '更新: '+p2(new Date().getHours())+':'+p2(new Date().getMinutes());
     });
   }
 
