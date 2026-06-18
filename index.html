@@ -174,19 +174,27 @@ select.form-control{cursor:pointer}
     <div class="logo-title">⏰ 勤怠管理</div>
     <div class="logo-sub">KINTAI SYSTEM v1.0</div>
   </div>
-  <div class="nav-section">メニュー</div>
-  <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>ダッシュボード</div>
-  <div class="nav-item" onclick="showPage('punch')"><span class="nav-icon">👆</span>打刻</div>
-  <div class="nav-item" onclick="showPage('timecard')"><span class="nav-icon">📋</span>タイムカード</div>
-  <div class="nav-item" onclick="showPage('schedule')"><span class="nav-icon">📅</span>スケジュール</div>
-  <div class="nav-item" onclick="showPage('leave')"><span class="nav-icon">🌿</span>休暇管理</div>
-  <div class="nav-item" onclick="showPage('overtime')"><span class="nav-icon">⏱</span>残業管理</div>
-  <div class="nav-section">申請</div>
-  <div class="nav-item" onclick="showPage('requests')"><span class="nav-icon">📝</span>申請・承認</div>
-  <div class="nav-section">管理者</div>
-  <div class="nav-item" onclick="showPage('attendance')"><span class="nav-icon">👥</span>勤務実績一覧</div>
-  <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">📊</span>集計・レポート</div>
-  <div class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
+  <!-- 職員メニュー -->
+  <div class="nav-section staff-menu">マイメニュー</div>
+  <div class="nav-item active staff-menu" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>ダッシュボード</div>
+  <div class="nav-item staff-menu" onclick="showPage('punch')"><span class="nav-icon">👆</span>打刻</div>
+  <div class="nav-item staff-menu" onclick="showPage('timecard')"><span class="nav-icon">📋</span>タイムカード</div>
+  <div class="nav-item staff-menu" onclick="showPage('leave')"><span class="nav-icon">🌿</span>休暇管理</div>
+  <div class="nav-item staff-menu" onclick="showPage('overtime')"><span class="nav-icon">⏱</span>残業管理</div>
+  <div class="nav-item staff-menu" onclick="showPage('requests')"><span class="nav-icon">📝</span>申請・確認</div>
+  <!-- 管理者メニュー -->
+  <div class="nav-section admin-menu" style="display:none">管理者メニュー</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>ダッシュボード</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('attendance')"><span class="nav-icon">👥</span>勤務実績一覧</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('reports')"><span class="nav-icon">📊</span>集計・レポート</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('requests')"><span class="nav-icon">✅</span>申請承認</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('leave')"><span class="nav-icon">🌿</span>有休管理</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
+  <div style="padding:16px 16px 8px;margin-top:auto">
+    <button onclick="showPage('kiosk')" style="width:100%;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
+      🖥️ 打刻専用画面を開く
+    </button>
+  </div>
 </nav>
 
 <!-- Main -->
@@ -1211,6 +1219,8 @@ function showToast(msg,color='blue'){
       var dept = myProfile ? (myProfile.department||'') : '';
       el('hUserName').textContent = name + (dept?' | '+dept:'');
       el('hAvatar').textContent = name ? name[0] : '?';
+      // 権限別UIを適用
+      setTimeout(applyRoleUI, 100);
     });
   }
 
@@ -2392,7 +2402,70 @@ function showToast(msg,color='blue'){
     var tot = document.getElementById('tcMonthTotal');
     if (tot) win.document.write('<p style="margin-top:12px;font-size:12px">'+tot.textContent+'</p>');
     win.document.write('<p style="margin-top:20px;font-size:11px;color:#999">本人確認署名：___________________　上長確認署名：___________________</p>');
-    win.document.write('</body></html>');
+    win.document.write('
+<!-- ─── 打刻専用画面（キオスクモード） ─── -->
+<div id="kioskScreen" style="display:none;position:fixed;inset:0;background:#1a3a5c;z-index:8888;flex-direction:column;align-items:center;justify-content:center">
+  <!-- ヘッダー -->
+  <div style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,.3);padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
+    <div style="color:#fff;font-size:18px;font-weight:700">⏰ 打刻専用端末</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="kioskClock" style="color:rgba(255,255,255,.8);font-size:22px;font-variant-numeric:tabular-nums;font-weight:700"></div>
+      <button onclick="closeKiosk()" style="padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:12px;cursor:pointer">閉じる</button>
+    </div>
+  </div>
+
+  <!-- 職員選択 or 打刻画面 -->
+  <div id="kioskSelectView" style="width:100%;max-width:900px;padding:80px 20px 20px">
+    <div style="text-align:center;color:#fff;margin-bottom:24px">
+      <div style="font-size:24px;font-weight:700;margin-bottom:6px">職員を選んでください</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)">名前をタップすると打刻画面に移ります</div>
+    </div>
+    <!-- 検索 -->
+    <input id="kioskSearch" type="text" placeholder="名前で検索..." oninput="filterKioskList()"
+      style="width:100%;padding:14px 18px;border-radius:12px;border:none;font-size:16px;margin-bottom:16px;box-sizing:border-box;background:rgba(255,255,255,.15);color:#fff;outline:none"
+      placeholder="名前で検索...">
+    <!-- 職員一覧グリッド -->
+    <div id="kioskEmpGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;max-height:60vh;overflow-y:auto"></div>
+  </div>
+
+  <!-- 打刻操作画面 -->
+  <div id="kioskPunchView" style="display:none;width:100%;max-width:600px;padding:80px 20px 20px;text-align:center">
+    <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:32px;margin-bottom:20px">
+      <div style="font-size:60px;font-weight:700;color:#fff;line-height:1;margin-bottom:8px" id="kioskUserAvatar">?</div>
+      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px" id="kioskUserName">---</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)" id="kioskUserDept">---</div>
+      <div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,.5)" id="kioskLastPunch">最終打刻: 読み込み中...</div>
+    </div>
+    <!-- 打刻ボタン -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <button onclick="kioskDoPunch('出勤')" class="kiosk-btn" style="background:#22c55e;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
+        🟢<br>出 勤
+      </button>
+      <button onclick="kioskDoPunch('退勤')" class="kiosk-btn" style="background:#ef4444;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
+        🔴<br>退 勤
+      </button>
+      <button onclick="kioskDoPunch('休憩開始')" class="kiosk-btn" style="background:#f59e0b;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
+        🟡 休憩開始
+      </button>
+      <button onclick="kioskDoPunch('休憩終了')" class="kiosk-btn" style="background:#8b5cf6;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
+        🟣 休憩終了
+      </button>
+    </div>
+    <!-- 戻るボタン -->
+    <button onclick="kioskBackToList()" style="padding:12px 32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:10px;color:#fff;font-size:14px;cursor:pointer">
+      ← 職員一覧に戻る
+    </button>
+  </div>
+
+  <!-- 打刻完了メッセージ -->
+  <div id="kioskSuccess" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;flex-direction:column;text-align:center">
+    <div style="font-size:80px;margin-bottom:16px" id="kioskSuccessIcon">✅</div>
+    <div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:8px" id="kioskSuccessMsg">打刻しました</div>
+    <div style="font-size:18px;color:rgba(255,255,255,.7)" id="kioskSuccessTime"></div>
+  </div>
+</div>
+
+</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 500);
   };
@@ -2522,6 +2595,199 @@ function showToast(msg,color='blue'){
   // showPage拡張（reportsページ）- loadPageに統合済み
 
 
+
+  // ═══════════════════════════════════════════════════════
+  // 権限別UI制御
+  // ═══════════════════════════════════════════════════════
+  function applyRoleUI() {
+    if (!myProfile) return;
+    var role = myProfile.role || '一般';
+    var isAdmin = role === '管理者' || role === '部門長';
+
+    // サイドバー切り替え
+    document.querySelectorAll('.staff-menu').forEach(function(el) {
+      el.style.display = isAdmin ? 'none' : '';
+    });
+    document.querySelectorAll('.admin-menu').forEach(function(el) {
+      el.style.display = isAdmin ? 'flex' : 'none';
+    });
+    // nav-section は flex ではなく block
+    document.querySelectorAll('.nav-section.admin-menu, .nav-section.staff-menu').forEach(function(el) {
+      el.style.display = isAdmin ? (el.classList.contains('admin-menu') ? 'block' : 'none') :
+                                   (el.classList.contains('staff-menu') ? 'block' : 'none');
+    });
+
+    // ページタイトルの表示
+    var titleEl = document.getElementById('pageTitle');
+    if (titleEl) {
+      if (isAdmin) titleEl.textContent = '管理者ダッシュボード';
+    }
+
+    // 申請承認タブ: 管理者のみ承認待ち一覧を表示
+    var approveTab = document.querySelector('.tab[onclick*="tab-approve"]');
+    if (approveTab) approveTab.style.display = isAdmin ? '' : 'none';
+
+    // 休暇残高管理タブ: 管理者のみ
+    var balTab = document.querySelector('.tab[onclick*="tab-leave-balance"]');
+    if (balTab) balTab.style.display = isAdmin ? '' : 'none';
+
+    // 集計レポートの全員表示: 管理者のみ
+    var repTarget = document.getElementById('reportTarget');
+    if (repTarget) {
+      if (!isAdmin) {
+        repTarget.style.display = 'none';
+        repTarget.value = 'me';
+      }
+    }
+  }
+
+  // loadProfile完了後にRole UIを適用
+  var _origLoadProfile = window._loadProfileFn;
+  // loadProfile内でapplyRoleUIを呼ぶ
+  // （_loadProfileを上書き）
+  var __origLP = null;
+
+  // ═══════════════════════════════════════════════════════
+  // 打刻専用画面（キオスク）
+  // ═══════════════════════════════════════════════════════
+  var _kioskEmps = [];
+  var _kioskUser = null;
+  var _kioskClockTimer = null;
+
+  window.showPage = (function(orig) {
+    return function(id) {
+      if (orig) orig(id);
+      if (id === 'kiosk') openKiosk();
+    };
+  })(window.showPage);
+
+  window.openKiosk = function() {
+    var screen = document.getElementById('kioskScreen');
+    if (screen) {
+      screen.style.display = 'flex';
+      startKioskClock();
+      loadKioskEmps();
+    }
+  };
+
+  window.closeKiosk = function() {
+    var screen = document.getElementById('kioskScreen');
+    if (screen) screen.style.display = 'none';
+    if (_kioskClockTimer) clearInterval(_kioskClockTimer);
+  };
+
+  function startKioskClock() {
+    function tick() {
+      var el = document.getElementById('kioskClock');
+      if (!el) return;
+      var n = new Date();
+      var p = function(v){ return String(v).padStart(2,'0'); };
+      var days = ['日','月','火','水','木','金','土'];
+      el.textContent = n.getFullYear()+'年'+( n.getMonth()+1)+'月'+n.getDate()+'日（'+days[n.getDay()]+'） '+p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds());
+    }
+    tick();
+    _kioskClockTimer = setInterval(tick, 1000);
+  }
+
+  function loadKioskEmps() {
+    if (!sb) return;
+    sb.from('employees').select('id,auth_id,name,department,employee_no').eq('is_active',true)
+      .order('name',{ascending:true})
+      .then(function(r) {
+        _kioskEmps = r.data || [];
+        renderKioskGrid(_kioskEmps);
+      });
+  }
+
+  function renderKioskGrid(emps) {
+    var grid = document.getElementById('kioskEmpGrid');
+    if (!grid) return;
+    grid.innerHTML = emps.map(function(e) {
+      var initial = e.name ? e.name[0] : '?';
+      var colors  = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556'];
+      var color   = colors[e.name.charCodeAt(0) % colors.length];
+      return '<div onclick="_kioskSelectEmp(this)" data-id="'+e.id+'" data-auth="'+e.auth_id+'" data-name="'+e.name+'" data-dept="'+(e.department||'')+'"'+
+        ' style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .15s"'+
+        ' onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.12)'"'+
+        '>'+
+        '<div style="width:56px;height:56px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;font-weight:700;color:#fff">'+initial+'</div>'+
+        '<div style="color:#fff;font-size:15px;font-weight:700;margin-bottom:4px">'+e.name+'</div>'+
+        '<div style="color:rgba(255,255,255,.6);font-size:12px">'+(e.department||'')+'</div>'+
+        '</div>';
+    }).join('');
+  }
+
+  window.filterKioskList = function() {
+    var q = (document.getElementById('kioskSearch').value||'').toLowerCase();
+    var filtered = _kioskEmps.filter(function(e){ return e.name.toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q); });
+    renderKioskGrid(filtered);
+  };
+
+  window._kioskSelectEmp = function(btn) {
+    _kioskUser = {
+      id:   btn.getAttribute('data-id'),
+      auth: btn.getAttribute('data-auth'),
+      name: btn.getAttribute('data-name'),
+      dept: btn.getAttribute('data-dept')
+    };
+    // 画面切替
+    document.getElementById('kioskSelectView').style.display = 'none';
+    document.getElementById('kioskPunchView').style.display  = 'block';
+    // ユーザー情報表示
+    var n = _kioskUser.name;
+    document.getElementById('kioskUserAvatar').textContent = n ? n[0] : '?';
+    document.getElementById('kioskUserName').textContent   = n;
+    document.getElementById('kioskUserDept').textContent   = _kioskUser.dept || '';
+    // 最終打刻取得
+    var today = jstToday();
+    sb.from('punch_records').select('punch_type,punched_at').eq('user_id',_kioskUser.auth)
+      .gte('punched_at', today+'T00:00:00+09:00')
+      .order('punched_at',{ascending:false}).limit(1)
+      .then(function(r) {
+        var el = document.getElementById('kioskLastPunch');
+        if (r.data && r.data.length > 0) {
+          el.textContent = '最終打刻: ' + r.data[0].punch_type + ' ' + jstTime(r.data[0].punched_at);
+        } else {
+          el.textContent = '本日の打刻なし';
+        }
+      });
+  };
+
+  window.kioskBackToList = function() {
+    _kioskUser = null;
+    document.getElementById('kioskSelectView').style.display = 'block';
+    document.getElementById('kioskPunchView').style.display  = 'none';
+    document.getElementById('kioskSearch').value = '';
+    renderKioskGrid(_kioskEmps);
+  };
+
+  window.kioskDoPunch = function(type) {
+    if (!_kioskUser || !sb) return;
+    sb.from('punch_records').insert({
+      user_id:    _kioskUser.auth,
+      punch_type: type,
+      punched_at: new Date().toISOString()
+    }).then(function(r) {
+      if (r.error) {
+        alert('打刻に失敗しました: ' + r.error.message);
+        return;
+      }
+      // 完了メッセージ表示
+      var icons = {'出勤':'🟢','退勤':'🔴','休憩開始':'🟡','休憩終了':'🟣'};
+      var suc = document.getElementById('kioskSuccess');
+      document.getElementById('kioskSuccessIcon').textContent = icons[type]||'✅';
+      document.getElementById('kioskSuccessMsg').textContent  = _kioskUser.name + ' さんが' + type + 'しました';
+      document.getElementById('kioskSuccessTime').textContent = jstTime(new Date().toISOString());
+      suc.style.display = 'flex';
+      // 3秒後に職員一覧に戻る
+      setTimeout(function() {
+        suc.style.display = 'none';
+        kioskBackToList();
+      }, 3000);
+    });
+  };
+
+
   // 起動
   document.addEventListener('DOMContentLoaded', function() {
     // ボタンイベント
@@ -2587,6 +2853,69 @@ function showToast(msg,color='blue'){
   });
 })();
 </script>
+
+
+<!-- ─── 打刻専用画面（キオスクモード） ─── -->
+<div id="kioskScreen" style="display:none;position:fixed;inset:0;background:#1a3a5c;z-index:8888;flex-direction:column;align-items:center;justify-content:center">
+  <!-- ヘッダー -->
+  <div style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,.3);padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
+    <div style="color:#fff;font-size:18px;font-weight:700">⏰ 打刻専用端末</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="kioskClock" style="color:rgba(255,255,255,.8);font-size:22px;font-variant-numeric:tabular-nums;font-weight:700"></div>
+      <button onclick="closeKiosk()" style="padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:12px;cursor:pointer">閉じる</button>
+    </div>
+  </div>
+
+  <!-- 職員選択 or 打刻画面 -->
+  <div id="kioskSelectView" style="width:100%;max-width:900px;padding:80px 20px 20px">
+    <div style="text-align:center;color:#fff;margin-bottom:24px">
+      <div style="font-size:24px;font-weight:700;margin-bottom:6px">職員を選んでください</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)">名前をタップすると打刻画面に移ります</div>
+    </div>
+    <!-- 検索 -->
+    <input id="kioskSearch" type="text" placeholder="名前で検索..." oninput="filterKioskList()"
+      style="width:100%;padding:14px 18px;border-radius:12px;border:none;font-size:16px;margin-bottom:16px;box-sizing:border-box;background:rgba(255,255,255,.15);color:#fff;outline:none"
+      placeholder="名前で検索...">
+    <!-- 職員一覧グリッド -->
+    <div id="kioskEmpGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;max-height:60vh;overflow-y:auto"></div>
+  </div>
+
+  <!-- 打刻操作画面 -->
+  <div id="kioskPunchView" style="display:none;width:100%;max-width:600px;padding:80px 20px 20px;text-align:center">
+    <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:32px;margin-bottom:20px">
+      <div style="font-size:60px;font-weight:700;color:#fff;line-height:1;margin-bottom:8px" id="kioskUserAvatar">?</div>
+      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px" id="kioskUserName">---</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.6)" id="kioskUserDept">---</div>
+      <div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,.5)" id="kioskLastPunch">最終打刻: 読み込み中...</div>
+    </div>
+    <!-- 打刻ボタン -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <button onclick="kioskDoPunch('出勤')" class="kiosk-btn" style="background:#22c55e;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
+        🟢<br>出 勤
+      </button>
+      <button onclick="kioskDoPunch('退勤')" class="kiosk-btn" style="background:#ef4444;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
+        🔴<br>退 勤
+      </button>
+      <button onclick="kioskDoPunch('休憩開始')" class="kiosk-btn" style="background:#f59e0b;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
+        🟡 休憩開始
+      </button>
+      <button onclick="kioskDoPunch('休憩終了')" class="kiosk-btn" style="background:#8b5cf6;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
+        🟣 休憩終了
+      </button>
+    </div>
+    <!-- 戻るボタン -->
+    <button onclick="kioskBackToList()" style="padding:12px 32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:10px;color:#fff;font-size:14px;cursor:pointer">
+      ← 職員一覧に戻る
+    </button>
+  </div>
+
+  <!-- 打刻完了メッセージ -->
+  <div id="kioskSuccess" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;flex-direction:column;text-align:center">
+    <div style="font-size:80px;margin-bottom:16px" id="kioskSuccessIcon">✅</div>
+    <div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:8px" id="kioskSuccessMsg">打刻しました</div>
+    <div style="font-size:18px;color:rgba(255,255,255,.7)" id="kioskSuccessTime"></div>
+  </div>
+</div>
 
 </body>
 </html>
