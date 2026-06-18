@@ -225,7 +225,7 @@ select.form-control{cursor:pointer}
   </div>
   <div class="user-info">
     <div class="current-time" id="clockDisplay">--:--:--</div>
-    <div class="user-name">田中 太郎 | 営業部</div>
+    <div class="user-name" id="userName">読み込み中...</div>
     <div class="user-avatar" id="userAvatar">?</div>
     <button onclick="doLogout()" style="padding:6px 12px;border:1px solid #e0e4ea;border-radius:6px;background:transparent;font-size:12px;cursor:pointer;color:#666">ログアウト</button>
   </div>
@@ -983,24 +983,30 @@ function showToast(msg,color='blue'){
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},3500);
 }
 
-// ═══════════════════════════════════════════════
-// Supabase 完全DB連動コード
-// ═══════════════════════════════════════════════
-const SUPABASE_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
-let sb = null;
-let currentUser = null;
-let currentProfile = null;
+// ============================================================
+// 勤怠管理システム - Supabase 完全DB連動
+// ============================================================
+var SUPABASE_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+var sb = null;
+var currentUser = null;
+var currentProfile = null;
 
-async function initSupabase() {
-  if (!window.supabase) { console.warn('Supabase SDK not loaded'); return; }
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtTime(iso){ var t=new Date(iso); return pad(t.getHours())+':'+pad(t.getMinutes()); }
+function minsToHM(m){ return Math.floor(m/60)+':'+pad(m%60); }
+function calcDays(s,e){ if(!s||!e) return 1; var d=(new Date(e)-new Date(s))/86400000+1; return d>0?d:1; }
+
+async function initSupabase(){
+  if(!window.supabase){ console.warn('Supabase SDK not loaded'); return; }
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   await checkLogin();
 }
 
-async function checkLogin() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
+async function checkLogin(){
+  var res = await sb.auth.getSession();
+  var session = res.data.session;
+  if(session){
     currentUser = session.user;
     await loadProfile();
     hideLoginScreen();
@@ -1010,221 +1016,390 @@ async function checkLogin() {
   }
 }
 
-async function loadProfile() {
-  const { data } = await sb.from('employees').select('*').eq('auth_id', currentUser.id).single();
-  currentProfile = data;
-  if (data) {
-    document.querySelector('.user-name').textContent = data.name + ' | ' + (data.department || '');
-    document.getElementById('userAvatar').textContent = data.name ? data.name[0] : '?';
-  } else {
-    document.querySelector('.user-name').textContent = currentUser.email;
-    document.getElementById('userAvatar').textContent = currentUser.email[0].toUpperCase();
-  }
+function showLoginScreen(){
+  document.getElementById('loginOverlay').style.display='flex';
+  document.querySelector('.app').style.display='none';
+}
+function hideLoginScreen(){
+  document.getElementById('loginOverlay').style.display='none';
+  document.querySelector('.app').style.display='flex';
 }
 
-function showLoginScreen() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.querySelector('.app').style.display = 'none';
-}
-function hideLoginScreen() {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.querySelector('.app').style.display = 'flex';
-}
-
-async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginError');
+async function doLogin(){
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass  = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
   errEl.textContent = '';
-  if (!email || !pass) { errEl.textContent = 'メールとパスワードを入力してください'; return; }
+  if(!email||!pass){ errEl.textContent='メールとパスワードを入力してください'; return; }
   errEl.textContent = 'ログイン中...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) { errEl.textContent = 'ログインに失敗しました: ' + error.message; return; }
+  var res = await sb.auth.signInWithPassword({email:email, password:pass});
+  if(res.error){ errEl.textContent='ログインに失敗しました: '+res.error.message; return; }
   await checkLogin();
-  showToast('✅ ログインしました', 'green');
+  showToast('✅ ログインしました','green');
 }
 
-async function doLogout() {
+async function doLogout(){
   await sb.auth.signOut();
-  currentUser = null; currentProfile = null;
+  currentUser=null; currentProfile=null;
   showLoginScreen();
 }
 
-// ── ダッシュボード読み込み ──────────────────────────────────────
-async function loadDashboard() {
-  await loadTodayStatus();
-  await loadLeaveBalance();
-  await loadOvertimeStatus();
+async function loadProfile(){
+  var res = await sb.from('employees').select('*').eq('auth_id',currentUser.id).single();
+  currentProfile = res.data;
+  var name = res.data ? res.data.name : currentUser.email;
+  var dept = res.data ? (res.data.department||'') : '';
+  document.getElementById('userName').textContent = name + (dept?' | '+dept:'');
+  document.getElementById('userAvatar').textContent = name ? name[0] : '?';
 }
 
-// ── 今日の打刻状況 ────────────────────────────────────────────
-async function loadTodayStatus() {
-  if (!sb || !currentUser) return;
-  const today = new Date().toISOString().slice(0,10);
-  const { data } = await sb.from('punch_records').select('*')
-    .eq('user_id', currentUser.id)
-    .gte('punched_at', today + 'T00:00:00Z')
-    .order('punched_at', { ascending: true });
-  if (!data || data.length === 0) return;
-  const inRecord = data.find(r => r.punch_type === '出勤');
-  if (inRecord) {
-    const t = new Date(inRecord.punched_at);
-    const ts = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
-    const el = document.getElementById('today-in');
-    if (el) el.textContent = ts;
+// ── ダッシュボード ────────────────────────────────────────
+async function loadDashboard(){
+  await loadTodayPunchStatus();
+  await loadMonthlyOvertimeKPI();
+  await loadLeaveBalanceKPI();
+  await loadPendingCountKPI();
+}
+
+async function loadTodayPunchStatus(){
+  var today = new Date().toISOString().slice(0,10);
+  var res = await sb.from('punch_records').select('*')
+    .eq('user_id',currentUser.id)
+    .gte('punched_at',today+'T00:00:00Z')
+    .order('punched_at',{ascending:true});
+  if(!res.data||!res.data.length) return;
+  var inR = res.data.find(function(r){ return r.punch_type==='出勤'; });
+  if(inR){
+    var el = document.getElementById('today-in');
+    if(el) el.textContent = fmtTime(inR.punched_at);
   }
 }
 
-// ── 打刻をDBに保存 ────────────────────────────────────────────
-async function savePunchToDB(type) {
-  if (!sb || !currentUser) return;
-  const { error } = await sb.from('punch_records').insert({
-    user_id: currentUser.id,
-    punch_type: type,
-    punched_at: new Date().toISOString(),
-    location: null
-  });
-  if (error) { console.error('打刻エラー:', error); showToast('❌ 打刻保存に失敗しました', 'red'); }
+async function loadMonthlyOvertimeKPI(){
+  var now = new Date();
+  var ms = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-01';
+  var res = await sb.from('overtime_requests').select('hours')
+    .eq('user_id',currentUser.id).eq('status','approved').gte('overtime_date',ms);
+  var total = (res.data||[]).reduce(function(s,r){ return s+(parseFloat(r.hours)||0); },0);
+  var el = document.getElementById('kpi-overtime');
+  if(el) el.textContent = total.toFixed(1);
 }
 
-// ── 今日の打刻ログをDBから取得して表示 ───────────────────────
-async function loadTodayPunchFromDB() {
-  if (!sb || !currentUser) return;
-  const today = new Date().toISOString().slice(0,10);
-  const { data, error } = await sb.from('punch_records').select('*')
-    .eq('user_id', currentUser.id)
-    .gte('punched_at', today + 'T00:00:00Z')
-    .lte('punched_at', today + 'T23:59:59Z')
-    .order('punched_at', { ascending: true });
-  if (error) { console.error(error); return; }
-  const dotMap2 = { '出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green' };
-  const ul = document.getElementById('punchLog');
-  if (data && data.length > 0) {
-    ul.innerHTML = data.map(r => {
-      const t = new Date(r.punched_at);
-      const ts = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
-      return '<li><span class="tl-time">' + ts + '</span><span class="tl-dot tl-' + (dotMap2[r.punch_type]||'blue') + '"></span><span>' + r.punch_type + '</span></li>';
+async function loadLeaveBalanceKPI(){
+  var year = new Date().getFullYear();
+  var res = await sb.from('leave_balances').select('*').eq('user_id',currentUser.id).eq('year',year).single();
+  if(res.data){
+    var el = document.getElementById('kpi-leave-used');
+    if(el) el.textContent = res.data.used||0;
+  }
+}
+
+async function loadPendingCountKPI(){
+  var r1 = await sb.from('leave_requests').select('id').eq('user_id',currentUser.id).eq('status','pending');
+  var r2 = await sb.from('overtime_requests').select('id').eq('user_id',currentUser.id).eq('status','pending');
+  var total = ((r1.data||[]).length)+((r2.data||[]).length);
+  var el = document.getElementById('kpi-errors');
+  if(el) el.textContent = total;
+}
+
+// ── 打刻 ─────────────────────────────────────────────────
+async function savePunchToDB(type){
+  if(!sb||!currentUser) return;
+  var res = await sb.from('punch_records').insert({
+    user_id:currentUser.id, punch_type:type, punched_at:new Date().toISOString()
+  });
+  if(res.error) showToast('❌ 打刻の保存に失敗しました','red');
+}
+
+async function loadTodayPunchFromDB(){
+  if(!sb||!currentUser) return;
+  var today = new Date().toISOString().slice(0,10);
+  var res = await sb.from('punch_records').select('*')
+    .eq('user_id',currentUser.id)
+    .gte('punched_at',today+'T00:00:00Z')
+    .lte('punched_at',today+'T23:59:59Z')
+    .order('punched_at',{ascending:true});
+  var dotMap2 = {'出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green'};
+  var ul = document.getElementById('punchLog');
+  if(res.data && res.data.length>0){
+    ul.innerHTML = res.data.map(function(r){
+      var ts = fmtTime(r.punched_at);
+      return '<li><span class="tl-time">'+ts+'</span><span class="tl-dot tl-'+(dotMap2[r.punch_type]||'blue')+'"></span><span>'+r.punch_type+'</span></li>';
     }).join('');
   } else {
-    ul.innerHTML = '<li style="color:#999;font-size:13px">本日の打刻はまだありません</li>';
+    ul.innerHTML = '<li style="color:#999;font-size:13px;padding:8px 0">本日の打刻はまだありません</li>';
   }
 }
 
-// ── 休暇残日数をDBから取得 ────────────────────────────────────
-async function loadLeaveBalance() {
-  if (!sb || !currentUser) return;
-  const year = new Date().getFullYear();
-  const { data } = await sb.from('leave_balances').select('*')
-    .eq('user_id', currentUser.id).eq('year', year).single();
-  if (data) {
-    const remaining = data.granted + data.carried - data.used;
-    const el = document.getElementById('kpi-leave-used');
-    if (el) el.textContent = data.used;
+// ── タイムカード DB版 ──────────────────────────────────────
+var _origRTC = window.renderTimecard;
+window.renderTimecard = async function(){
+  document.getElementById('tcMonthLabel').textContent = tcYear+'年'+tcMonth+'月';
+  var start = tcYear+'-'+pad(tcMonth)+'-01';
+  var end   = tcYear+'-'+pad(tcMonth)+'-31';
+  var res = await sb.from('punch_records').select('*')
+    .eq('user_id',currentUser.id)
+    .gte('punched_at',start+'T00:00:00Z')
+    .lte('punched_at',end+'T23:59:59Z')
+    .order('punched_at',{ascending:true});
+  var records = res.data||[];
+  var tbody = document.getElementById('timecardBody');
+  var days = new Date(tcYear,tcMonth,0).getDate();
+  var wdays = ['日','月','火','水','木','金','土'];
+  var rows = [];
+  for(var d=1;d<=days;d++){
+    var wd = new Date(tcYear,tcMonth-1,d).getDay();
+    var ds = tcYear+'-'+pad(tcMonth)+'-'+pad(d);
+    var dr = records.filter(function(r){ return r.punched_at.slice(0,10)===ds; });
+    var inR  = dr.find(function(r){ return r.punch_type==='出勤'; });
+    var outR = dr.find(function(r){ return r.punch_type==='退勤'; });
+    var rb1  = dr.find(function(r){ return r.punch_type==='休憩開始'; });
+    var rb2  = dr.find(function(r){ return r.punch_type==='休憩終了'; });
+    var isWE = wd===0||wd===6;
+    var isToday = d===new Date().getDate()&&tcMonth===new Date().getMonth()+1&&tcYear===new Date().getFullYear();
+    if(isWE){
+      rows.push('<tr style="background:#fafafa;color:#aaa"><td>'+tcMonth+'/'+d+'</td><td style="color:'+(wd===0?'var(--red)':'var(--blue)')+'">'+wdays[wd]+'</td><td colspan="8" style="text-align:center;font-size:12px">休日</td></tr>');
+      continue;
+    }
+    var inT='',outT='',restM=0,workM=0,otM=0;
+    if(inR)  inT  = fmtTime(inR.punched_at);
+    if(outR) outT = fmtTime(outR.punched_at);
+    if(rb1&&rb2) restM = Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000);
+    if(inR&&outR){ workM=Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-restM; otM=Math.max(0,workM-480); }
+    var hasErr = inT&&!outT;
+    var badge = !inT?'<span class="badge badge-gray">未出勤</span>':hasErr?'<span class="badge badge-red">退勤漏れ</span>':'<span class="badge badge-green">正常</span>';
+    rows.push('<tr class="'+(hasErr?'err-row':'')+'" '+(isToday?'style="background:var(--lblue)"':'')+'>'+
+      '<td>'+tcMonth+'/'+d+(isToday?' ★':'')+'</td>'+
+      '<td>'+wdays[wd]+'</td>'+
+      '<td><span class="badge badge-blue" style="font-size:10px">通常</span></td>'+
+      '<td>'+(inT||'—')+'</td><td>'+(outT||'—')+'</td>'+
+      '<td>'+(restM?restM+'分':'—')+'</td>'+
+      '<td>'+(workM?minsToHM(workM):'—')+'</td>'+
+      '<td style="color:'+(otM>0?'var(--amber)':'inherit')+'">'+(otM?minsToHM(otM):'—')+'</td>'+
+      '<td>—</td><td>'+badge+'</td></tr>');
   }
-}
-
-// ── 残業状況をDBから取得 ──────────────────────────────────────
-async function loadOvertimeStatus() {
-  if (!sb || !currentUser) return;
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-  const { data } = await sb.from('overtime_requests').select('hours')
-    .eq('user_id', currentUser.id).eq('status','approved')
-    .gte('overtime_date', monthStart);
-  if (data) {
-    const total = data.reduce((s, r) => s + (r.hours || 0), 0);
-    const el = document.getElementById('kpi-overtime');
-    if (el) el.textContent = total.toFixed(1);
-  }
-}
-
-// ── 月次タイムカードをDBから取得 ──────────────────────────────
-async function loadTimecardFromDB(year, month) {
-  if (!sb || !currentUser) return;
-  const start = year + '-' + String(month).padStart(2,'0') + '-01';
-  const end   = year + '-' + String(month).padStart(2,'0') + '-31';
-  const { data } = await sb.from('punch_records').select('*')
-    .eq('user_id', currentUser.id)
-    .gte('punched_at', start + 'T00:00:00Z')
-    .lte('punched_at', end   + 'T23:59:59Z')
-    .order('punched_at', { ascending: true });
-  return data || [];
-}
-
-// ── 休暇申請をDBに保存 ────────────────────────────────────────
-async function saveLeaveRequest(leaveType, startDate, endDate, reason) {
-  if (!sb || !currentUser) return false;
-  const { error } = await sb.from('leave_requests').insert({
-    user_id: currentUser.id,
-    leave_type: leaveType,
-    start_date: startDate,
-    end_date: endDate || startDate,
-    reason: reason || '',
-    status: 'pending'
-  });
-  if (error) { console.error(error); return false; }
-  return true;
-}
-
-// ── 残業申請をDBに保存 ────────────────────────────────────────
-async function saveOvertimeRequest(date, hours, reason) {
-  if (!sb || !currentUser) return false;
-  const { error } = await sb.from('overtime_requests').insert({
-    user_id: currentUser.id,
-    overtime_date: date,
-    hours: parseFloat(hours) || 0,
-    reason: reason || '',
-    status: 'pending'
-  });
-  if (error) { console.error(error); return false; }
-  return true;
-}
-
-// ── doPunch をDB保存版で上書き ────────────────────────────────
-const _origDoPunch = doPunch;
-window.doPunch = async function(type) {
-  _origDoPunch(type);
-  await savePunchToDB(type);
+  tbody.innerHTML = rows.join('');
 };
 
-// ── submitRequest をDB保存版で上書き ─────────────────────────
-const _origSubmitRequest = window.submitRequest;
-window.submitRequest = async function(modalId, type) {
-  let ok = true;
-  if (type === '休暇申請') {
-    const leaveType  = document.querySelector('#leaveApplyModal select')?.value || '';
-    const startDate  = document.querySelectorAll('#leaveApplyModal input[type=date]')[0]?.value || '';
-    const endDate    = document.querySelectorAll('#leaveApplyModal input[type=date]')[1]?.value || startDate;
-    const reason     = document.querySelector('#leaveApplyModal textarea')?.value || '';
-    ok = await saveLeaveRequest(leaveType, startDate, endDate, reason);
-  } else if (type === '残業申請') {
-    const date   = document.querySelector('#overtimeApplyModal input[type=date]')?.value || '';
-    const hours  = document.querySelector('#overtimeApplyModal input[type=number]')?.value || 0;
-    const reason = document.querySelector('#overtimeApplyModal select')?.value || '';
-    ok = await saveOvertimeRequest(date, hours, reason);
+// ── 休暇 ─────────────────────────────────────────────────
+async function loadLeaveData(){
+  if(!sb||!currentUser) return;
+  var year = new Date().getFullYear();
+  var bal = await sb.from('leave_balances').select('*').eq('user_id',currentUser.id).eq('year',year).single();
+  if(bal.data){
+    var rem = (bal.data.granted||0)+(bal.data.carried||0)-(bal.data.used||0);
+    var el = document.querySelector('#page-leave .leave-balance');
+    if(el) el.innerHTML = rem.toFixed(1)+' <span style="font-size:14px">日</span>';
+    var det = document.querySelector('#page-leave .leave-detail');
+    if(det) det.textContent = '今年度付与 '+(bal.data.granted||0)+'日 | 使用 '+(bal.data.used||0)+'日 | 繰越 '+(bal.data.carried||0)+'日';
+  }
+  var reqs = await sb.from('leave_requests').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(10);
+  var tbody = document.querySelector('#page-leave table tbody');
+  if(tbody&&reqs.data){
+    tbody.innerHTML = reqs.data.map(function(r){
+      var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+      var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+      return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.leave_type+'</td><td>'+r.start_date+'</td>'+
+             '<td>'+calcDays(r.start_date,r.end_date)+'日</td>'+
+             '<td><span class="badge '+bc+'">'+lb+'</span></td><td>—</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
+  }
+}
+
+// ── 残業 ─────────────────────────────────────────────────
+async function loadOvertimeData(){
+  if(!sb||!currentUser) return;
+  var res = await sb.from('overtime_requests').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(10);
+  var tbody = document.querySelector('#page-overtime table tbody');
+  if(tbody&&res.data){
+    tbody.innerHTML = res.data.map(function(r){
+      var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+      var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+      return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.overtime_date+'</td>'+
+             '<td>法定外</td><td>'+r.hours+'h</td><td>'+(r.reason||'')+'</td>'+
+             '<td><span class="badge '+bc+'">'+lb+'</span></td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
+  }
+}
+
+// ── 申請一覧 ─────────────────────────────────────────────
+async function loadMyRequests(){
+  if(!sb||!currentUser) return;
+  var r1 = await sb.from('leave_requests').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(10);
+  var r2 = await sb.from('overtime_requests').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(10);
+  var all = [];
+  (r1.data||[]).forEach(function(r){ all.push({id:r.id,kind:'休暇申請',date:r.created_at.slice(0,10),content:r.start_date+' '+r.leave_type,status:r.status,updated:r.created_at.slice(0,10)}); });
+  (r2.data||[]).forEach(function(r){ all.push({id:r.id,kind:'残業申請',date:r.created_at.slice(0,10),content:r.overtime_date+' '+r.hours+'h',status:r.status,updated:r.created_at.slice(0,10)}); });
+  all.sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var tbody = document.querySelector('#tab-my-req table tbody');
+  if(tbody){
+    tbody.innerHTML = all.map(function(r,i){
+      var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+      var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+      return '<tr><td>WF-'+String(i+1).padStart(4,'0')+'</td><td>'+r.kind+'</td><td>'+r.date+'</td><td>'+r.content+'</td><td><span class="badge '+bc+'">'+lb+'</span></td><td>'+r.updated+'</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
+  }
+}
+
+// ── 承認待ち一覧（管理者）────────────────────────────────
+async function loadPendingApprovals(){
+  if(!currentProfile||!['管理者','部門長'].includes(currentProfile.role)) return;
+  var r1 = await sb.from('leave_requests').select('id,user_id,leave_type,start_date,end_date,created_at').eq('status','pending').order('created_at',{ascending:false});
+  var r2 = await sb.from('overtime_requests').select('id,user_id,overtime_date,hours,reason,created_at').eq('status','pending').order('created_at',{ascending:false});
+  var empRes = await sb.from('employees').select('auth_id,name');
+  var empMap = {};
+  (empRes.data||[]).forEach(function(e){ empMap[e.auth_id]=e.name; });
+  var rows = [];
+  (r1.data||[]).forEach(function(r){
+    rows.push('<tr><td>LV-'+r.id.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+
+      '<td><button class="btn btn-success btn-sm" onclick="approveItem('leave',''+r.id+'',this)">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem('leave',''+r.id+'',this)">却下</button></td></tr>');
+  });
+  (r2.data||[]).forEach(function(r){
+    rows.push('<tr><td>OT-'+r.id.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+
+      '<td><button class="btn btn-success btn-sm" onclick="approveItem('overtime',''+r.id+'',this)">承認</button> <button class="btn btn-outline btn-sm" onclick="rejectItem('overtime',''+r.id+'',this)">却下</button></td></tr>');
+  });
+  var tbody = document.querySelector('#tab-approve table tbody');
+  if(tbody) tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">承認待ちの申請はありません</td></tr>';
+}
+
+async function approveItem(tbl, id, btn){
+  var table = tbl==='leave' ? 'leave_requests' : 'overtime_requests';
+  await sb.from(table).update({status:'approved',approved_by:currentUser.id,approved_at:new Date().toISOString()}).eq('id',id);
+  btn.closest('tr').remove();
+  showToast('✅ 承認しました','green');
+  loadPendingCountKPI();
+}
+async function rejectItem(tbl, id, btn){
+  var table = tbl==='leave' ? 'leave_requests' : 'overtime_requests';
+  await sb.from(table).update({status:'rejected'}).eq('id',id);
+  btn.closest('tr').remove();
+  showToast('却下しました','amber');
+  loadPendingCountKPI();
+}
+
+// ── 勤務実績一覧（管理者）────────────────────────────────
+async function loadAttendanceList(){
+  if(!currentProfile||!['管理者','部門長'].includes(currentProfile.role)){
+    var tbody = document.querySelector('#page-attendance table tbody');
+    if(tbody) tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">管理者権限が必要です</td></tr>';
+    return;
+  }
+  var res = await sb.from('employees').select('*').eq('is_active',true);
+  var tbody = document.querySelector('#page-attendance table tbody');
+  if(!tbody||!res.data) return;
+  tbody.innerHTML = (res.data||[]).map(function(e){
+    return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td>'+
+           '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'+
+           '<td><span class="badge badge-green">0件</span></td>'+
+           '<td><span class="badge badge-amber">未確定</span></td></tr>';
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+}
+
+// ── 従業員マスター ────────────────────────────────────────
+async function loadEmployeeSettings(){
+  var res = await sb.from('employees').select('*').order('employee_no');
+  var tbody = document.querySelector('#tab-employees table tbody');
+  if(!tbody) return;
+  tbody.innerHTML = (res.data||[]).map(function(e){
+    var rb = e.role==='管理者'?'badge-blue':'badge-gray';
+    var sb2 = e.is_active?'badge-green':'badge-gray';
+    return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td>'+
+           '<td>'+(e.employment_type||'—')+'</td><td>'+(e.joined_at||'—')+'</td>'+
+           '<td><span class="badge '+rb+'">'+(e.role||'一般')+'</span></td>'+
+           '<td><span class="badge '+sb2+'">'+(e.is_active?'有効':'無効')+'</span></td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+}
+
+// ── 申請フォーム送信 ──────────────────────────────────────
+var _origSubmit = window.submitRequest;
+window.submitRequest = async function(modalId, type){
+  try{
+    if(type==='休暇申請'){
+      var sel   = document.querySelector('#leaveApplyModal select');
+      var dates = document.querySelectorAll('#leaveApplyModal input[type=date]');
+      var ta    = document.querySelector('#leaveApplyModal textarea');
+      if(!dates[0]||!dates[0].value){ showToast('取得日を入力してください','red'); return; }
+      var res = await sb.from('leave_requests').insert({
+        user_id:currentUser.id, leave_type:sel?sel.value:'年次有給',
+        start_date:dates[0].value, end_date:dates[1]?dates[1].value:dates[0].value,
+        reason:ta?ta.value:'', status:'pending'
+      });
+      if(res.error) throw res.error;
+    } else if(type==='残業申請'){
+      var dEl = document.querySelector('#overtimeApplyModal input[type=date]');
+      var hEl = document.querySelector('#overtimeApplyModal input[type=number]');
+      var rEl = document.querySelector('#overtimeApplyModal select');
+      if(!dEl||!dEl.value||!hEl||!hEl.value){ showToast('日付と時間を入力してください','red'); return; }
+      var res = await sb.from('overtime_requests').insert({
+        user_id:currentUser.id, overtime_date:dEl.value,
+        hours:parseFloat(hEl.value)||0, reason:rEl?rEl.value:'', status:'pending'
+      });
+      if(res.error) throw res.error;
+    } else if(type==='打刻申請'){
+      var dEl2   = document.querySelector('#punchApplyModal input[type=date]');
+      var tEl    = document.querySelector('#punchApplyModal select');
+      var tEl2   = document.querySelector('#punchApplyModal input[type=time]');
+      var rEl2   = document.querySelector('#punchApplyModal textarea');
+      if(!dEl2||!dEl2.value||!tEl2||!tEl2.value){ showToast('日付と時刻を入力してください','red'); return; }
+      var dt = dEl2.value+'T'+tEl2.value+':00+09:00';
+      var res = await sb.from('punch_records').insert({
+        user_id:currentUser.id, punch_type:tEl?tEl.value:'出勤',
+        punched_at:dt, note:rEl2?rEl2.value:'打刻申請による修正'
+      });
+      if(res.error) throw res.error;
+    } else if(type==='従業員登録'){
+      var noEl   = document.querySelector('#empModal input[placeholder="E100"]');
+      var nmEl   = document.querySelector('#empModal input[placeholder="山田 一郎"]');
+      var emEl   = document.querySelector('#empModal input[type=email]');
+      var depts  = document.querySelectorAll('#empModal select');
+      var dtEl   = document.querySelector('#empModal input[type=date]');
+      if(!nmEl||!nmEl.value||!emEl||!emEl.value){ showToast('氏名とメールは必須です','red'); return; }
+      // Supabaseのauthにユーザーを招待（管理者向けAPIはフロントからは使えないためメモのみ）
+      showToast('⚠️ Supabaseの Authentication→Users から招待メールを送ってください','amber');
+      closeModal(modalId); return;
+    }
+  } catch(e){
+    console.error(e);
+    showToast('❌ 保存に失敗しました','red'); return;
   }
   closeModal(modalId);
-  if (ok) {
-    showToast('✅ ' + type + 'を提出しました', 'green');
-  } else {
-    showToast('❌ 保存に失敗しました。再度お試しください', 'red');
-  }
+  showToast('✅ '+type+'を提出しました','green');
+  if(type==='打刻申請') loadTodayPunchFromDB();
+  if(type==='休暇申請') loadLeaveData();
+  if(type==='残業申請') loadOvertimeData();
+  loadDashboard();
 };
 
-// ── Enterキーでログイン ───────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') doLogin();
+// ── doPunch DB版 ──────────────────────────────────────────
+var _origDoPunch = doPunch;
+window.doPunch = async function(type){
+  _origDoPunch(type);
+  await savePunchToDB(type);
+  await loadDashboard();
+};
+
+// ── ページ切替時DB読み込み ────────────────────────────────
+var _origShowPage = window.showPage;
+window.showPage = function(id){
+  _origShowPage(id);
+  if(id==='punch')      loadTodayPunchFromDB();
+  if(id==='timecard')   renderTimecard();
+  if(id==='leave')      loadLeaveData();
+  if(id==='overtime')   loadOvertimeData();
+  if(id==='requests')   { loadMyRequests(); loadPendingApprovals(); }
+  if(id==='attendance') loadAttendanceList();
+  if(id==='settings')   loadEmployeeSettings();
+  if(id==='dashboard')  loadDashboard();
+};
+
+// Enterキーでログイン
+document.addEventListener('keydown', function(e){
+  if(e.key==='Enter' && document.getElementById('loginOverlay').style.display!=='none') doLogin();
 });
 
-// ── 初期化 ────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+// 起動
+window.addEventListener('DOMContentLoaded', function(){
   setTimeout(initSupabase, 300);
-  const origShowPage = window.showPage;
-  window.showPage = function(id) {
-    origShowPage(id);
-    if (id === 'punch') loadTodayPunchFromDB();
-    if (id === 'dashboard') loadDashboard();
-  };
 });
 
 </script>
