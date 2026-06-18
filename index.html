@@ -600,21 +600,16 @@ select.form-control{cursor:pointer}
     <div class="card">
       <div style="display:flex;justify-content:space-between;margin-bottom:12px">
         <div class="card-title" style="margin-bottom:0">👥 従業員マスター</div>
-        <button class="btn btn-primary btn-sm" onclick="openModal('empModal')">+ 従業員登録</button>
+        <button class="btn btn-primary btn-sm" onclick="openEmpModal()">+ 従業員登録</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="form-control" style="width:200px" placeholder="氏名・社員番号で検索">
-        <select class="form-control" style="width:120px"><option>全部署</option><option>営業部</option><option>開発部</option></select>
-        <select class="form-control" style="width:130px"><option>全ステータス</option><option>有効</option><option>無効</option></select>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="empSearch" class="form-control" style="width:200px" placeholder="氏名・社員番号で検索" oninput="filterEmpTable()">
+        <select id="empDeptFilter" class="form-control" style="width:120px" onchange="filterEmpTable()"><option value="">全部署</option></select>
+        <select id="empStatusFilter" class="form-control" style="width:130px" onchange="filterEmpTable()"><option value="">全ステータス</option><option value="true">有効</option><option value="false">無効</option></select>
       </div>
-      <table>
-        <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>雇用形態</th><th>入社日</th><th>権限</th><th>ステータス</th></tr></thead>
-        <tbody>
-          <tr><td>E001</td><td>田中 太郎</td><td>営業部</td><td>正社員</td><td>2020/04/01</td><td><span class="badge badge-blue">管理者</span></td><td><span class="badge badge-green">有効</span></td></tr>
-          <tr><td>E002</td><td>鈴木 花子</td><td>開発部</td><td>正社員</td><td>2019/07/15</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-green">有効</span></td></tr>
-          <tr><td>E003</td><td>佐藤 次郎</td><td>開発部</td><td>契約社員</td><td>2022/01/06</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-green">有効</span></td></tr>
-          <tr><td>E099</td><td>伊藤 五郎</td><td>総務部</td><td>パート</td><td>2018/03/01</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-gray">無効</span></td></tr>
-        </tbody>
+      <table id="empTable">
+        <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>雇用形態</th><th>入社日</th><th>就業ルール</th><th>権限</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="empTableBody"><tr><td colspan="9" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -810,21 +805,73 @@ select.form-control{cursor:pointer}
 </div>
 
 <div class="modal-overlay" id="empModal">
-  <div class="modal">
-    <div class="modal-title">👤 従業員登録<span class="modal-close" onclick="closeModal('empModal')">×</span></div>
+  <div class="modal" style="width:580px;max-width:95vw">
+    <div class="modal-title">
+      <span id="empModalTitle">👤 従業員登録</span>
+      <span class="modal-close" onclick="closeModal('empModal')">×</span>
+    </div>
+    <input type="hidden" id="empId">
+    <input type="hidden" id="empAuthId">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group"><div class="form-label">社員番号 *</div><input class="form-control" placeholder="E100"></div>
-      <div class="form-group"><div class="form-label">氏名（漢字）*</div><input class="form-control" placeholder="山田 一郎"></div>
-      <div class="form-group"><div class="form-label">氏名（カナ）</div><input class="form-control" placeholder="ヤマダ イチロウ"></div>
-      <div class="form-group"><div class="form-label">メールアドレス *</div><input class="form-control" type="email" placeholder="yamada@example.com"></div>
-      <div class="form-group"><div class="form-label">部署 *</div><select class="form-control"><option>営業部</option><option>開発部</option><option>総務部</option></select></div>
-      <div class="form-group"><div class="form-label">雇用形態 *</div><select class="form-control"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option></select></div>
-      <div class="form-group"><div class="form-label">入社日 *</div><input class="form-control" type="date"></div>
-      <div class="form-group"><div class="form-label">権限</div><select class="form-control"><option>一般従業員</option><option>部門長</option><option>管理者</option></select></div>
+      <div class="form-group">
+        <div class="form-label">社員番号</div>
+        <input id="empNo" class="form-control" placeholder="E001">
+      </div>
+      <div class="form-group">
+        <div class="form-label">氏名（漢字）*</div>
+        <input id="empName" class="form-control" placeholder="山田 一郎">
+      </div>
+      <div class="form-group">
+        <div class="form-label">氏名（カナ）</div>
+        <input id="empKana" class="form-control" placeholder="ヤマダ イチロウ">
+      </div>
+      <div class="form-group">
+        <div class="form-label">メールアドレス *</div>
+        <input id="empEmail" class="form-control" type="email" placeholder="yamada@example.com">
+        <div style="font-size:11px;color:#999;margin-top:3px">※新規登録時のみ入力（Supabaseで招待後に紐付け）</div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">部署</div>
+        <input id="empDept" class="form-control" placeholder="営業部">
+      </div>
+      <div class="form-group">
+        <div class="form-label">雇用形態</div>
+        <select id="empEmpType" class="form-control">
+          <option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>派遣社員</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">入社日</div>
+        <input id="empJoinDate" class="form-control" type="date">
+      </div>
+      <div class="form-group">
+        <div class="form-label">権限</div>
+        <select id="empRole" class="form-control">
+          <option value="一般">一般従業員</option>
+          <option value="部門長">部門長</option>
+          <option value="管理者">管理者</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <div class="form-label">就業ルール</div>
+        <select id="empWorkRule" class="form-control">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1" id="empStatusRow" style="display:none">
+        <div class="form-label">ステータス</div>
+        <select id="empIsActive" class="form-control">
+          <option value="true">有効</option>
+          <option value="false">無効（退職等）</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:var(--lblue);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--blue);margin:8px 0">
+      💡 新規登録後、Supabase の Authentication → Users から招待メールを送ってください
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
       <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitRequest('empModal','従業員登録')">登録する</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">保存する</button>
     </div>
   </div>
 </div>
@@ -1358,18 +1405,179 @@ function showToast(msg,color='blue'){
   }
 
   // 設定
+  // ═══════════════════════════════════════════════════════
+  // システム設定 - 従業員マスター管理
+  // ═══════════════════════════════════════════════════════
+  var _allEmployees = [];
+  var _workRulesCache = [];
+
   function loadSettings() {
-    loadWorkRules();
-    sb.from('employees').select('*').order('created_at',{ascending:true}).then(function(r){
-      var tb=qs('#tab-employees table tbody'); if(!tb) return;
-      var data=r.data||[];
-      tb.innerHTML=data.length?data.map(function(e){
-        var rb=e.role==='管理者'?'badge-blue':'badge-gray';
-        var sb2=e.is_active?'badge-green':'badge-gray';
-        return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td><td>'+(e.employment_type||'—')+'</td><td>'+(e.joined_at||'—')+'</td><td><span class="badge '+rb+'">'+(e.role||'一般')+'</span></td><td><span class="badge '+sb2+'">'+(e.is_active?'有効':'無効')+'</span></td></tr>';
-      }).join(''):'<tr><td colspan="7" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+    Promise.all([
+      sb.from('work_rules').select('*').order('created_at',{ascending:true}),
+      sb.from('employees').select('*').order('employee_no',{ascending:true})
+    ]).then(function(rs) {
+      _workRulesCache = rs[0].data||[];
+      _allEmployees   = rs[1].data||[];
+      loadWorkRulesTable(_workRulesCache);
+      loadEmployeesTable(_allEmployees);
+      // 就業ルール選択肢を更新
+      updateWorkRuleSelects();
+      // 部署フィルター更新
+      var deptSel = document.getElementById('empDeptFilter');
+      if (deptSel) {
+        var depts = _allEmployees.map(function(e){ return e.department; }).filter(function(d,i,a){ return d&&a.indexOf(d)===i; });
+        deptSel.innerHTML = '<option value="">全部署</option>'+depts.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+      }
     });
   }
+
+  function updateWorkRuleSelects() {
+    var sel = document.getElementById('empWorkRule');
+    if (sel) {
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">選択してください</option>'+
+        _workRulesCache.filter(function(w){ return w.is_active; }).map(function(w){
+          return '<option value="'+w.id+'"'+(w.id===cur?' selected':'')+'>'+w.name+'</option>';
+        }).join('');
+    }
+  }
+
+  function loadWorkRulesTable(data) {
+    var tb = document.getElementById('workRulesBody'); if(!tb) return;
+    tb.innerHTML = data.length ? data.map(function(w){
+      var badge = w.is_active ? '<span class="badge badge-green">有効</span>' : '<span class="badge badge-gray">無効</span>';
+      var flex  = w.flex_enabled ? ' <span class="badge badge-blue" style="font-size:10px">フレックス</span>' : '';
+      return '<tr>'+
+        '<td><strong>'+w.name+'</strong>'+flex+'</td>'+
+        '<td>'+(w.flex_enabled?'コアタイム制':w.work_start.slice(0,5))+'</td>'+
+        '<td>'+(w.flex_enabled?'—':w.work_end.slice(0,5))+'</td>'+
+        '<td>'+w.daily_hours+'h</td>'+
+        '<td>'+w.break_minutes+'分</td>'+
+        '<td>'+w.overtime_rate+'%</td>'+
+        '<td>'+w.late_night_rate+'%</td>'+
+        '<td>'+w.holiday_rate+'%</td>'+
+        '<td>'+badge+'</td>'+
+        '<td>'+
+          '<button class="btn btn-outline btn-sm" data-id="'+w.id+'" onclick="_editWR(this)" style="margin-right:4px">編集</button>'+
+          '<button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--red)" data-id="'+w.id+'" data-active="'+(w.is_active?'false':'true')+'" onclick="_toggleWR(this)">'+(w.is_active?'無効化':'有効化')+'</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">就業ルールがありません</td></tr>';
+  }
+
+  function loadEmployeesTable(data) {
+    var tb = document.getElementById('empTableBody'); if(!tb) return;
+    var wrMap = {};
+    _workRulesCache.forEach(function(w){ wrMap[w.id]=w.name; });
+    tb.innerHTML = data.length ? data.map(function(e){
+      var rb  = e.role==='管理者'?'badge-blue':e.role==='部門長'?'badge-purple':'badge-gray';
+      var sb2 = e.is_active?'badge-green':'badge-gray';
+      var wrName = e.work_rule_id ? (wrMap[e.work_rule_id]||'—') : '—';
+      return '<tr'+(e.is_active?'':' style="opacity:.6"')+'>'+
+        '<td>'+(e.employee_no||'—')+'</td>'+
+        '<td><strong>'+e.name+'</strong></td>'+
+        '<td>'+(e.department||'—')+'</td>'+
+        '<td>'+(e.employment_type||'—')+'</td>'+
+        '<td>'+(e.joined_at||'—')+'</td>'+
+        '<td><span style="font-size:11px;color:var(--muted)">'+wrName+'</span></td>'+
+        '<td><span class="badge '+rb+'">'+(e.role||'一般')+'</span></td>'+
+        '<td><span class="badge '+sb2+'">'+(e.is_active?'有効':'無効')+'</span></td>'+
+        '<td>'+
+          '<button class="btn btn-outline btn-sm" data-id="'+e.id+'" onclick="_editEmp(this)" style="margin-right:4px">編集</button>'+
+          '<button class="btn btn-outline btn-sm" style="font-size:11px;color:var(--red)" data-id="'+e.id+'" data-active="'+(e.is_active?'false':'true')+'" onclick="_toggleEmp(this)">'+(e.is_active?'無効化':'有効化')+'</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="9" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+  }
+
+  window.filterEmpTable = function() {
+    var search = (document.getElementById('empSearch')||{value:''}).value.toLowerCase();
+    var dept   = (document.getElementById('empDeptFilter')||{value:''}).value;
+    var status = (document.getElementById('empStatusFilter')||{value:''}).value;
+    var filtered = _allEmployees.filter(function(e){
+      return (!search || e.name.toLowerCase().includes(search) || (e.employee_no||'').toLowerCase().includes(search)) &&
+             (!dept   || e.department===dept) &&
+             (!status || String(e.is_active)===status);
+    });
+    loadEmployeesTable(filtered);
+  };
+
+  window.openEmpModal = function() {
+    document.getElementById('empId').value = '';
+    document.getElementById('empAuthId').value = '';
+    document.getElementById('empNo').value = '';
+    document.getElementById('empName').value = '';
+    document.getElementById('empKana').value = '';
+    document.getElementById('empEmail').value = '';
+    document.getElementById('empDept').value = '';
+    document.getElementById('empEmpType').value = '正社員';
+    document.getElementById('empJoinDate').value = '';
+    document.getElementById('empRole').value = '一般';
+    document.getElementById('empWorkRule').value = '';
+    document.getElementById('empIsActive').value = 'true';
+    document.getElementById('empModalTitle').textContent = '👤 従業員登録';
+    document.getElementById('empStatusRow').style.display = 'none';
+    updateWorkRuleSelects();
+    if(window.openModal) openModal('empModal');
+  };
+
+  window._editEmp = function(btn) {
+    var id = btn.getAttribute('data-id');
+    var e  = _allEmployees.find(function(x){ return x.id===id; });
+    if (!e) return;
+    document.getElementById('empId').value = e.id;
+    document.getElementById('empAuthId').value = e.auth_id||'';
+    document.getElementById('empNo').value = e.employee_no||'';
+    document.getElementById('empName').value = e.name||'';
+    document.getElementById('empKana').value = e.name_kana||'';
+    document.getElementById('empEmail').value = '';
+    document.getElementById('empDept').value = e.department||'';
+    document.getElementById('empEmpType').value = e.employment_type||'正社員';
+    document.getElementById('empJoinDate').value = e.joined_at||'';
+    document.getElementById('empRole').value = e.role||'一般';
+    document.getElementById('empIsActive').value = String(e.is_active);
+    document.getElementById('empStatusRow').style.display = 'block';
+    document.getElementById('empModalTitle').textContent = '👤 従業員編集：'+e.name;
+    updateWorkRuleSelects();
+    document.getElementById('empWorkRule').value = e.work_rule_id||'';
+    if(window.openModal) openModal('empModal');
+  };
+
+  window._toggleEmp = function(btn) {
+    var id = btn.getAttribute('data-id');
+    var active = btn.getAttribute('data-active')==='true';
+    sb.from('employees').update({is_active:active}).eq('id',id).then(function(){
+      if(window.showToast) showToast(active?'有効化しました':'無効化しました','green');
+      loadSettings();
+    });
+  };
+
+  window.saveEmployee = function() {
+    var name = document.getElementById('empName').value.trim();
+    if (!name) { if(window.showToast) showToast('氏名を入力してください','red'); return; }
+    var id   = document.getElementById('empId').value;
+    var wrVal = document.getElementById('empWorkRule').value;
+    var data = {
+      employee_no:     document.getElementById('empNo').value.trim()||null,
+      name:            name,
+      name_kana:       document.getElementById('empKana').value.trim()||null,
+      department:      document.getElementById('empDept').value.trim()||null,
+      employment_type: document.getElementById('empEmpType').value,
+      joined_at:       document.getElementById('empJoinDate').value||null,
+      role:            document.getElementById('empRole').value,
+      work_rule_id:    wrVal||null,
+      is_active:       document.getElementById('empIsActive').value==='true'
+    };
+    var pr = id
+      ? sb.from('employees').update(data).eq('id',id)
+      : sb.from('employees').insert(data);
+    pr.then(function(r){
+      if (r.error) { if(window.showToast) showToast('保存失敗: '+r.error.message,'red'); return; }
+      if(window.closeModal) closeModal('empModal');
+      if(window.showToast) showToast('✅ 従業員情報を保存しました','green');
+      loadSettings();
+    });
+  };
 
   // 申請送信
   window.submitRequest = function(modalId, type) {
@@ -1416,30 +1624,7 @@ function showToast(msg,color='blue'){
 
 
   // ── 就業ルール ──────────────────────────────────────────
-  function loadWorkRules() {
-    sb.from('work_rules').select('*').order('created_at',{ascending:true}).then(function(r){
-      var tb = document.getElementById('workRulesBody'); if(!tb) return;
-      var data = r.data||[];
-      tb.innerHTML = data.length ? data.map(function(w){
-        var badge = w.is_active ? '<span class="badge badge-green">有効</span>' : '<span class="badge badge-gray">無効</span>';
-        return '<tr>'+
-          '<td><strong>'+w.name+'</strong></td>'+
-          '<td>'+w.work_start+'</td>'+
-          '<td>'+w.work_end+'</td>'+
-          '<td>'+w.daily_hours+'h</td>'+
-          '<td>'+w.break_minutes+'分</td>'+
-          '<td>'+w.overtime_rate+'%</td>'+
-          '<td>'+w.late_night_rate+'%</td>'+
-          '<td>'+w.holiday_rate+'%</td>'+
-          '<td>'+badge+'</td>'+
-          '<td>'+
-            '<button class="btn btn-outline btn-sm" data-id="'+w.id+'" onclick="_editWR(this)" style="margin-right:4px">編集</button>'+
-            '<button class="btn btn-outline btn-sm" style="color:var(--red)" data-id="'+w.id+'" data-active="'+(w.is_active?'false':'true')+'" onclick="_toggleWR(this)">'+(w.is_active?'無効化':'有効化')+'</button>'+
-          '</td>'+
-        '</tr>';
-      }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">就業ルールがありません。「新規ルール追加」から登録してください。</td></tr>';
-    });
-  }
+
 
 
   window._editWR = function(btn) { window.editWorkRule(btn.getAttribute('data-id')); };
