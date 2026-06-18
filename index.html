@@ -1410,19 +1410,33 @@ function _loadApprovals() {
       var rid = r.id;
       rows.push('<tr><td>LV-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td>'+
         '<td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+
-        '<td><button class="btn btn-success btn-sm" onclick="_approve('leave',''+rid+'',this)">承認</button> '+
-        '<button class="btn btn-outline btn-sm" onclick="_reject('leave',''+rid+'',this)">却下</button></td></tr>');
+        '<td>'+
+        '<button class="btn btn-success btn-sm" data-type="leave" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
+        '<button class="btn btn-outline btn-sm" data-type="leave" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
     });
     (results[1].data||[]).forEach(function(r) {
       var rid = r.id;
       rows.push('<tr><td>OT-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td>'+
         '<td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+
-        '<td><button class="btn btn-success btn-sm" onclick="_approve('overtime',''+rid+'',this)">承認</button> '+
-        '<button class="btn btn-outline btn-sm" onclick="_reject('overtime',''+rid+'',this)">却下</button></td></tr>');
+        '<td>'+
+        '<button class="btn btn-success btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
+        '<button class="btn btn-outline btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
     });
     var tbody = document.querySelector('#tab-approve table tbody');
     if (tbody) tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">承認待ちの申請はありません</td></tr>';
   });
+}
+
+
+function _approveBtn(btn) {
+  var type = btn.getAttribute('data-type');
+  var id   = btn.getAttribute('data-id');
+  _approve(type, id, btn);
+}
+function _rejectBtn(btn) {
+  var type = btn.getAttribute('data-type');
+  var id   = btn.getAttribute('data-id');
+  _reject(type, id, btn);
 }
 
 function _approve(type, id, btn) {
