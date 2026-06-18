@@ -1121,7 +1121,7 @@ function showToast(msg,color='blue'){
     el('tcMonthLabel').textContent=year+'年'+month+'月';
     sb.from('punch_records').select('*').eq('user_id',me.id)
       .gte('punched_at',year+'-'+p2(month)+'-01T00:00:00+09:00')
-      .lte('punched_at',year+'-'+p2(month)+'-31T23:59:59+09:00')
+      .lte('punched_at',year+'-'+p2(month)+'-'+p2(new Date(year,month,0).getDate())+'T23:59:59+09:00')
       .order('punched_at',{ascending:true})
       .then(function(r) {
         var recs=r.data||[], tbody=el('timecardBody');
