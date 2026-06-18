@@ -168,7 +168,6 @@ select.form-control{cursor:pointer}
 </head>
 <body>
 
-<!-- ログイン画面 -->
 <div id="loginOverlay" style="display:flex;position:fixed;inset:0;background:#1a3a5c;z-index:9999;align-items:center;justify-content:center;flex-direction:column">
   <div style="text-align:center;margin-bottom:28px">
     <div style="font-size:40px">⏰</div>
@@ -182,12 +181,12 @@ select.form-control{cursor:pointer}
       <input id="loginEmail" type="email" placeholder="yamada@example.com"
         style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
     </div>
-    <div style="margin-bottom:20px">
+    <div style="margin-bottom:8px">
       <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">パスワード</div>
       <input id="loginPass" type="password" placeholder="••••••••"
         style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
     </div>
-    <div id="loginError" style="color:#A32D2D;font-size:12px;margin-bottom:10px;min-height:16px"></div>
+    <div id="loginError" style="color:#A32D2D;font-size:12px;margin-bottom:10px;min-height:18px"></div>
     <button onclick="doLogin()"
       style="width:100%;padding:12px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
       ログイン
@@ -227,7 +226,7 @@ select.form-control{cursor:pointer}
   <div class="user-info">
     <div class="current-time" id="clockDisplay">--:--:--</div>
     <div class="user-name">田中 太郎 | 営業部</div>
-    <div class="user-avatar">田</div>
+    <div class="user-avatar" id="userAvatar">?</div>
     <button onclick="doLogout()" style="padding:6px 12px;border:1px solid #e0e4ea;border-radius:6px;background:transparent;font-size:12px;cursor:pointer;color:#666">ログアウト</button>
   </div>
 </div>
@@ -985,40 +984,42 @@ function showToast(msg,color='blue'){
 }
 
 // ═══════════════════════════════════════════════
-// Supabase 接続設定
+// Supabase 完全DB連動コード
 // ═══════════════════════════════════════════════
 const SUPABASE_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
-
 let sb = null;
+let currentUser = null;
+let currentProfile = null;
+
 async function initSupabase() {
   if (!window.supabase) { console.warn('Supabase SDK not loaded'); return; }
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log('Supabase connected');
   await checkLogin();
 }
 
-let currentUser = null;
 async function checkLogin() {
-  if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     currentUser = session.user;
-    const profile = await getProfile(currentUser.id);
-    if (profile) {
-      document.querySelector('.user-name').textContent = profile.name + ' | ' + (profile.department || '');
-      document.querySelector('.user-avatar').textContent = profile.name ? profile.name[0] : '?';
-    }
+    await loadProfile();
     hideLoginScreen();
+    await loadDashboard();
   } else {
     showLoginScreen();
   }
 }
 
-async function getProfile(userId) {
-  if (!sb) return null;
-  const { data } = await sb.from('employees').select('*').eq('auth_id', userId).single();
-  return data;
+async function loadProfile() {
+  const { data } = await sb.from('employees').select('*').eq('auth_id', currentUser.id).single();
+  currentProfile = data;
+  if (data) {
+    document.querySelector('.user-name').textContent = data.name + ' | ' + (data.department || '');
+    document.getElementById('userAvatar').textContent = data.name ? data.name[0] : '?';
+  } else {
+    document.querySelector('.user-name').textContent = currentUser.email;
+    document.getElementById('userAvatar').textContent = currentUser.email[0].toUpperCase();
+  }
 }
 
 function showLoginScreen() {
@@ -1036,6 +1037,7 @@ async function doLogin() {
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
   if (!email || !pass) { errEl.textContent = 'メールとパスワードを入力してください'; return; }
+  errEl.textContent = 'ログイン中...';
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { errEl.textContent = 'ログインに失敗しました: ' + error.message; return; }
   await checkLogin();
@@ -1043,28 +1045,56 @@ async function doLogin() {
 }
 
 async function doLogout() {
-  if (!sb) return;
   await sb.auth.signOut();
-  currentUser = null;
+  currentUser = null; currentProfile = null;
   showLoginScreen();
 }
 
+// ── ダッシュボード読み込み ──────────────────────────────────────
+async function loadDashboard() {
+  await loadTodayStatus();
+  await loadLeaveBalance();
+  await loadOvertimeStatus();
+}
+
+// ── 今日の打刻状況 ────────────────────────────────────────────
+async function loadTodayStatus() {
+  if (!sb || !currentUser) return;
+  const today = new Date().toISOString().slice(0,10);
+  const { data } = await sb.from('punch_records').select('*')
+    .eq('user_id', currentUser.id)
+    .gte('punched_at', today + 'T00:00:00Z')
+    .order('punched_at', { ascending: true });
+  if (!data || data.length === 0) return;
+  const inRecord = data.find(r => r.punch_type === '出勤');
+  if (inRecord) {
+    const t = new Date(inRecord.punched_at);
+    const ts = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+    const el = document.getElementById('today-in');
+    if (el) el.textContent = ts;
+  }
+}
+
+// ── 打刻をDBに保存 ────────────────────────────────────────────
 async function savePunchToDB(type) {
   if (!sb || !currentUser) return;
   const { error } = await sb.from('punch_records').insert({
-    user_id: currentUser.id, punch_type: type,
-    punched_at: new Date().toISOString(), location: null
+    user_id: currentUser.id,
+    punch_type: type,
+    punched_at: new Date().toISOString(),
+    location: null
   });
-  if (error) console.error('打刻保存エラー:', error);
+  if (error) { console.error('打刻エラー:', error); showToast('❌ 打刻保存に失敗しました', 'red'); }
 }
 
+// ── 今日の打刻ログをDBから取得して表示 ───────────────────────
 async function loadTodayPunchFromDB() {
   if (!sb || !currentUser) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0,10);
   const { data, error } = await sb.from('punch_records').select('*')
     .eq('user_id', currentUser.id)
-    .gte('punched_at', today + 'T00:00:00')
-    .lte('punched_at', today + 'T23:59:59')
+    .gte('punched_at', today + 'T00:00:00Z')
+    .lte('punched_at', today + 'T23:59:59Z')
     .order('punched_at', { ascending: true });
   if (error) { console.error(error); return; }
   const dotMap2 = { '出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green' };
@@ -1075,28 +1105,125 @@ async function loadTodayPunchFromDB() {
       const ts = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
       return '<li><span class="tl-time">' + ts + '</span><span class="tl-dot tl-' + (dotMap2[r.punch_type]||'blue') + '"></span><span>' + r.punch_type + '</span></li>';
     }).join('');
+  } else {
+    ul.innerHTML = '<li style="color:#999;font-size:13px">本日の打刻はまだありません</li>';
   }
 }
 
-// doPunch をDB保存版で上書き
+// ── 休暇残日数をDBから取得 ────────────────────────────────────
+async function loadLeaveBalance() {
+  if (!sb || !currentUser) return;
+  const year = new Date().getFullYear();
+  const { data } = await sb.from('leave_balances').select('*')
+    .eq('user_id', currentUser.id).eq('year', year).single();
+  if (data) {
+    const remaining = data.granted + data.carried - data.used;
+    const el = document.getElementById('kpi-leave-used');
+    if (el) el.textContent = data.used;
+  }
+}
+
+// ── 残業状況をDBから取得 ──────────────────────────────────────
+async function loadOvertimeStatus() {
+  if (!sb || !currentUser) return;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const { data } = await sb.from('overtime_requests').select('hours')
+    .eq('user_id', currentUser.id).eq('status','approved')
+    .gte('overtime_date', monthStart);
+  if (data) {
+    const total = data.reduce((s, r) => s + (r.hours || 0), 0);
+    const el = document.getElementById('kpi-overtime');
+    if (el) el.textContent = total.toFixed(1);
+  }
+}
+
+// ── 月次タイムカードをDBから取得 ──────────────────────────────
+async function loadTimecardFromDB(year, month) {
+  if (!sb || !currentUser) return;
+  const start = year + '-' + String(month).padStart(2,'0') + '-01';
+  const end   = year + '-' + String(month).padStart(2,'0') + '-31';
+  const { data } = await sb.from('punch_records').select('*')
+    .eq('user_id', currentUser.id)
+    .gte('punched_at', start + 'T00:00:00Z')
+    .lte('punched_at', end   + 'T23:59:59Z')
+    .order('punched_at', { ascending: true });
+  return data || [];
+}
+
+// ── 休暇申請をDBに保存 ────────────────────────────────────────
+async function saveLeaveRequest(leaveType, startDate, endDate, reason) {
+  if (!sb || !currentUser) return false;
+  const { error } = await sb.from('leave_requests').insert({
+    user_id: currentUser.id,
+    leave_type: leaveType,
+    start_date: startDate,
+    end_date: endDate || startDate,
+    reason: reason || '',
+    status: 'pending'
+  });
+  if (error) { console.error(error); return false; }
+  return true;
+}
+
+// ── 残業申請をDBに保存 ────────────────────────────────────────
+async function saveOvertimeRequest(date, hours, reason) {
+  if (!sb || !currentUser) return false;
+  const { error } = await sb.from('overtime_requests').insert({
+    user_id: currentUser.id,
+    overtime_date: date,
+    hours: parseFloat(hours) || 0,
+    reason: reason || '',
+    status: 'pending'
+  });
+  if (error) { console.error(error); return false; }
+  return true;
+}
+
+// ── doPunch をDB保存版で上書き ────────────────────────────────
 const _origDoPunch = doPunch;
 window.doPunch = async function(type) {
   _origDoPunch(type);
   await savePunchToDB(type);
 };
 
-// Enterキーでログイン
+// ── submitRequest をDB保存版で上書き ─────────────────────────
+const _origSubmitRequest = window.submitRequest;
+window.submitRequest = async function(modalId, type) {
+  let ok = true;
+  if (type === '休暇申請') {
+    const leaveType  = document.querySelector('#leaveApplyModal select')?.value || '';
+    const startDate  = document.querySelectorAll('#leaveApplyModal input[type=date]')[0]?.value || '';
+    const endDate    = document.querySelectorAll('#leaveApplyModal input[type=date]')[1]?.value || startDate;
+    const reason     = document.querySelector('#leaveApplyModal textarea')?.value || '';
+    ok = await saveLeaveRequest(leaveType, startDate, endDate, reason);
+  } else if (type === '残業申請') {
+    const date   = document.querySelector('#overtimeApplyModal input[type=date]')?.value || '';
+    const hours  = document.querySelector('#overtimeApplyModal input[type=number]')?.value || 0;
+    const reason = document.querySelector('#overtimeApplyModal select')?.value || '';
+    ok = await saveOvertimeRequest(date, hours, reason);
+  }
+  closeModal(modalId);
+  if (ok) {
+    showToast('✅ ' + type + 'を提出しました', 'green');
+  } else {
+    showToast('❌ 保存に失敗しました。再度お試しください', 'red');
+  }
+};
+
+// ── Enterキーでログイン ───────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') doLogin();
 });
 
-// 初期化
+// ── 初期化 ────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   setTimeout(initSupabase, 300);
   const origShowPage = window.showPage;
   window.showPage = function(id) {
     origShowPage(id);
     if (id === 'punch') loadTodayPunchFromDB();
+    if (id === 'dashboard') loadDashboard();
   };
 });
 
