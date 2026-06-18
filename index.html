@@ -1622,8 +1622,8 @@ function showToast(msg,color='blue'){
   };
 
   window.grantLeaveAll = function() {
-    if(!confirm('全従業員に年次有給休暇を一括付与します。
-付与日数：10日（既存レコードは上書きされません）')) return;
+    if(!confirm('全従業員に年次有給休暇を一括付与します。付与日数：10日（既存レコードは上書きされません）')) return;
+
     sb.from('employees').select('auth_id').eq('is_active',true).then(function(r) {
       var year = new Date().getFullYear();
       var inserts = (r.data||[]).map(function(e) {
