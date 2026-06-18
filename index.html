@@ -620,15 +620,105 @@ select.form-control{cursor:pointer}
   </div>
   <div class="tab-content" id="tab-work-rules">
     <div class="card">
-      <div class="card-title">⚙️ 就業ルール一覧</div>
-      <table>
-        <thead><tr><th>ルール名</th><th>所定開始</th><th>所定終了</th><th>所定時間</th><th>休憩</th><th>時間外割増</th><th>深夜割増</th><th>適用人数</th></tr></thead>
-        <tbody>
-          <tr><td>標準（正社員）</td><td>09:00</td><td>18:00</td><td>8h</td><td>60分</td><td>25%</td><td>25%</td><td>35名</td></tr>
-          <tr><td>フレックス</td><td>コアタイム10-15時</td><td>—</td><td>8h</td><td>60分</td><td>25%</td><td>25%</td><td>8名</td></tr>
-          <tr><td>パート（6h）</td><td>09:00</td><td>15:00</td><td>6h</td><td>45分</td><td>25%</td><td>25%</td><td>6名</td></tr>
-        </tbody>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0">⚙️ 就業ルール一覧</div>
+        <button class="btn btn-primary btn-sm" onclick="openWorkRuleModal()">+ 新規ルール追加</button>
+      </div>
+      <table id="workRulesTable">
+        <thead><tr><th>ルール名</th><th>所定開始</th><th>所定終了</th><th>所定時間</th><th>休憩</th><th>時間外割増</th><th>深夜割増</th><th>休日割増</th><th>状態</th><th>操作</th></tr></thead>
+        <tbody id="workRulesBody"><tr><td colspan="10" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- 就業ルール編集モーダル -->
+  <div class="modal-overlay" id="workRuleModal">
+    <div class="modal" style="width:560px;max-width:95vw">
+      <div class="modal-title">
+        <span id="workRuleModalTitle">⚙️ 就業ルール登録</span>
+        <span class="modal-close" onclick="closeModal('workRuleModal')">×</span>
+      </div>
+      <input type="hidden" id="wrId">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1">
+          <div class="form-label">ルール名 *</div>
+          <input id="wrName" class="form-control" placeholder="例：標準（正社員）">
+        </div>
+        <div class="form-group">
+          <div class="form-label">所定開始時刻</div>
+          <input id="wrStart" type="time" class="form-control" value="09:00">
+        </div>
+        <div class="form-group">
+          <div class="form-label">所定終了時刻</div>
+          <input id="wrEnd" type="time" class="form-control" value="18:00">
+        </div>
+        <div class="form-group">
+          <div class="form-label">1日所定労働時間（h）</div>
+          <input id="wrDaily" type="number" class="form-control" value="8" step="0.5" min="1" max="24">
+        </div>
+        <div class="form-group">
+          <div class="form-label">週所定労働時間（h）</div>
+          <input id="wrWeekly" type="number" class="form-control" value="40" step="0.5" min="1" max="60">
+        </div>
+        <div class="form-group">
+          <div class="form-label">休憩時間（分）</div>
+          <input id="wrBreak" type="number" class="form-control" value="60" step="5" min="0" max="180">
+        </div>
+        <div class="form-group">
+          <div class="form-label">打刻丸め</div>
+          <select id="wrRound" class="form-control">
+            <option value="none">丸めなし</option>
+            <option value="floor_5">5分切捨て</option>
+            <option value="floor_10">10分切捨て</option>
+            <option value="floor_15">15分切捨て</option>
+            <option value="floor_30">30分切捨て</option>
+            <option value="ceil_5">5分切上げ</option>
+            <option value="ceil_15">15分切上げ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">時間外割増率（%）</div>
+          <input id="wrOT" type="number" class="form-control" value="25" step="1" min="25" max="100">
+        </div>
+        <div class="form-group">
+          <div class="form-label">深夜割増率（%）</div>
+          <input id="wrLN" type="number" class="form-control" value="25" step="1" min="25" max="100">
+        </div>
+        <div class="form-group">
+          <div class="form-label">休日割増率（%）</div>
+          <input id="wrHD" type="number" class="form-control" value="35" step="1" min="35" max="100">
+        </div>
+        <div class="form-group">
+          <div class="form-label">法定休日割増率（%）</div>
+          <input id="wrLHD" type="number" class="form-control" value="35" step="1" min="35" max="100">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <div class="form-label">フレックスタイム制</div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="wrFlex" onchange="toggleFlexFields()">
+            <span>フレックスタイム制を使用する</span>
+          </label>
+        </div>
+        <div id="flexFields" style="display:none;grid-column:1/-1;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <div class="form-label">コアタイム開始</div>
+              <input id="wrCoreStart" type="time" class="form-control" value="10:00">
+            </div>
+            <div class="form-group">
+              <div class="form-label">コアタイム終了</div>
+              <input id="wrCoreEnd" type="time" class="form-control" value="15:00">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--lblue);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--blue);margin:8px 0">
+        ⚠️ 割増率の法定下限：時間外25%・深夜25%・休日35%
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-outline" onclick="closeModal('workRuleModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveWorkRule()">保存する</button>
+      </div>
     </div>
   </div>
   <div class="tab-content" id="tab-depts">
@@ -1269,6 +1359,7 @@ function showToast(msg,color='blue'){
 
   // 設定
   function loadSettings() {
+    loadWorkRules();
     sb.from('employees').select('*').order('created_at',{ascending:true}).then(function(r){
       var tb=qs('#tab-employees table tbody'); if(!tb) return;
       var data=r.data||[];
@@ -1321,6 +1412,122 @@ function showToast(msg,color='blue'){
       if(window.closeModal) closeModal(modalId);
       if(window.showToast) showToast(type+'を提出しました','green');
     }
+  };
+
+
+  // ── 就業ルール ──────────────────────────────────────────
+  function loadWorkRules() {
+    sb.from('work_rules').select('*').order('created_at',{ascending:true}).then(function(r){
+      var tb = document.getElementById('workRulesBody'); if(!tb) return;
+      var data = r.data||[];
+      tb.innerHTML = data.length ? data.map(function(w){
+        var badge = w.is_active ? '<span class="badge badge-green">有効</span>' : '<span class="badge badge-gray">無効</span>';
+        return '<tr>'+
+          '<td><strong>'+w.name+'</strong></td>'+
+          '<td>'+w.work_start+'</td>'+
+          '<td>'+w.work_end+'</td>'+
+          '<td>'+w.daily_hours+'h</td>'+
+          '<td>'+w.break_minutes+'分</td>'+
+          '<td>'+w.overtime_rate+'%</td>'+
+          '<td>'+w.late_night_rate+'%</td>'+
+          '<td>'+w.holiday_rate+'%</td>'+
+          '<td>'+badge+'</td>'+
+          '<td>'+
+            '<button class="btn btn-outline btn-sm" onclick="editWorkRule(''+w.id+'')" style="margin-right:4px">編集</button>'+
+            '<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="toggleWorkRule(''+w.id+'','+!w.is_active+')">'+(w.is_active?'無効化':'有効化')+'</button>'+
+          '</td>'+
+        '</tr>';
+      }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">就業ルールがありません。「新規ルール追加」から登録してください。</td></tr>';
+    });
+  }
+
+  window.openWorkRuleModal = function() {
+    document.getElementById('wrId').value = '';
+    document.getElementById('wrName').value = '';
+    document.getElementById('wrStart').value = '09:00';
+    document.getElementById('wrEnd').value = '18:00';
+    document.getElementById('wrDaily').value = '8';
+    document.getElementById('wrWeekly').value = '40';
+    document.getElementById('wrBreak').value = '60';
+    document.getElementById('wrRound').value = 'none';
+    document.getElementById('wrOT').value = '25';
+    document.getElementById('wrLN').value = '25';
+    document.getElementById('wrHD').value = '35';
+    document.getElementById('wrLHD').value = '35';
+    document.getElementById('wrFlex').checked = false;
+    document.getElementById('flexFields').style.display = 'none';
+    document.getElementById('workRuleModalTitle').textContent = '⚙️ 就業ルール登録';
+    if(window.openModal) openModal('workRuleModal');
+  };
+
+  window.editWorkRule = function(id) {
+    sb.from('work_rules').select('*').eq('id',id).single().then(function(r){
+      if (!r.data) return;
+      var w = r.data;
+      document.getElementById('wrId').value = w.id;
+      document.getElementById('wrName').value = w.name||'';
+      document.getElementById('wrStart').value = (w.work_start||'09:00').slice(0,5);
+      document.getElementById('wrEnd').value = (w.work_end||'18:00').slice(0,5);
+      document.getElementById('wrDaily').value = w.daily_hours||8;
+      document.getElementById('wrWeekly').value = w.weekly_hours||40;
+      document.getElementById('wrBreak').value = w.break_minutes||60;
+      document.getElementById('wrRound').value = w.round_type||'none';
+      document.getElementById('wrOT').value = w.overtime_rate||25;
+      document.getElementById('wrLN').value = w.late_night_rate||25;
+      document.getElementById('wrHD').value = w.holiday_rate||35;
+      document.getElementById('wrLHD').value = w.legal_holiday_rate||35;
+      document.getElementById('wrFlex').checked = w.flex_enabled||false;
+      document.getElementById('flexFields').style.display = w.flex_enabled ? 'block' : 'none';
+      if (w.core_start) document.getElementById('wrCoreStart').value = w.core_start.slice(0,5);
+      if (w.core_end)   document.getElementById('wrCoreEnd').value   = w.core_end.slice(0,5);
+      document.getElementById('workRuleModalTitle').textContent = '⚙️ 就業ルール編集';
+      if(window.openModal) openModal('workRuleModal');
+    });
+  };
+
+  window.toggleFlexFields = function() {
+    var checked = document.getElementById('wrFlex').checked;
+    document.getElementById('flexFields').style.display = checked ? 'block' : 'none';
+  };
+
+  window.saveWorkRule = function() {
+    var name = document.getElementById('wrName').value.trim();
+    if (!name) { if(window.showToast) showToast('ルール名を入力してください','red'); return; }
+    var id   = document.getElementById('wrId').value;
+    var flex = document.getElementById('wrFlex').checked;
+    var data = {
+      name:               name,
+      work_start:         document.getElementById('wrStart').value,
+      work_end:           document.getElementById('wrEnd').value,
+      daily_hours:        parseFloat(document.getElementById('wrDaily').value)||8,
+      weekly_hours:       parseFloat(document.getElementById('wrWeekly').value)||40,
+      break_minutes:      parseInt(document.getElementById('wrBreak').value)||60,
+      round_type:         document.getElementById('wrRound').value,
+      overtime_rate:      parseFloat(document.getElementById('wrOT').value)||25,
+      late_night_rate:    parseFloat(document.getElementById('wrLN').value)||25,
+      holiday_rate:       parseFloat(document.getElementById('wrHD').value)||35,
+      legal_holiday_rate: parseFloat(document.getElementById('wrLHD').value)||35,
+      flex_enabled:       flex,
+      core_start:         flex ? document.getElementById('wrCoreStart').value : null,
+      core_end:           flex ? document.getElementById('wrCoreEnd').value   : null,
+      is_active:          true
+    };
+    var promise = id
+      ? sb.from('work_rules').update(data).eq('id',id)
+      : sb.from('work_rules').insert(data);
+    promise.then(function(r){
+      if (r.error) { if(window.showToast) showToast('保存に失敗しました: '+r.error.message,'red'); return; }
+      if(window.closeModal) closeModal('workRuleModal');
+      if(window.showToast) showToast('✅ 就業ルールを保存しました','green');
+      loadWorkRules();
+    });
+  };
+
+  window.toggleWorkRule = function(id, active) {
+    sb.from('work_rules').update({is_active:active}).eq('id',id).then(function(){
+      if(window.showToast) showToast(active?'有効化しました':'無効化しました','green');
+      loadWorkRules();
+    });
   };
 
   // 起動
