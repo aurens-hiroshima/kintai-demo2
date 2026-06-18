@@ -1358,17 +1358,34 @@ function showToast(msg,color='blue'){
       window.submitRequest = window._submitDB;
     }, 500);
 
-    // 打刻ボタンを上書き
+    // 打刻ボタンを上書き（元のDB保存処理を無効化して新しいものに一本化）
     setTimeout(function() {
       var origDoPunch = window.doPunch;
       window.doPunch = function(type) {
-        if (origDoPunch) origDoPunch(type);
+        // UI更新のみ元の関数で実行（localStorage保存は無視）
+        var n=new Date();
+        var ts=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
+        var dotMap={'出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green'};
+        var ul=document.getElementById('punchLog');
+        if(ul){
+          var li=document.createElement('li');
+          li.innerHTML='<span class="tl-time">'+ts+'</span><span class="tl-dot tl-'+(dotMap[type]||'blue')+'"></span><span>'+type+'</span>';
+          ul.appendChild(li);
+        }
+        var statusMap={'出勤':'出勤中','退勤':'退勤済み','休憩開始':'休憩中','休憩終了':'出勤中'};
+        var st=document.getElementById('punchStatus');
+        if(st) st.textContent=statusMap[type]||type;
+        // DBに1回だけ保存
         if (!_sb||!_user) return;
         _sb.from('punch_records').insert({
           user_id:_user.id, punch_type:type, punched_at:new Date().toISOString()
         }).then(function(res){
-          if (res.error) { if(window.showToast) showToast('打刻の保存に失敗しました','red'); return; }
-          setTimeout(function(){ _loadPunch(); _loadDashboard(); }, 300);
+          if (res.error) {
+            if(window.showToast) showToast('打刻の保存に失敗しました: '+res.error.message,'red');
+            return;
+          }
+          if(window.showToast) showToast(type+'しました','green');
+          setTimeout(function(){ _loadPunch(); _loadDashboard(); }, 500);
         });
       };
     }, 500);
