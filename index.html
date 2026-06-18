@@ -1433,13 +1433,17 @@ function showToast(msg,color='blue'){
           '<td>'+w.holiday_rate+'%</td>'+
           '<td>'+badge+'</td>'+
           '<td>'+
-            '<button class="btn btn-outline btn-sm" onclick="editWorkRule(''+w.id+'')" style="margin-right:4px">編集</button>'+
-            '<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="toggleWorkRule(''+w.id+'','+!w.is_active+')">'+(w.is_active?'無効化':'有効化')+'</button>'+
+            '<button class="btn btn-outline btn-sm" data-id="'+w.id+'" onclick="_editWR(this)" style="margin-right:4px">編集</button>'+
+            '<button class="btn btn-outline btn-sm" style="color:var(--red)" data-id="'+w.id+'" data-active="'+(w.is_active?'false':'true')+'" onclick="_toggleWR(this)">'+(w.is_active?'無効化':'有効化')+'</button>'+
           '</td>'+
         '</tr>';
       }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">就業ルールがありません。「新規ルール追加」から登録してください。</td></tr>';
     });
   }
+
+
+  window._editWR = function(btn) { window.editWorkRule(btn.getAttribute('data-id')); };
+  window._toggleWR = function(btn) { window.toggleWorkRule(btn.getAttribute('data-id'), btn.getAttribute('data-active')==='true'); };
 
   window.openWorkRuleModal = function() {
     document.getElementById('wrId').value = '';
