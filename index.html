@@ -1493,7 +1493,7 @@ function showToast(msg,color='blue'){
   function loadLeave() {
     var year = new Date().getFullYear();
     // ── 残高取得 ──────────────────────────────────────────
-    sb.from('leave_balances').select('*').eq('user_id',me.id).eq('year',year).single().then(function(r) {
+    sb.from('leave_balances').select('*').eq('user_id',me.id).eq('year',year).limit(1).maybeSingle().then(function(r) {
       var bal = r.data;
       if (bal) {
         var rem  = (bal.granted||0) + (bal.carried||0) - (bal.used||0);
@@ -1673,8 +1673,8 @@ function showToast(msg,color='blue'){
     document.getElementById('laBalanceInfo').textContent = '';
     // 残高表示を更新
     var year = new Date().getFullYear();
-    sb.from('leave_balances').select('*').eq('user_id',me.id).eq('year',year).single().then(function(r) {
-      var bal = r.data||{granted:0,used:0,carried:0,hour_granted:0,hour_used:0};
+    sb.from('leave_balances').select('*').eq('user_id',me.id).eq('year',year).then(function(r) {
+      var bal = (r.data&&r.data.length>0) ? r.data[0] : {granted:10,used:0,carried:0,hour_granted:40,hour_used:0};
       var rem = (bal.granted||0)+(bal.carried||0)-(bal.used||0);
       var hr  = (bal.hour_granted||0)-(bal.hour_used||0);
       var el  = document.getElementById('laBalanceInfo');
@@ -2221,8 +2221,8 @@ function showToast(msg,color='blue'){
   }
 
   function renderMonthlyReport() {
-    var tbody  = document.getElementById('monthlyReportBody'); if(!tb) return;
     var tbody  = document.getElementById('monthlyReportBody'); if(!tbody) return;
+
     var days   = new Date(_repYear, _repMonth, 0).getDate();
     var wdays  = ['日','月','火','水','木','金','土'];
     var rows   = [];
