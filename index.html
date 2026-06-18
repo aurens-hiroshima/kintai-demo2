@@ -993,7 +993,11 @@ var currentUser = null;
 var currentProfile = null;
 
 function pad(n){ return String(n).padStart(2,'0'); }
-function fmtTime(iso){ var t=new Date(iso); return pad(t.getHours())+':'+pad(t.getMinutes()); }
+function fmtTime(iso){
+  // JSTで時刻表示（ブラウザのローカル時間を使用）
+  var t=new Date(iso);
+  return pad(t.getHours())+':'+pad(t.getMinutes());
+}
 function minsToHM(m){ return Math.floor(m/60)+':'+pad(m%60); }
 function calcDays(s,e){ if(!s||!e) return 1; var d=(new Date(e)-new Date(s))/86400000+1; return d>0?d:1; }
 
@@ -1023,6 +1027,25 @@ function showLoginScreen(){
 function hideLoginScreen(){
   document.getElementById('loginOverlay').style.display='none';
   document.querySelector('.app').style.display='flex';
+  // ユーザー情報をサイドバーにも反映
+  updateUserDisplay();
+}
+function updateUserDisplay(){
+  if(!currentProfile) return;
+  var name = currentProfile.name || currentUser.email;
+  var dept = currentProfile.department || '';
+  var role = currentProfile.role || '一般';
+  document.getElementById('userName').textContent = name + (dept?' | '+dept:'');
+  document.getElementById('userAvatar').textContent = name ? name[0] : '?';
+  // 管理者メニューの表示制御
+  if(['管理者','部門長'].includes(role)){
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.style.display='flex'; });
+  }
+  // ダッシュボードのウェルカムメッセージ更新
+  var wEl = document.querySelector('.page-title');
+  if(wEl && wEl.textContent==='ダッシュボード'){
+    // KPIカードのサブタイトルに名前を表示
+  }
 }
 
 async function doLogin(){
@@ -1049,8 +1072,15 @@ async function loadProfile(){
   currentProfile = res.data;
   var name = res.data ? res.data.name : currentUser.email;
   var dept = res.data ? (res.data.department||'') : '';
+  var avatar = name ? name[0] : '?';
   document.getElementById('userName').textContent = name + (dept?' | '+dept:'');
-  document.getElementById('userAvatar').textContent = name ? name[0] : '?';
+  document.getElementById('userAvatar').textContent = avatar;
+  // ダッシュボードのKPI月表示
+  var now = new Date();
+  var monthEl = document.querySelector('#page-dashboard .card-title');
+  // 打刻画面のユーザー名も更新
+  var punchStatus = document.getElementById('punchStatus');
+  if(punchStatus) punchStatus.textContent = name + ' さん';
 }
 
 // ── ダッシュボード ────────────────────────────────────────
@@ -1065,7 +1095,8 @@ async function loadTodayPunchStatus(){
   var today = new Date().toISOString().slice(0,10);
   var res = await sb.from('punch_records').select('*')
     .eq('user_id',currentUser.id)
-    .gte('punched_at',today+'T00:00:00Z')
+    .gte('punched_at',today+'T00:00:00+09:00')
+    .lte('punched_at',today+'T23:59:59+09:00')
     .order('punched_at',{ascending:true});
   if(!res.data||!res.data.length) return;
   var inR = res.data.find(function(r){ return r.punch_type==='出勤'; });
@@ -1077,7 +1108,9 @@ async function loadTodayPunchStatus(){
 
 async function loadMonthlyOvertimeKPI(){
   var now = new Date();
-  var ms = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-01';
+  // JST月初日
+  var jst = new Date(now.getTime() + 9*60*60*1000);
+  var ms = jst.getUTCFullYear()+'-'+pad(jst.getUTCMonth()+1)+'-01';
   var res = await sb.from('overtime_requests').select('hours')
     .eq('user_id',currentUser.id).eq('status','approved').gte('overtime_date',ms);
   var total = (res.data||[]).reduce(function(s,r){ return s+(parseFloat(r.hours)||0); },0);
@@ -1113,11 +1146,12 @@ async function savePunchToDB(type){
 
 async function loadTodayPunchFromDB(){
   if(!sb||!currentUser) return;
-  var today = new Date().toISOString().slice(0,10);
+  var jstNow2 = new Date(new Date().getTime()+9*60*60*1000);
+  var today = jstNow2.getUTCFullYear()+'-'+pad(jstNow2.getUTCMonth()+1)+'-'+pad(jstNow2.getUTCDate());
   var res = await sb.from('punch_records').select('*')
     .eq('user_id',currentUser.id)
-    .gte('punched_at',today+'T00:00:00Z')
-    .lte('punched_at',today+'T23:59:59Z')
+    .gte('punched_at',today+'T00:00:00+09:00')
+    .lte('punched_at',today+'T23:59:59+09:00')
     .order('punched_at',{ascending:true});
   var dotMap2 = {'出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green'};
   var ul = document.getElementById('punchLog');
@@ -1135,12 +1169,13 @@ async function loadTodayPunchFromDB(){
 var _origRTC = window.renderTimecard;
 window.renderTimecard = async function(){
   document.getElementById('tcMonthLabel').textContent = tcYear+'年'+tcMonth+'月';
-  var start = tcYear+'-'+pad(tcMonth)+'-01';
-  var end   = tcYear+'-'+pad(tcMonth)+'-31';
+  // JSTはUTC+9なので、月初の前日15:00Z〜月末の14:59Zで取得
+  var start = tcYear+'-'+pad(tcMonth)+'-01T00:00:00+09:00';
+  var end   = tcYear+'-'+pad(tcMonth)+'-31T23:59:59+09:00';
   var res = await sb.from('punch_records').select('*')
     .eq('user_id',currentUser.id)
-    .gte('punched_at',start+'T00:00:00Z')
-    .lte('punched_at',end+'T23:59:59Z')
+    .gte('punched_at',start)
+    .lte('punched_at',end)
     .order('punched_at',{ascending:true});
   var records = res.data||[];
   var tbody = document.getElementById('timecardBody');
@@ -1150,7 +1185,12 @@ window.renderTimecard = async function(){
   for(var d=1;d<=days;d++){
     var wd = new Date(tcYear,tcMonth-1,d).getDay();
     var ds = tcYear+'-'+pad(tcMonth)+'-'+pad(d);
-    var dr = records.filter(function(r){ return r.punched_at.slice(0,10)===ds; });
+    var dr = records.filter(function(r){
+      // JSTでの日付比較
+      var jstDate = new Date(new Date(r.punched_at).getTime()+9*60*60*1000);
+      var rDate = jstDate.getUTCFullYear()+'-'+pad(jstDate.getUTCMonth()+1)+'-'+pad(jstDate.getUTCDate());
+      return rDate===ds;
+    });
     var inR  = dr.find(function(r){ return r.punch_type==='出勤'; });
     var outR = dr.find(function(r){ return r.punch_type==='退勤'; });
     var rb1  = dr.find(function(r){ return r.punch_type==='休憩開始'; });
