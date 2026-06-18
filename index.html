@@ -167,31 +167,25 @@ select.form-control{cursor:pointer}
 </style>
 </head>
 <body>
-
 <div id="loginOverlay" style="display:flex;position:fixed;inset:0;background:#1a3a5c;z-index:9999;align-items:center;justify-content:center;flex-direction:column">
   <div style="text-align:center;margin-bottom:28px">
-    <div style="font-size:40px">⏰</div>
-    <div style="color:#fff;font-size:22px;font-weight:700;margin-top:8px">勤怠管理システム</div>
-    <div style="color:rgba(255,255,255,.5);font-size:13px;margin-top:4px">ログインしてください</div>
+    <div style="font-size:40px">&#x23F0;</div>
+    <div style="color:#fff;font-size:22px;font-weight:700;margin-top:8px">&#x52E4;&#x6020;&#x7BA1;&#x7406;&#x30B7;&#x30B9;&#x30C6;&#x30E0;</div>
+    <div style="color:rgba(255,255,255,.5);font-size:13px;margin-top:4px">&#x30ED;&#x30B0;&#x30A4;&#x30F3;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;</div>
   </div>
   <div style="background:#fff;border-radius:16px;padding:32px;width:360px;max-width:92vw">
-    <div style="font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:20px">ログイン</div>
+    <div style="font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:20px">&#x30ED;&#x30B0;&#x30A4;&#x30F3;</div>
     <div style="margin-bottom:14px">
-      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">メールアドレス</div>
-      <input id="loginEmail" type="email" placeholder="yamada@example.com"
-        style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">&#x30E1;&#x30FC;&#x30EB;&#x30A2;&#x30C9;&#x30EC;&#x30B9;</div>
+      <input id="loginEmail" type="email" placeholder="yamada@example.com" style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
     </div>
     <div style="margin-bottom:8px">
-      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">パスワード</div>
-      <input id="loginPass" type="password" placeholder="••••••••"
-        style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">&#x30D1;&#x30B9;&#x30EF;&#x30FC;&#x30C9;</div>
+      <input id="loginPass" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box">
     </div>
     <div id="loginError" style="color:#A32D2D;font-size:12px;margin-bottom:10px;min-height:18px"></div>
-    <button onclick="doLogin()"
-      style="width:100%;padding:12px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
-      ログイン
-    </button>
-    <div style="font-size:11px;color:#999;text-align:center;margin-top:12px">アカウントはSupabaseで管理者が発行します</div>
+    <button id="loginBtn" style="width:100%;padding:12px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">&#x30ED;&#x30B0;&#x30A4;&#x30F3;</button>
+    <div style="font-size:11px;color:#999;text-align:center;margin-top:12px">&#x30A2;&#x30AB;&#x30A6;&#x30F3;&#x30C8;&#x306F;Supabase&#x3067;&#x7BA1;&#x7406;&#x8005;&#x304C;&#x767A;&#x884C;&#x3057;&#x307E;&#x3059;</div>
   </div>
 </div>
 
@@ -226,8 +220,7 @@ select.form-control{cursor:pointer}
   <div class="user-info">
     <div class="current-time" id="clockDisplay">--:--:--</div>
     <div class="user-name" id="headerUserName">---</div>
-    <div class="user-avatar" id="headerAvatar">?</div>
-    <button onclick="doLogout()" style="padding:6px 12px;border:1px solid #e0e4ea;border-radius:6px;background:transparent;font-size:12px;cursor:pointer;color:#666">ログアウト</button>
+    <div class="user-avatar" id="headerAvatar">?</div><button id="logoutBtn" style="padding:6px 12px;border:1px solid #e0e4ea;border-radius:6px;background:transparent;font-size:12px;cursor:pointer;color:#666;margin-left:8px">ログアウト</button>
   </div>
 </div>
 
@@ -982,593 +975,436 @@ function showToast(msg,color='blue'){
   document.body.appendChild(t);
   setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},3500);
 }
+</script>
 
+<script>
 // =============================================================
-// Supabase DB連動 - クリーン版
+// Supabase DB連動スクリプト（独立版）
 // =============================================================
-var SURL = 'https://judzjxzmurlqchmuakod.supabase.co';
-var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
-var _sb = null;
-var _user = null;
-var _profile = null;
+(function() {
+  var SURL = 'https://judzjxzmurlqchmuakod.supabase.co';
+  var SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+  var _sb = null;
+  var _user = null;
+  var _profile = null;
 
-// JST日付ユーティリティ
-function jstToday() {
-  var d = new Date(new Date().getTime() + 9*60*60*1000);
-  return d.getUTCFullYear() + '-' + _p2(d.getUTCMonth()+1) + '-' + _p2(d.getUTCDate());
-}
-function jstDate(iso) {
-  var d = new Date(new Date(iso).getTime() + 9*60*60*1000);
-  return d.getUTCFullYear() + '-' + _p2(d.getUTCMonth()+1) + '-' + _p2(d.getUTCDate());
-}
-function jstTime(iso) {
-  var d = new Date(new Date(iso).getTime() + 9*60*60*1000);
-  return _p2(d.getUTCHours()) + ':' + _p2(d.getUTCMinutes());
-}
-function _p2(n) { return String(n).padStart(2,'0'); }
-function mHM(m) { return Math.floor(m/60) + ':' + _p2(m%60); }
+  function p2(n) { return String(n).padStart(2,'0'); }
+  function jstToday() {
+    var d = new Date(new Date().getTime() + 9*60*60*1000);
+    return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());
+  }
+  function jstDate(iso) {
+    var d = new Date(new Date(iso).getTime() + 9*60*60*1000);
+    return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());
+  }
+  function jstTime(iso) {
+    var d = new Date(new Date(iso).getTime() + 9*60*60*1000);
+    return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes());
+  }
+  function mHM(m) { return Math.floor(m/60)+':'+p2(m%60); }
 
-// =============================================================
-// 起動・認証
-// =============================================================
-window.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    if (!window.supabase) { alert('Supabase SDKの読み込みに失敗しました'); return; }
-    _sb = window.supabase.createClient(SURL, SKEY);
-    _sb.auth.getSession().then(function(res) {
-      if (res.data.session) {
-        _user = res.data.session.user;
-        _loadProfile().then(function() {
-          _showApp();
-          _loadPage('dashboard');
-        });
-      } else {
-        _showLogin();
-      }
+  // グローバル公開（HTMLのonclickから呼び出すため）
+  window.doLogin = function() {
+    var email = document.getElementById('loginEmail').value.trim();
+    var pass  = document.getElementById('loginPass').value;
+    var err   = document.getElementById('loginError');
+    err.textContent = '';
+    if (!email || !pass) { err.textContent = 'メールとパスワードを入力してください'; return; }
+    err.textContent = 'ログイン中...';
+    _sb.auth.signInWithPassword({email:email, password:pass}).then(function(res) {
+      if (res.error) { err.textContent = 'ログインに失敗しました: ' + res.error.message; return; }
+      _user = res.data.user;
+      _loadProfile().then(function() {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.querySelector('.app').style.display = 'flex';
+        _loadPage('dashboard');
+        if (window.showToast) showToast('ログインしました', 'green');
+      });
     });
-  }, 500);
-});
-
-function _showLogin() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.querySelector('.app').style.display = 'none';
-}
-function _showApp() {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.querySelector('.app').style.display = 'flex';
-}
-
-function doLogin() {
-  var email = document.getElementById('loginEmail').value.trim();
-  var pass  = document.getElementById('loginPass').value;
-  var err   = document.getElementById('loginError');
-  err.textContent = '';
-  if (!email || !pass) { err.textContent = 'メールとパスワードを入力してください'; return; }
-  err.textContent = 'ログイン中...';
-  _sb.auth.signInWithPassword({email: email, password: pass}).then(function(res) {
-    if (res.error) { err.textContent = 'ログインに失敗しました: ' + res.error.message; return; }
-    _user = res.data.user;
-    _loadProfile().then(function() {
-      _showApp();
-      _loadPage('dashboard');
-      showToast('✅ ログインしました', 'green');
-    });
-  });
-}
-
-function doLogout() {
-  _sb.auth.signOut().then(function() {
-    _user = null; _profile = null;
-    _showLogin();
-  });
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') doLogin();
-});
-
-// =============================================================
-// プロフィール読み込み
-// =============================================================
-function _loadProfile() {
-  return _sb.from('employees').select('*').eq('auth_id', _user.id).single().then(function(res) {
-    _profile = res.data;
-    var name = _profile ? _profile.name : _user.email;
-    var dept = _profile ? (_profile.department || '') : '';
-    document.getElementById('headerUserName').textContent = name + (dept ? ' | ' + dept : '');
-    document.getElementById('headerAvatar').textContent = name ? name[0] : '?';
-  });
-}
-
-// =============================================================
-// ページ切替 - 元のshowPageを上書き
-// =============================================================
-var _origShowPage = null;
-// DOMContentLoaded後にshowPageを上書き
-setTimeout(function() {
-  _origShowPage = window.showPage;
-  window.showPage = function(id) {
-    if (_origShowPage) _origShowPage(id);
-    _loadPage(id);
   };
-}, 600);
 
-function _loadPage(id) {
-  if (!_sb || !_user) return;
-  if (id === 'dashboard')  _loadDashboard();
-  if (id === 'punch')      _loadPunch();
-  if (id === 'timecard')   _loadTimecard();
-  if (id === 'leave')      _loadLeave();
-  if (id === 'overtime')   _loadOvertime();
-  if (id === 'requests')   { _loadMyRequests(); _loadApprovals(); }
-  if (id === 'attendance') _loadAttendance();
-  if (id === 'settings')   _loadSettings();
-}
+  window.doLogout = function() {
+    _sb.auth.signOut().then(function() {
+      _user = null; _profile = null;
+      document.getElementById('loginOverlay').style.display = 'flex';
+      document.querySelector('.app').style.display = 'none';
+    });
+  };
 
-// =============================================================
-// ダッシュボード
-// =============================================================
-function _loadDashboard() {
-  var today = jstToday();
-  // 今日の出勤時刻
-  _sb.from('punch_records').select('*')
-    .eq('user_id', _user.id)
-    .gte('punched_at', today + 'T00:00:00+09:00')
-    .lte('punched_at', today + 'T23:59:59+09:00')
-    .order('punched_at', {ascending: true})
-    .then(function(res) {
-      var data = res.data || [];
-      var inR = data.find(function(r) { return r.punch_type === '出勤'; });
-      if (inR) {
-        var el = document.getElementById('today-in');
-        if (el) el.textContent = jstTime(inR.punched_at);
-      }
-      // 現在実働時間
-      var outR = data.find(function(r) { return r.punch_type === '退勤'; });
-      var rb1  = data.find(function(r) { return r.punch_type === '休憩開始'; });
-      var rb2  = data.find(function(r) { return r.punch_type === '休憩終了'; });
-      if (inR) {
-        var endTime = outR ? new Date(outR.punched_at) : new Date();
-        var restM = (rb1 && rb2) ? Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000) : 0;
-        var workM = Math.round((endTime - new Date(inR.punched_at))/60000) - restM;
-        if (workM > 0) {
-          var el2 = document.getElementById('today-worked');
-          if (el2) el2.textContent = mHM(workM);
-        }
-      }
+  window._approveBtn = function(btn) {
+    var type = btn.getAttribute('data-type');
+    var id   = btn.getAttribute('data-id');
+    var tbl  = type === 'leave' ? 'leave_requests' : 'overtime_requests';
+    _sb.from(tbl).update({status:'approved',approved_by:_user.id,approved_at:new Date().toISOString()}).eq('id',id).then(function() {
+      btn.closest('tr').remove();
+      if (window.showToast) showToast('承認しました','green');
     });
-  // 当月残業
-  var now = new Date();
-  var ms = now.getFullYear() + '-' + _p2(now.getMonth()+1) + '-01';
-  _sb.from('overtime_requests').select('hours')
-    .eq('user_id', _user.id).eq('status','approved')
-    .gte('overtime_date', ms)
-    .then(function(res) {
-      var total = (res.data||[]).reduce(function(s,r){ return s+(parseFloat(r.hours)||0); }, 0);
-      var el = document.getElementById('kpi-overtime');
-      if (el) el.textContent = total.toFixed(1);
-    });
-  // 当月有休使用日数
-  _sb.from('leave_requests').select('start_date,end_date')
-    .eq('user_id', _user.id).eq('status','approved')
-    .gte('start_date', ms)
-    .then(function(res) {
-      var days = (res.data||[]).reduce(function(s,r){
-        var d = Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
-        return s+d;
-      }, 0);
-      var el = document.getElementById('kpi-leave-used');
-      if (el) el.textContent = days;
-    });
-  // 承認待ち件数
-  Promise.all([
-    _sb.from('leave_requests').select('id').eq('user_id',_user.id).eq('status','pending'),
-    _sb.from('overtime_requests').select('id').eq('user_id',_user.id).eq('status','pending')
-  ]).then(function(results) {
-    var cnt = ((results[0].data||[]).length) + ((results[1].data||[]).length);
-    var el = document.getElementById('kpi-errors');
-    if (el) el.textContent = cnt;
-  });
-}
+  };
 
-// =============================================================
-// 打刻
-// =============================================================
-function _loadPunch() {
-  var today = jstToday();
-  _sb.from('punch_records').select('*')
-    .eq('user_id', _user.id)
-    .gte('punched_at', today + 'T00:00:00+09:00')
-    .lte('punched_at', today + 'T23:59:59+09:00')
-    .order('punched_at', {ascending: true})
-    .then(function(res) {
-      var dotMap = {'出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green'};
-      var ul = document.getElementById('punchLog');
-      var data = res.data || [];
-      if (data.length > 0) {
-        ul.innerHTML = data.map(function(r) {
-          var ts = jstTime(r.punched_at);
-          var dot = dotMap[r.punch_type] || 'blue';
-          return '<li><span class="tl-time">'+ts+'</span><span class="tl-dot tl-'+dot+'"></span><span>'+r.punch_type+'</span></li>';
-        }).join('');
-      } else {
-        ul.innerHTML = '<li style="color:#999;font-size:13px;padding:8px 0">本日の打刻はまだありません</li>';
-      }
+  window._rejectBtn = function(btn) {
+    var type = btn.getAttribute('data-type');
+    var id   = btn.getAttribute('data-id');
+    var tbl  = type === 'leave' ? 'leave_requests' : 'overtime_requests';
+    _sb.from(tbl).update({status:'rejected'}).eq('id',id).then(function() {
+      btn.closest('tr').remove();
+      if (window.showToast) showToast('却下しました','amber');
     });
-}
+  };
 
-// 打刻ボタン - 元のdoPunchを上書き
-var _origDoPunch = null;
-setTimeout(function() {
-  _origDoPunch = window.doPunch;
-  window.doPunch = function(type) {
-    if (_origDoPunch) _origDoPunch(type);
+  function _loadProfile() {
+    return _sb.from('employees').select('*').eq('auth_id',_user.id).single().then(function(res) {
+      _profile = res.data;
+      var name = _profile ? _profile.name : _user.email;
+      var dept = _profile ? (_profile.department||'') : '';
+      document.getElementById('headerUserName').textContent = name + (dept ? ' | '+dept : '');
+      document.getElementById('headerAvatar').textContent = name ? name[0] : '?';
+    });
+  }
+
+  function _loadPage(id) {
     if (!_sb || !_user) return;
-    _sb.from('punch_records').insert({
-      user_id: _user.id,
-      punch_type: type,
-      punched_at: new Date().toISOString()
-    }).then(function(res) {
-      if (res.error) {
-        showToast('❌ 打刻の保存に失敗しました: ' + res.error.message, 'red');
-      } else {
-        setTimeout(function() { _loadPunch(); _loadDashboard(); }, 500);
+    if (id === 'dashboard')  _loadDashboard();
+    if (id === 'punch')      _loadPunch();
+    if (id === 'timecard')   _loadTimecard();
+    if (id === 'leave')      _loadLeave();
+    if (id === 'overtime')   _loadOvertime();
+    if (id === 'requests')   { _loadMyRequests(); _loadApprovals(); }
+    if (id === 'attendance') _loadAttendance();
+    if (id === 'settings')   _loadSettings();
+  }
+
+  function _loadDashboard() {
+    var today = jstToday();
+    _sb.from('punch_records').select('*')
+      .eq('user_id',_user.id)
+      .gte('punched_at', today+'T00:00:00+09:00')
+      .lte('punched_at', today+'T23:59:59+09:00')
+      .order('punched_at',{ascending:true})
+      .then(function(res) {
+        var data = res.data || [];
+        var inR  = data.find(function(r){ return r.punch_type==='出勤'; });
+        var outR = data.find(function(r){ return r.punch_type==='退勤'; });
+        var rb1  = data.find(function(r){ return r.punch_type==='休憩開始'; });
+        var rb2  = data.find(function(r){ return r.punch_type==='休憩終了'; });
+        if (inR) {
+          var el = document.getElementById('today-in');
+          if (el) el.textContent = jstTime(inR.punched_at);
+          var endT = outR ? new Date(outR.punched_at) : new Date();
+          var restM = (rb1&&rb2) ? Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000) : 0;
+          var workM = Math.round((endT-new Date(inR.punched_at))/60000) - restM;
+          if (workM > 0) {
+            var el2 = document.getElementById('today-worked');
+            if (el2) el2.textContent = mHM(workM);
+          }
+        }
+      });
+    var now = new Date();
+    var ms = now.getFullYear()+'-'+p2(now.getMonth()+1)+'-01';
+    _sb.from('overtime_requests').select('hours').eq('user_id',_user.id).eq('status','approved').gte('overtime_date',ms).then(function(res){
+      var t = (res.data||[]).reduce(function(s,r){ return s+(parseFloat(r.hours)||0); },0);
+      var el = document.getElementById('kpi-overtime');
+      if (el) el.textContent = t.toFixed(1);
+    });
+    _sb.from('leave_requests').select('start_date,end_date').eq('user_id',_user.id).eq('status','approved').gte('start_date',ms).then(function(res){
+      var d = (res.data||[]).reduce(function(s,r){ return s+Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1; },0);
+      var el = document.getElementById('kpi-leave-used');
+      if (el) el.textContent = d;
+    });
+    Promise.all([
+      _sb.from('leave_requests').select('id').eq('user_id',_user.id).eq('status','pending'),
+      _sb.from('overtime_requests').select('id').eq('user_id',_user.id).eq('status','pending')
+    ]).then(function(r){
+      var el = document.getElementById('kpi-errors');
+      if (el) el.textContent = ((r[0].data||[]).length)+((r[1].data||[]).length);
+    });
+  }
+
+  function _loadPunch() {
+    var today = jstToday();
+    _sb.from('punch_records').select('*')
+      .eq('user_id',_user.id)
+      .gte('punched_at',today+'T00:00:00+09:00')
+      .lte('punched_at',today+'T23:59:59+09:00')
+      .order('punched_at',{ascending:true})
+      .then(function(res) {
+        var dotMap = {'出勤':'blue','退勤':'red','休憩開始':'amber','休憩終了':'green'};
+        var ul = document.getElementById('punchLog');
+        var data = res.data||[];
+        if (data.length > 0) {
+          ul.innerHTML = data.map(function(r){
+            return '<li><span class="tl-time">'+jstTime(r.punched_at)+'</span><span class="tl-dot tl-'+(dotMap[r.punch_type]||'blue')+'"></span><span>'+r.punch_type+'</span></li>';
+          }).join('');
+        } else {
+          ul.innerHTML = '<li style="color:#999;font-size:13px;padding:8px 0">本日の打刻はまだありません</li>';
+        }
+      });
+  }
+
+  function _loadTimecard() {
+    var year  = window.tcYear  || new Date().getFullYear();
+    var month = window.tcMonth || (new Date().getMonth()+1);
+    document.getElementById('tcMonthLabel').textContent = year+'年'+month+'月';
+    _sb.from('punch_records').select('*')
+      .eq('user_id',_user.id)
+      .gte('punched_at', year+'-'+p2(month)+'-01T00:00:00+09:00')
+      .lte('punched_at', year+'-'+p2(month)+'-31T23:59:59+09:00')
+      .order('punched_at',{ascending:true})
+      .then(function(res) {
+        var records = res.data||[];
+        var tbody = document.getElementById('timecardBody');
+        var days  = new Date(year,month,0).getDate();
+        var wdays = ['日','月','火','水','木','金','土'];
+        var rows  = [];
+        var totalWork=0, totalOt=0;
+        for (var d=1; d<=days; d++) {
+          var wd  = new Date(year,month-1,d).getDay();
+          var ds  = year+'-'+p2(month)+'-'+p2(d);
+          var isWE = wd===0||wd===6;
+          var isToday = ds===jstToday();
+          if (isWE) {
+            rows.push('<tr style="background:#fafafa;color:#aaa"><td>'+month+'/'+d+'</td><td style="color:'+(wd===0?'var(--red)':'var(--blue)')+'">'+wdays[wd]+'</td><td colspan="8" style="text-align:center;font-size:12px">休日</td></tr>');
+            continue;
+          }
+          var dr   = records.filter(function(r){ return jstDate(r.punched_at)===ds; });
+          var inR  = dr.find(function(r){ return r.punch_type==='出勤'; });
+          var outR = dr.find(function(r){ return r.punch_type==='退勤'; });
+          var rb1  = dr.find(function(r){ return r.punch_type==='休憩開始'; });
+          var rb2  = dr.find(function(r){ return r.punch_type==='休憩終了'; });
+          var inT='',outT='',restM=0,workM=0,otM=0;
+          if (inR)  inT  = jstTime(inR.punched_at);
+          if (outR) outT = jstTime(outR.punched_at);
+          if (rb1&&rb2) restM = Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000);
+          if (inR&&outR) { workM=Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-restM; otM=Math.max(0,workM-480); totalWork+=workM; totalOt+=otM; }
+          var hasErr = inT&&!outT&&!isToday;
+          var badge = !inT ? '<span class="badge badge-gray">未出勤</span>' : hasErr ? '<span class="badge badge-red">退勤漏れ</span>' : '<span class="badge badge-green">正常</span>';
+          rows.push('<tr class="'+(hasErr?'err-row':'')+'"'+(isToday?' style="background:var(--lblue)"':'')+'>'+
+            '<td>'+month+'/'+d+(isToday?' ★':'')+'</td><td>'+wdays[wd]+'</td>'+
+            '<td><span class="badge badge-blue" style="font-size:10px">通常</span></td>'+
+            '<td>'+(inT||'—')+'</td><td>'+(outT||'—')+'</td>'+
+            '<td>'+(restM?restM+'分':'—')+'</td>'+
+            '<td>'+(workM?mHM(workM):'—')+'</td>'+
+            '<td style="color:'+(otM>0?'var(--amber)':'inherit')+'">'+(otM?mHM(otM):'—')+'</td>'+
+            '<td>—</td><td>'+badge+'</td></tr>');
+        }
+        tbody.innerHTML = rows.join('');
+      });
+  }
+
+  function _loadLeave() {
+    var year = new Date().getFullYear();
+    _sb.from('leave_balances').select('*').eq('user_id',_user.id).eq('year',year).single().then(function(res){
+      if (res.data) {
+        var rem = (res.data.granted||0)+(res.data.carried||0)-(res.data.used||0);
+        var el = document.querySelector('#page-leave .leave-balance');
+        if (el) el.innerHTML = rem.toFixed(1)+' <span style="font-size:14px">日</span>';
+        var det = document.querySelector('#page-leave .leave-detail');
+        if (det) det.textContent = '今年度付与 '+(res.data.granted||0)+'日 | 使用 '+(res.data.used||0)+'日 | 繰越 '+(res.data.carried||0)+'日';
       }
     });
-  };
-}, 700);
-
-// =============================================================
-// タイムカード
-// =============================================================
-var _origRenderTimecard = null;
-setTimeout(function() {
-  _origRenderTimecard = window.renderTimecard;
-  window.renderTimecard = function() {
-    _loadTimecard();
-  };
-}, 700);
-
-function _loadTimecard() {
-  if (!_sb || !_user) return;
-  var year  = window.tcYear  || new Date().getFullYear();
-  var month = window.tcMonth || (new Date().getMonth()+1);
-  document.getElementById('tcMonthLabel').textContent = year + '年' + month + '月';
-  var start = year + '-' + _p2(month) + '-01T00:00:00+09:00';
-  var end   = year + '-' + _p2(month) + '-31T23:59:59+09:00';
-  _sb.from('punch_records').select('*')
-    .eq('user_id', _user.id)
-    .gte('punched_at', start)
-    .lte('punched_at', end)
-    .order('punched_at', {ascending: true})
-    .then(function(res) {
-      var records = res.data || [];
-      var tbody = document.getElementById('timecardBody');
-      var days  = new Date(year, month, 0).getDate();
-      var wdays = ['日','月','火','水','木','金','土'];
-      var rows  = [];
-      var totalWork = 0, totalOt = 0;
-      for (var d = 1; d <= days; d++) {
-        var wd   = new Date(year, month-1, d).getDay();
-        var ds   = year + '-' + _p2(month) + '-' + _p2(d);
-        var isWE = wd === 0 || wd === 6;
-        var isToday = ds === jstToday();
-        if (isWE) {
-          rows.push('<tr style="background:#fafafa;color:#aaa"><td>'+month+'/'+d+'</td><td style="color:'+(wd===0?'var(--red)':'var(--blue)')+'">'+wdays[wd]+'</td><td colspan="8" style="text-align:center;font-size:12px">休日</td></tr>');
-          continue;
-        }
-        var dr   = records.filter(function(r) { return jstDate(r.punched_at) === ds; });
-        var inR  = dr.find(function(r) { return r.punch_type === '出勤'; });
-        var outR = dr.find(function(r) { return r.punch_type === '退勤'; });
-        var rb1  = dr.find(function(r) { return r.punch_type === '休憩開始'; });
-        var rb2  = dr.find(function(r) { return r.punch_type === '休憩終了'; });
-        var inT='', outT='', restM=0, workM=0, otM=0;
-        if (inR)  inT  = jstTime(inR.punched_at);
-        if (outR) outT = jstTime(outR.punched_at);
-        if (rb1 && rb2) restM = Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000);
-        if (inR && outR) {
-          workM = Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000) - restM;
-          otM   = Math.max(0, workM - 480);
-          totalWork += workM;
-          totalOt   += otM;
-        }
-        var hasErr = inT && !outT && !isToday;
-        var badge = !inT
-          ? '<span class="badge badge-gray">未出勤</span>'
-          : hasErr
-            ? '<span class="badge badge-red">退勤漏れ</span>'
-            : '<span class="badge badge-green">正常</span>';
-        rows.push(
-          '<tr class="'+(hasErr?'err-row':'')+'" '+(isToday?'style="background:var(--lblue)"':'')+'>'+
-          '<td>'+month+'/'+d+(isToday?' ★':'')+'</td>'+
-          '<td>'+wdays[wd]+'</td>'+
-          '<td><span class="badge badge-blue" style="font-size:10px">通常</span></td>'+
-          '<td>'+(inT||'—')+'</td>'+
-          '<td>'+(outT||'—')+'</td>'+
-          '<td>'+(restM?restM+'分':'—')+'</td>'+
-          '<td>'+(workM?mHM(workM):'—')+'</td>'+
-          '<td style="color:'+(otM>0?'var(--amber)':'inherit')+'">'+(otM?mHM(otM):'—')+'</td>'+
-          '<td>—</td>'+
-          '<td>'+badge+'</td>'+
-          '</tr>'
-        );
-      }
-      tbody.innerHTML = rows.join('');
-      // 月計更新
-      var summary = document.querySelector('#page-timecard .card > div:last-child > div:first-child');
-      if (summary) {
-        summary.innerHTML = '月計：<strong style="color:var(--blue)">実働 '+mHM(totalWork)+'</strong> | <strong style="color:var(--amber)">時間外 '+mHM(totalOt)+'</strong>';
-      }
-    });
-}
-
-// =============================================================
-// 休暇管理
-// =============================================================
-function _loadLeave() {
-  if (!_sb || !_user) return;
-  var year = new Date().getFullYear();
-  // 残日数
-  _sb.from('leave_balances').select('*').eq('user_id',_user.id).eq('year',year).single().then(function(res) {
-    if (res.data) {
-      var rem = (res.data.granted||0) + (res.data.carried||0) - (res.data.used||0);
-      var el = document.querySelector('#page-leave .leave-balance');
-      if (el) el.innerHTML = rem.toFixed(1) + ' <span style="font-size:14px">日</span>';
-      var det = document.querySelector('#page-leave .leave-detail');
-      if (det) det.textContent = '今年度付与 '+(res.data.granted||0)+'日 | 使用 '+(res.data.used||0)+'日 | 繰越 '+(res.data.carried||0)+'日';
-    }
-  });
-  // 申請履歴
-  _sb.from('leave_requests').select('*').eq('user_id',_user.id)
-    .order('created_at',{ascending:false}).limit(10)
-    .then(function(res) {
+    _sb.from('leave_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10).then(function(res){
       var tbody = document.querySelector('#page-leave table tbody');
       if (!tbody) return;
-      var data = res.data || [];
-      if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
-        return;
-      }
-      tbody.innerHTML = data.map(function(r) {
-        var bc = r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
-        var lb = r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
-        var days = Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
-        return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.leave_type+'</td><td>'+r.start_date+'</td>'+
-               '<td>'+days+'日</td><td><span class="badge '+bc+'">'+lb+'</span></td><td>—</td></tr>';
-      }).join('');
+      var data = res.data||[];
+      tbody.innerHTML = data.length ? data.map(function(r){
+        var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+        var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+        var days=Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
+        return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.leave_type+'</td><td>'+r.start_date+'</td><td>'+days+'日</td><td><span class="badge '+bc+'">'+lb+'</span></td><td>—</td></tr>';
+      }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
     });
-}
+  }
 
-// =============================================================
-// 残業管理
-// =============================================================
-function _loadOvertime() {
-  if (!_sb || !_user) return;
-  _sb.from('overtime_requests').select('*').eq('user_id',_user.id)
-    .order('created_at',{ascending:false}).limit(10)
-    .then(function(res) {
+  function _loadOvertime() {
+    _sb.from('overtime_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10).then(function(res){
       var tbody = document.querySelector('#page-overtime table tbody');
       if (!tbody) return;
-      var data = res.data || [];
-      if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
-        return;
-      }
-      tbody.innerHTML = data.map(function(r) {
-        var bc = r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
-        var lb = r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
-        return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.overtime_date+'</td>'+
-               '<td>法定外</td><td>'+r.hours+'h</td><td>'+(r.reason||'')+'</td>'+
-               '<td><span class="badge '+bc+'">'+lb+'</span></td></tr>';
-      }).join('');
+      var data = res.data||[];
+      tbody.innerHTML = data.length ? data.map(function(r){
+        var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+        var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+        return '<tr><td>'+r.created_at.slice(0,10)+'</td><td>'+r.overtime_date+'</td><td>法定外</td><td>'+r.hours+'h</td><td>'+(r.reason||'')+'</td><td><span class="badge '+bc+'">'+lb+'</span></td></tr>';
+      }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
     });
-}
+  }
 
-// =============================================================
-// 申請・承認
-// =============================================================
-function _loadMyRequests() {
-  if (!_sb || !_user) return;
-  Promise.all([
-    _sb.from('leave_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10),
-    _sb.from('overtime_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10)
-  ]).then(function(results) {
-    var all = [];
-    (results[0].data||[]).forEach(function(r) {
-      all.push({date:r.created_at,kind:'休暇申請',content:r.start_date+' '+r.leave_type,status:r.status});
+  function _loadMyRequests() {
+    Promise.all([
+      _sb.from('leave_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10),
+      _sb.from('overtime_requests').select('*').eq('user_id',_user.id).order('created_at',{ascending:false}).limit(10)
+    ]).then(function(results){
+      var all=[];
+      (results[0].data||[]).forEach(function(r){ all.push({date:r.created_at,kind:'休暇申請',content:r.start_date+' '+r.leave_type,status:r.status}); });
+      (results[1].data||[]).forEach(function(r){ all.push({date:r.created_at,kind:'残業申請',content:r.overtime_date+' '+r.hours+'h',status:r.status}); });
+      all.sort(function(a,b){ return b.date.localeCompare(a.date); });
+      var tbody = document.querySelector('#tab-my-req table tbody');
+      if (!tbody) return;
+      tbody.innerHTML = all.length ? all.map(function(r,i){
+        var bc=r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
+        var lb=r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
+        return '<tr><td>WF-'+p2(p2(i+1))+'</td><td>'+r.kind+'</td><td>'+r.date.slice(0,10)+'</td><td>'+r.content+'</td><td><span class="badge '+bc+'">'+lb+'</span></td><td>'+r.date.slice(0,10)+'</td></tr>';
+      }).join('') : '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
     });
-    (results[1].data||[]).forEach(function(r) {
-      all.push({date:r.created_at,kind:'残業申請',content:r.overtime_date+' '+r.hours+'h',status:r.status});
-    });
-    all.sort(function(a,b){ return b.date.localeCompare(a.date); });
-    var tbody = document.querySelector('#tab-my-req table tbody');
-    if (!tbody) return;
-    if (all.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">申請履歴はありません</td></tr>';
-      return;
-    }
-    tbody.innerHTML = all.map(function(r,i) {
-      var bc = r.status==='approved'?'badge-green':r.status==='rejected'?'badge-red':'badge-amber';
-      var lb = r.status==='approved'?'承認済':r.status==='rejected'?'却下':'承認待ち';
-      return '<tr><td>WF-'+_p2(_p2(i+1))+'</td><td>'+r.kind+'</td><td>'+r.date.slice(0,10)+'</td>'+
-             '<td>'+r.content+'</td><td><span class="badge '+bc+'">'+lb+'</span></td><td>'+r.date.slice(0,10)+'</td></tr>';
-    }).join('');
-  });
-}
+  }
 
-function _loadApprovals() {
-  if (!_profile || !['管理者','部門長'].includes(_profile.role)) return;
-  Promise.all([
-    _sb.from('leave_requests').select('id,user_id,leave_type,start_date,created_at').eq('status','pending'),
-    _sb.from('overtime_requests').select('id,user_id,overtime_date,hours,created_at').eq('status','pending'),
-    _sb.from('employees').select('auth_id,name')
-  ]).then(function(results) {
-    var empMap = {};
-    (results[2].data||[]).forEach(function(e){ empMap[e.auth_id] = e.name; });
-    var rows = [];
-    (results[0].data||[]).forEach(function(r) {
-      var rid = r.id;
-      rows.push('<tr><td>LV-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td>'+
-        '<td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+
-        '<td>'+
-        '<button class="btn btn-success btn-sm" data-type="leave" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
-        '<button class="btn btn-outline btn-sm" data-type="leave" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
-    });
-    (results[1].data||[]).forEach(function(r) {
-      var rid = r.id;
-      rows.push('<tr><td>OT-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td>'+
-        '<td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+
-        '<td>'+
-        '<button class="btn btn-success btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
-        '<button class="btn btn-outline btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
-    });
-    var tbody = document.querySelector('#tab-approve table tbody');
-    if (tbody) tbody.innerHTML = rows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">承認待ちの申請はありません</td></tr>';
-  });
-}
-
-
-function _approveBtn(btn) {
-  var type = btn.getAttribute('data-type');
-  var id   = btn.getAttribute('data-id');
-  _approve(type, id, btn);
-}
-function _rejectBtn(btn) {
-  var type = btn.getAttribute('data-type');
-  var id   = btn.getAttribute('data-id');
-  _reject(type, id, btn);
-}
-
-function _approve(type, id, btn) {
-  var tbl = type==='leave' ? 'leave_requests' : 'overtime_requests';
-  _sb.from(tbl).update({status:'approved',approved_by:_user.id,approved_at:new Date().toISOString()}).eq('id',id).then(function() {
-    btn.closest('tr').remove();
-    showToast('✅ 承認しました','green');
-  });
-}
-function _reject(type, id, btn) {
-  var tbl = type==='leave' ? 'leave_requests' : 'overtime_requests';
-  _sb.from(tbl).update({status:'rejected'}).eq('id',id).then(function() {
-    btn.closest('tr').remove();
-    showToast('却下しました','amber');
-  });
-}
-
-// =============================================================
-// 申請フォーム送信
-// =============================================================
-var _origSubmitRequest = null;
-setTimeout(function() {
-  _origSubmitRequest = window.submitRequest;
-  window.submitRequest = function(modalId, type) {
-    if (!_sb || !_user) { showToast('ログインが必要です','red'); return; }
-    if (type === '休暇申請') {
-      var sel   = document.querySelector('#leaveApplyModal select');
-      var dates = document.querySelectorAll('#leaveApplyModal input[type=date]');
-      var ta    = document.querySelector('#leaveApplyModal textarea');
-      if (!dates[0] || !dates[0].value) { showToast('取得日を入力してください','red'); return; }
-      _sb.from('leave_requests').insert({
-        user_id: _user.id,
-        leave_type: sel ? sel.value : '年次有給',
-        start_date: dates[0].value,
-        end_date: dates[1] ? (dates[1].value||dates[0].value) : dates[0].value,
-        reason: ta ? ta.value : '',
-        status: 'pending'
-      }).then(function(res) {
-        if (res.error) { showToast('❌ 保存に失敗しました','red'); return; }
-        closeModal(modalId);
-        showToast('✅ 休暇申請を提出しました','green');
-        _loadLeave();
-        _loadDashboard();
+  function _loadApprovals() {
+    if (!_profile || (['管理者','部門長'].indexOf(_profile.role) === -1)) return;
+    Promise.all([
+      _sb.from('leave_requests').select('id,user_id,leave_type,start_date,created_at').eq('status','pending'),
+      _sb.from('overtime_requests').select('id,user_id,overtime_date,hours,created_at').eq('status','pending'),
+      _sb.from('employees').select('auth_id,name')
+    ]).then(function(results){
+      var empMap={};
+      (results[2].data||[]).forEach(function(e){ empMap[e.auth_id]=e.name; });
+      var rows=[];
+      (results[0].data||[]).forEach(function(r){
+        var rid=r.id;
+        rows.push('<tr><td>LV-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>休暇申請</td><td>'+r.start_date+' '+r.leave_type+'</td><td>'+r.created_at.slice(0,10)+'</td>'+
+          '<td><button class="btn btn-success btn-sm" data-type="leave" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
+          '<button class="btn btn-outline btn-sm" data-type="leave" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
       });
-    } else if (type === '残業申請') {
-      var dEl = document.querySelector('#overtimeApplyModal input[type=date]');
-      var hEl = document.querySelector('#overtimeApplyModal input[type=number]');
-      var rEl = document.querySelector('#overtimeApplyModal select');
-      if (!dEl || !dEl.value) { showToast('日付を入力してください','red'); return; }
-      _sb.from('overtime_requests').insert({
-        user_id: _user.id,
-        overtime_date: dEl.value,
-        hours: parseFloat(hEl ? hEl.value : 0) || 0,
-        reason: rEl ? rEl.value : '',
-        status: 'pending'
-      }).then(function(res) {
-        if (res.error) { showToast('❌ 保存に失敗しました','red'); return; }
-        closeModal(modalId);
-        showToast('✅ 残業申請を提出しました','green');
-        _loadOvertime();
-        _loadDashboard();
+      (results[1].data||[]).forEach(function(r){
+        var rid=r.id;
+        rows.push('<tr><td>OT-'+rid.slice(0,6)+'</td><td>'+(empMap[r.user_id]||'不明')+'</td><td>残業申請</td><td>'+r.overtime_date+' '+r.hours+'h</td><td>'+r.created_at.slice(0,10)+'</td>'+
+          '<td><button class="btn btn-success btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_approveBtn(this)">承認</button> '+
+          '<button class="btn btn-outline btn-sm" data-type="overtime" data-id="'+rid+'" onclick="_rejectBtn(this)">却下</button></td></tr>');
       });
-    } else if (type === '打刻申請') {
-      var dEl2 = document.querySelector('#punchApplyModal input[type=date]');
-      var tEl  = document.querySelector('#punchApplyModal select');
-      var tEl2 = document.querySelector('#punchApplyModal input[type=time]');
-      var rEl2 = document.querySelector('#punchApplyModal textarea');
-      if (!dEl2 || !dEl2.value || !tEl2 || !tEl2.value) { showToast('日付と時刻を入力してください','red'); return; }
-      _sb.from('punch_records').insert({
-        user_id: _user.id,
-        punch_type: tEl ? tEl.value : '出勤',
-        punched_at: dEl2.value + 'T' + tEl2.value + ':00+09:00',
-        note: rEl2 ? rEl2.value : '打刻申請'
-      }).then(function(res) {
-        if (res.error) { showToast('❌ 保存に失敗しました','red'); return; }
-        closeModal(modalId);
-        showToast('✅ 打刻申請を提出しました','green');
+      var tbody=document.querySelector('#tab-approve table tbody');
+      if (tbody) tbody.innerHTML=rows.join('')||'<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">承認待ちの申請はありません</td></tr>';
+    });
+  }
+
+  function _loadAttendance() {
+    _sb.from('employees').select('*').eq('is_active',true).then(function(res){
+      var tbody=document.querySelector('#page-attendance table tbody');
+      if (!tbody) return;
+      var data=res.data||[];
+      tbody.innerHTML=data.length ? data.map(function(e){
+        return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-green">0件</span></td><td><span class="badge badge-amber">未確定</span></td></tr>';
+      }).join('') : '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+    });
+  }
+
+  function _loadSettings() {
+    _sb.from('employees').select('*').order('created_at',{ascending:true}).then(function(res){
+      var tbody=document.querySelector('#tab-employees table tbody');
+      if (!tbody) return;
+      var data=res.data||[];
+      tbody.innerHTML=data.length ? data.map(function(e){
+        var rb=e.role==='管理者'?'badge-blue':'badge-gray';
+        var sb=e.is_active?'badge-green':'badge-gray';
+        return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td><td>'+(e.employment_type||'—')+'</td><td>'+(e.joined_at||'—')+'</td><td><span class="badge '+rb+'">'+(e.role||'一般')+'</span></td><td><span class="badge '+sb+'">'+(e.is_active?'有効':'無効')+'</span></td></tr>';
+      }).join('') : '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
+    });
+  }
+
+  // 申請フォーム送信
+  window._submitDB = function(modalId, type) {
+    if (!_sb||!_user) { if(window.showToast) showToast('ログインが必要です','red'); return; }
+    if (type==='休暇申請') {
+      var sel=document.querySelector('#leaveApplyModal select');
+      var dates=document.querySelectorAll('#leaveApplyModal input[type=date]');
+      var ta=document.querySelector('#leaveApplyModal textarea');
+      if (!dates[0]||!dates[0].value) { if(window.showToast) showToast('取得日を入力してください','red'); return; }
+      _sb.from('leave_requests').insert({user_id:_user.id,leave_type:sel?sel.value:'年次有給',start_date:dates[0].value,end_date:dates[1]?(dates[1].value||dates[0].value):dates[0].value,reason:ta?ta.value:'',status:'pending'}).then(function(res){
+        if (res.error) { if(window.showToast) showToast('保存に失敗しました','red'); return; }
+        if(window.closeModal) closeModal(modalId);
+        if(window.showToast) showToast('休暇申請を提出しました','green');
+        _loadLeave(); _loadDashboard();
+      });
+    } else if (type==='残業申請') {
+      var dEl=document.querySelector('#overtimeApplyModal input[type=date]');
+      var hEl=document.querySelector('#overtimeApplyModal input[type=number]');
+      var rEl=document.querySelector('#overtimeApplyModal select');
+      if (!dEl||!dEl.value) { if(window.showToast) showToast('日付を入力してください','red'); return; }
+      _sb.from('overtime_requests').insert({user_id:_user.id,overtime_date:dEl.value,hours:parseFloat(hEl?hEl.value:0)||0,reason:rEl?rEl.value:'',status:'pending'}).then(function(res){
+        if (res.error) { if(window.showToast) showToast('保存に失敗しました','red'); return; }
+        if(window.closeModal) closeModal(modalId);
+        if(window.showToast) showToast('残業申請を提出しました','green');
+        _loadOvertime(); _loadDashboard();
+      });
+    } else if (type==='打刻申請') {
+      var dEl2=document.querySelector('#punchApplyModal input[type=date]');
+      var tEl=document.querySelector('#punchApplyModal select');
+      var tEl2=document.querySelector('#punchApplyModal input[type=time]');
+      var rEl2=document.querySelector('#punchApplyModal textarea');
+      if (!dEl2||!dEl2.value||!tEl2||!tEl2.value) { if(window.showToast) showToast('日付と時刻を入力してください','red'); return; }
+      _sb.from('punch_records').insert({user_id:_user.id,punch_type:tEl?tEl.value:'出勤',punched_at:dEl2.value+'T'+tEl2.value+':00+09:00',note:rEl2?rEl2.value:'打刻申請'}).then(function(res){
+        if (res.error) { if(window.showToast) showToast('保存に失敗しました','red'); return; }
+        if(window.closeModal) closeModal(modalId);
+        if(window.showToast) showToast('打刻申請を提出しました','green');
         _loadPunch();
       });
     } else {
-      closeModal(modalId);
-      showToast('✅ ' + type + 'を提出しました','green');
+      if(window.closeModal) closeModal(modalId);
+      if(window.showToast) showToast(type+'を提出しました','green');
     }
   };
-}, 700);
 
-// =============================================================
-// 勤務実績一覧（管理者）
-// =============================================================
-function _loadAttendance() {
-  if (!_sb) return;
-  _sb.from('employees').select('*').eq('is_active',true).then(function(res) {
-    var tbody = document.querySelector('#page-attendance table tbody');
-    if (!tbody) return;
-    var data = res.data || [];
-    if (data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(function(e) {
-      return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td>'+
-             '<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>'+
-             '<td><span class="badge badge-green">0件</span></td>'+
-             '<td><span class="badge badge-amber">未確定</span></td></tr>';
-    }).join('');
+  // 初期化
+  document.addEventListener('DOMContentLoaded', function() {
+    // ボタンにイベント設定
+    var loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) loginBtn.addEventListener('click', window.doLogin);
+    var logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', window.doLogout);
+
+    // Enterキー
+    document.addEventListener('keydown', function(e) {
+      if (e.key==='Enter' && document.getElementById('loginOverlay').style.display!=='none') window.doLogin();
+    });
+
+    // submitRequestを上書き
+    setTimeout(function() {
+      window.submitRequest = window._submitDB;
+    }, 500);
+
+    // 打刻ボタンを上書き
+    setTimeout(function() {
+      var origDoPunch = window.doPunch;
+      window.doPunch = function(type) {
+        if (origDoPunch) origDoPunch(type);
+        if (!_sb||!_user) return;
+        _sb.from('punch_records').insert({
+          user_id:_user.id, punch_type:type, punched_at:new Date().toISOString()
+        }).then(function(res){
+          if (res.error) { if(window.showToast) showToast('打刻の保存に失敗しました','red'); return; }
+          setTimeout(function(){ _loadPunch(); _loadDashboard(); }, 300);
+        });
+      };
+    }, 500);
+
+    // showPageを上書き
+    setTimeout(function() {
+      var origShowPage = window.showPage;
+      window.showPage = function(id) {
+        if (origShowPage) origShowPage(id);
+        _loadPage(id);
+      };
+      window.renderTimecard = function() { _loadTimecard(); };
+    }, 500);
+
+    // Supabase初期化
+    setTimeout(function() {
+      if (!window.supabase) { console.error('Supabase SDK not loaded'); return; }
+      _sb = window.supabase.createClient(SURL, SKEY);
+      _sb.auth.getSession().then(function(res) {
+        if (res.data.session) {
+          _user = res.data.session.user;
+          _loadProfile().then(function() {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.querySelector('.app').style.display = 'flex';
+            _loadPage('dashboard');
+          });
+        } else {
+          document.getElementById('loginOverlay').style.display = 'flex';
+          document.querySelector('.app').style.display = 'none';
+        }
+      });
+    }, 800);
   });
-}
 
-// =============================================================
-// 従業員設定
-// =============================================================
-function _loadSettings() {
-  if (!_sb) return;
-  _sb.from('employees').select('*').order('created_at',{ascending:true}).then(function(res) {
-    var tbody = document.querySelector('#tab-employees table tbody');
-    if (!tbody) return;
-    var data = res.data || [];
-    if (data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#999">従業員データがありません</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.map(function(e) {
-      var rb = e.role==='管理者'?'badge-blue':'badge-gray';
-      var sb = e.is_active?'badge-green':'badge-gray';
-      return '<tr><td>'+(e.employee_no||'—')+'</td><td>'+e.name+'</td><td>'+(e.department||'—')+'</td>'+
-             '<td>'+(e.employment_type||'—')+'</td><td>'+(e.joined_at||'—')+'</td>'+
-             '<td><span class="badge '+rb+'">'+(e.role||'一般')+'</span></td>'+
-             '<td><span class="badge '+sb+'">'+(e.is_active?'有効':'無効')+'</span></td></tr>';
-    }).join('');
-  });
-}
-
+})();
 </script>
+
 </body>
 </html>
