@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勤怠管理システム</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3a5c;--blue:#185FA5;--lblue:#E6F1FB;--green:#0F6E56;--lgreen:#E1F5EE;
+  --amber:#854F0B;--lamber:#FAEEDA;--red:#A32D2D;--lred:#FCEBEB;--purple:#534AB7;
+  --lpurple:#EEEDFE;--gray:#f5f7fa;--border:#e0e4ea;--text:#222;--muted:#666;
+  --white:#fff;--sidebar-w:220px;
+}
+body{font-family:'Segoe UI',Meiryo,'Helvetica Neue',sans-serif;background:var(--gray);color:var(--text);font-size:14px}
+/* Layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:var(--navy);position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100;transition:transform .3s}
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.content{padding:24px;flex:1}
+/* Sidebar */
+.sidebar-logo{padding:20px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo .logo-title{color:#fff;font-size:16px;font-weight:700;line-height:1.2}
+.sidebar-logo .logo-sub{color:rgba(255,255,255,.5);font-size:11px;margin-top:3px}
+.nav-section{padding:12px 0 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.1em;padding-left:16px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:rgba(255,255,255,.75);cursor:pointer;transition:all .15s;font-size:13px;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:#4fa3e8}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+/* Topbar */
+.page-title{font-size:18px;font-weight:700;color:var(--navy)}
+.user-info{display:flex;align-items:center;gap:12px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.user-name{font-size:13px;color:var(--muted)}
+.current-time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* Cards / Panels */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.kpi-val{font-size:28px;font-weight:700;line-height:1}
+.kpi-label{font-size:12px;color:var(--muted);margin-top:6px}
+.kpi-blue .kpi-val{color:var(--blue)}
+.kpi-green .kpi-val{color:var(--green)}
+.kpi-amber .kpi-val{color:var(--amber)}
+.kpi-red .kpi-val{color:var(--red)}
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:12px}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:nth-child(even) td{background:#fafbfc}
+tr:hover td{background:var(--lblue)}
+/* Badges */
+.badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-green{background:var(--lgreen);color:var(--green)}
+.badge-amber{background:var(--lamber);color:var(--amber)}
+.badge-red{background:var(--lred);color:var(--red)}
+.badge-blue{background:var(--lblue);color:var(--blue)}
+.badge-gray{background:#eef0f3;color:#555}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#1050a0}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#0a5842}
+.btn-danger{background:var(--red);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{background:var(--gray)}
+.btn-sm{padding:5px 10px;font-size:12px}
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block}
+.form-control{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;transition:border .15s}
+.form-control:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.12)}
+select.form-control{cursor:pointer}
+/* Clock */
+.punch-clock{background:linear-gradient(135deg,var(--navy),#2563a8);border-radius:16px;padding:28px;color:#fff;text-align:center;margin-bottom:20px}
+.punch-time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:2px;line-height:1}
+.punch-date{font-size:14px;opacity:.7;margin-top:6px}
+.punch-status{margin:16px 0 20px;display:inline-block;padding:6px 18px;border-radius:99px;font-size:13px;font-weight:700}
+.punch-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px;margin:0 auto}
+.punch-btn{padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.punch-in{background:#22c55e;color:#fff}
+.punch-in:hover{background:#16a34a;transform:scale(1.02)}
+.punch-out{background:#ef4444;color:#fff}
+.punch-out:hover{background:#dc2626;transform:scale(1.02)}
+.punch-rest-start{background:#f59e0b;color:#fff}
+.punch-rest-end{background:#8b5cf6;color:#fff}
+/* Timeline */
+.timeline{padding:0;list-style:none}
+.timeline li{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.tl-time{font-size:12px;color:var(--muted);width:50px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tl-blue{background:var(--blue)}
+.tl-red{background:var(--red)}
+.tl-amber{background:var(--amber)}
+.tl-green{background:var(--green)}
+/* Tab */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Calendar */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav{display:flex;gap:8px;align-items:center}
+.cal-nav button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-day-header{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:6px 0}
+.cal-day{min-height:72px;border-radius:6px;padding:5px 6px;font-size:12px;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.cal-day:hover{background:var(--lblue);border-color:var(--blue)}
+.cal-day.today{background:var(--lblue);border-color:var(--blue)}
+.cal-day.other-month{opacity:.35}
+.cal-day .day-num{font-weight:700;font-size:13px;margin-bottom:3px}
+.cal-day.has-work .day-num{color:var(--blue)}
+.cal-day.holiday .day-num{color:var(--red)}
+.cal-day.absence .day-num{color:var(--amber)}
+.shift-tag{font-size:10px;padding:1px 5px;border-radius:4px;margin-top:2px;display:inline-block}
+/* Alert Banner */
+.alert{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.alert-red{background:var(--lred);border:1px solid #f5c1c1;color:var(--red)}
+.alert-amber{background:var(--lamber);border:1px solid #fac775;color:var(--amber)}
+.alert-green{background:var(--lgreen);border:1px solid #9fe1cb;color:var(--green)}
+.alert-blue{background:var(--lblue);border:1px solid #b5d4f4;color:var(--blue)}
+/* Progress */
+.progress{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:6px}
+.progress-bar{height:100%;border-radius:99px;transition:width .5s}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(20px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;font-size:20px;color:var(--muted);line-height:1}
+/* Attendance table monthly */
+.att-table th:first-child{width:80px}
+.att-table .err-row td{background:#fff5f5}
+.att-table .err-row td:first-child{border-left:3px solid var(--red)}
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .punch-time{font-size:38px}
+}
+/* Page sections */
+.page{display:none}
+.page.active{display:block}
+/* Leave balance */
+.leave-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:16px}
+.leave-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.leave-info .leave-name{font-size:13px;font-weight:700}
+.leave-info .leave-balance{font-size:22px;font-weight:800;color:var(--blue)}
+.leave-info .leave-detail{font-size:11px;color:var(--muted)}
+/* Notification */
+.notif-list{list-style:none}
+.notif-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:5px}
+.notif-dot.read{background:var(--border)}
+.notif-meta{font-size:11px;color:var(--muted);margin-top:3px}
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- ─── ログイン画面 ─── -->
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#1a3a5c;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:0">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:40px;line-height:1">⏰</div>
+    <div style="color:#fff;font-size:22px;font-weight:700;margin-top:8px">勤怠管理システム</div>
+    <div style="color:rgba(255,255,255,.5);font-size:13px;margin-top:4px">ログインしてください</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:32px;width:360px;max-width:92vw">
+    <div style="font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:20px">ログイン</div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">メールアドレス</div>
+      <input id="loginEmail" type="email" placeholder="yamada@example.com"
+        style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit">
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;color:#666;margin-bottom:5px">パスワード</div>
+      <input id="loginPass" type="password" placeholder="••••••••"
+        style="width:100%;padding:10px 12px;border:1px solid #e0e4ea;border-radius:8px;font-size:14px;font-family:inherit">
+    </div>
+    <div id="loginError" style="color:#A32D2D;font-size:12px;margin-bottom:10px;min-height:16px"></div>
+    <button onclick="doLogin()"
+      style="width:100%;padding:12px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+      ログイン
+    </button>
+    <div style="font-size:11px;color:#999;text-align:center;margin-top:12px">
+      アカウントはSupabaseで管理者が発行します
+    </div>
+  </div>
+</div>
+
+<div class="app" style="display:none">
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-title">⏰ 勤怠管理</div>
+    <div class="logo-sub">KINTAI SYSTEM v1.0</div>
+  </div>
+  <div class="nav-section">メニュー</div>
+  <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>ダッシュボード</div>
+  <div class="nav-item" onclick="showPage('punch')"><span class="nav-icon">👆</span>打刻</div>
+  <div class="nav-item" onclick="showPage('timecard')"><span class="nav-icon">📋</span>タイムカード</div>
+  <div class="nav-item" onclick="showPage('schedule')"><span class="nav-icon">📅</span>スケジュール</div>
+  <div class="nav-item" onclick="showPage('leave')"><span class="nav-icon">🌿</span>休暇管理</div>
+  <div class="nav-item" onclick="showPage('overtime')"><span class="nav-icon">⏱</span>残業管理</div>
+  <div class="nav-section">申請</div>
+  <div class="nav-item" onclick="showPage('requests')"><span class="nav-icon">📝</span>申請・承認</div>
+  <div class="nav-section">管理者</div>
+  <div class="nav-item" onclick="showPage('attendance')"><span class="nav-icon">👥</span>勤務実績一覧</div>
+  <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">📊</span>集計・レポート</div>
+  <div class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="page-title" id="pageTitle">ダッシュボード</div>
+  </div>
+  <div class="user-info">
+    <div class="current-time" id="clockDisplay">--:--:--</div>
+    <div class="user-name">田中 太郎 | 営業部</div>
+    <div class="user-avatar">田</div>
+    <button onclick="doLogout()" style="padding:6px 12px;border:1px solid #e0e4ea;border-radius:6px;background:transparent;font-size:12px;cursor:pointer;color:#666">ログアウト</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ─── ダッシュボード ─── -->
+<div class="page active" id="page-dashboard">
+  <div id="alertArea"></div>
+  <div class="kpi-grid">
+    <div class="kpi kpi-blue"><div class="kpi-val" id="kpi-month-hours">152.5</div><div class="kpi-label">当月実働時間 (h)</div></div>
+    <div class="kpi kpi-amber"><div class="kpi-val" id="kpi-overtime">18.5</div><div class="kpi-label">当月残業時間 (h)</div></div>
+    <div class="kpi kpi-green"><div class="kpi-val" id="kpi-leave-used">3</div><div class="kpi-label">当月有休取得 (日)</div></div>
+    <div class="kpi kpi-red"><div class="kpi-val" id="kpi-errors">2</div><div class="kpi-label">エラー件数</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title">⚡ 今日の勤務状況</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">出勤時刻</div>
+          <div style="font-size:20px;font-weight:800;color:var(--blue)" id="today-in">09:05</div>
+        </div>
+        <div style="font-size:24px;color:var(--border)">→</div>
+        <div>
+          <div style="font-size:12px;color:var(--muted)">退勤予定</div>
+          <div style="font-size:20px;font-weight:800;color:var(--muted)">18:00</div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted)">現在実働</div>
+          <div style="font-size:20px;font-weight:800;color:var(--green)" id="today-worked">6:45</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">36協定 当月進捗</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px">
+        <span>18.5h / 45h</span><span style="color:var(--amber)">41%</span>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:41%;background:var(--amber)"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📢 お知らせ</div>
+      <ul class="notif-list">
+        <li class="notif-item"><div class="notif-dot"></div><div><div>残業申請が承認されました</div><div class="notif-meta">2分前 · 山田マネージャー</div></div></li>
+        <li class="notif-item"><div class="notif-dot"></div><div><div>有給休暇残日数が10日を下回りました</div><div class="notif-meta">1時間前 · システム</div></div></li>
+        <li class="notif-item"><div class="notif-dot read"></div><div><div>6月スケジュールが公開されました</div><div class="notif-meta">昨日 · 管理者</div></div></li>
+        <li class="notif-item"><div class="notif-dot read"></div><div><div>5月分の月次集計が確定しました</div><div class="notif-meta">3日前 · 人事部</div></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👥 リアルタイム在席状況（部門）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">営業部</div>
+        <div style="font-size:22px;font-weight:800;color:var(--green)">12</div>
+        <div style="font-size:11px;color:var(--muted)">在席中 / 15名</div>
+        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:80%;background:var(--green)"></div></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">開発部</div>
+        <div style="font-size:22px;font-weight:800;color:var(--green)">18</div>
+        <div style="font-size:11px;color:var(--muted)">在席中 / 20名</div>
+        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:90%;background:var(--green)"></div></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">総務部</div>
+        <div style="font-size:22px;font-weight:800;color:var(--amber)">4</div>
+        <div style="font-size:11px;color:var(--muted)">在席中 / 8名</div>
+        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:50%;background:var(--amber)"></div></div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">人事部</div>
+        <div style="font-size:22px;font-weight:800;color:var(--green)">6</div>
+        <div style="font-size:11px;color:var(--muted)">在席中 / 6名</div>
+        <div class="progress" style="margin-top:6px"><div class="progress-bar" style="width:100%;background:var(--blue)"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 打刻 ─── -->
+<div class="page" id="page-punch">
+  <div class="punch-clock">
+    <div class="punch-time" id="punchClock">--:--:--</div>
+    <div class="punch-date" id="punchDate">読み込み中...</div>
+    <div><span class="punch-status" id="punchStatus" style="background:rgba(34,197,94,.25);color:#86efac">出勤中</span></div>
+    <div class="punch-buttons">
+      <button class="punch-btn punch-in" onclick="doPunch('出勤')">🟢 出 勤</button>
+      <button class="punch-btn punch-out" onclick="doPunch('退勤')">🔴 退 勤</button>
+      <button class="punch-btn punch-rest-start" onclick="doPunch('休憩開始')">🟡 休憩開始</button>
+      <button class="punch-btn punch-rest-end" onclick="doPunch('休憩終了')">🟣 休憩終了</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 本日の打刻ログ</div>
+    <ul class="timeline" id="punchLog">
+      <li><span class="tl-time">09:05</span><span class="tl-dot tl-blue"></span><span>出勤</span></li>
+      <li><span class="tl-time">12:00</span><span class="tl-dot tl-amber"></span><span>休憩開始</span></li>
+      <li><span class="tl-time">13:00</span><span class="tl-dot tl-green"></span><span>休憩終了</span></li>
+    </ul>
+    <div style="margin-top:16px">
+      <button class="btn btn-outline btn-sm" onclick="openModal('punchApplyModal')">✏️ 打刻申請（修正・追加）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── タイムカード ─── -->
+<div class="page" id="page-timecard">
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span>📋 タイムカード</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">← 前月</button>
+        <span id="tcMonthLabel" style="font-size:14px;font-weight:700">2026年6月</span>
+        <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">次月 →</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="att-table" id="timecardTable">
+        <thead>
+          <tr>
+            <th>日付</th><th>曜日</th><th>シフト</th><th>出勤</th><th>退勤</th>
+            <th>休憩</th><th>実働</th><th>時間外</th><th>深夜</th><th>状態</th>
+          </tr>
+        </thead>
+        <tbody id="timecardBody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="font-size:13px">月計：<strong style="color:var(--blue)">実働 152.5h</strong> | <strong style="color:var(--amber)">時間外 18.5h</strong> | <strong style="color:var(--green)">有休 3日</strong></div>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm">📄 PDF出力</button>
+        <button class="btn btn-outline btn-sm">📊 CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── スケジュール ─── -->
+<div class="page" id="page-schedule">
+  <div class="card">
+    <div class="card-title">
+      <div class="cal-header" style="width:100%">
+        <span>📅 月間スケジュール</span>
+        <div class="cal-nav">
+          <button onclick="changeCalMonth(-1)">←</button>
+          <span id="calMonthLabel" style="font-size:14px;font-weight:700">2026年6月</span>
+          <button onclick="changeCalMonth(1)">→</button>
+          <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openModal('scheduleModal')">+ シフト登録</button>
+        </div>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:12px">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#bbf7d0;vertical-align:middle;margin-right:4px"></span>通常勤務</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#bfdbfe;vertical-align:middle;margin-right:4px"></span>早番</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fde68a;vertical-align:middle;margin-right:4px"></span>遅番</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#fecaca;vertical-align:middle;margin-right:4px"></span>有給休暇</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 休暇管理 ─── -->
+<div class="page" id="page-leave">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+    <div class="leave-card">
+      <div class="leave-icon" style="background:var(--lgreen)">🌿</div>
+      <div class="leave-info">
+        <div class="leave-name">年次有給休暇</div>
+        <div class="leave-balance">9.5 <span style="font-size:14px">日</span></div>
+        <div class="leave-detail">今年度付与 10日 | 使用 3日 | 繰越 2.5日</div>
+      </div>
+    </div>
+    <div class="leave-card">
+      <div class="leave-icon" style="background:var(--lblue)">⏰</div>
+      <div class="leave-info">
+        <div class="leave-name">時間単位有給</div>
+        <div class="leave-balance">32 <span style="font-size:14px">時間</span></div>
+        <div class="leave-detail">年間上限 40h | 使用 8h</div>
+      </div>
+    </div>
+    <div class="leave-card">
+      <div class="leave-icon" style="background:var(--lamber)">🎌</div>
+      <div class="leave-info">
+        <div class="leave-name">特別休暇</div>
+        <div class="leave-balance">5 <span style="font-size:14px">日</span></div>
+        <div class="leave-detail">慶弔・リフレッシュ等</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">📊 有給5日取得義務 進捗</div>
+      <span class="badge badge-amber">要注意：3/5日取得済み</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+      <span>取得済み：3日</span><span style="color:var(--amber)">残り 2日必要（期限まで198日）</span>
+    </div>
+    <div class="progress" style="height:12px"><div class="progress-bar" style="width:60%;background:var(--amber)"></div></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">🗓️ 休暇申請履歴</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('leaveApplyModal')">+ 休暇申請</button>
+    </div>
+    <table>
+      <thead><tr><th>申請日</th><th>休暇種別</th><th>取得日</th><th>日数</th><th>状態</th><th>承認者</th></tr></thead>
+      <tbody>
+        <tr><td>6/10</td><td>年次有給</td><td>6/16 (月)</td><td>1日</td><td><span class="badge badge-green">承認済</span></td><td>山田部長</td></tr>
+        <tr><td>6/5</td><td>年次有給</td><td>6/5 (木)</td><td>0.5日(午後)</td><td><span class="badge badge-green">承認済</span></td><td>山田部長</td></tr>
+        <tr><td>5/28</td><td>年次有給</td><td>5/30 (金)</td><td>1日</td><td><span class="badge badge-green">承認済</span></td><td>山田部長</td></tr>
+        <tr><td>6/17</td><td>年次有給</td><td>6/25 (水)</td><td>1日</td><td><span class="badge badge-amber">承認待ち</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── 残業管理 ─── -->
+<div class="page" id="page-overtime">
+  <div class="kpi-grid">
+    <div class="kpi kpi-amber"><div class="kpi-val">18.5</div><div class="kpi-label">当月時間外 (h)</div></div>
+    <div class="kpi kpi-red"><div class="kpi-val">45</div><div class="kpi-label">36協定月上限 (h)</div></div>
+    <div class="kpi kpi-blue"><div class="kpi-val">41%</div><div class="kpi-label">上限消化率</div></div>
+    <div class="kpi" style="--kpi-c:#534AB7"><div class="kpi-val" style="color:#534AB7">2.5</div><div class="kpi-label">深夜残業 (h)</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚖️ 36協定 月別推移</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>月</th><th>法定内残業</th><th>法定外残業</th><th>深夜</th><th>休日</th><th>合計</th><th>36協定上限</th><th>消化率</th></tr></thead>
+        <tbody>
+          <tr><td>1月</td><td>2.0h</td><td>12.0h</td><td>1.0h</td><td>0h</td><td>15.0h</td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:33%;background:var(--green)"></div></div></td></tr>
+          <tr><td>2月</td><td>3.0h</td><td>28.0h</td><td>2.0h</td><td>4.0h</td><td>37.0h</td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:82%;background:var(--amber)"></div></div></td></tr>
+          <tr><td>3月</td><td>2.5h</td><td>38.0h</td><td>3.5h</td><td>0h</td><td>44.0h</td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:98%;background:var(--red)"></div></div></td></tr>
+          <tr><td>4月</td><td>1.5h</td><td>10.0h</td><td>0h</td><td>0h</td><td>11.5h</td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:26%;background:var(--green)"></div></div></td></tr>
+          <tr><td>5月</td><td>2.0h</td><td>14.0h</td><td>1.5h</td><td>0h</td><td>17.5h</td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:39%;background:var(--green)"></div></div></td></tr>
+          <tr style="background:var(--lblue)"><td><strong>6月(今月)</strong></td><td>3.0h</td><td>13.0h</td><td>2.5h</td><td>0h</td><td><strong>18.5h</strong></td><td>45h</td><td><div class="progress" style="width:80px"><div class="progress-bar" style="width:41%;background:var(--amber)"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">📝 残業申請</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('overtimeApplyModal')">+ 残業申請</button>
+    </div>
+    <table>
+      <thead><tr><th>申請日</th><th>残業日</th><th>種別</th><th>予定時間</th><th>理由</th><th>状態</th></tr></thead>
+      <tbody>
+        <tr><td>6/17</td><td>6/17</td><td>法定外</td><td>2h</td><td>月次報告資料作成</td><td><span class="badge badge-green">承認済</span></td></tr>
+        <tr><td>6/16</td><td>6/16</td><td>法定外</td><td>1.5h</td><td>顧客対応</td><td><span class="badge badge-green">承認済</span></td></tr>
+        <tr><td>6/18</td><td>6/18</td><td>法定外</td><td>2h</td><td>期末資料</td><td><span class="badge badge-amber">承認待ち</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── 申請・承認 ─── -->
+<div class="page" id="page-requests">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-my-req')">自分の申請</div>
+    <div class="tab" onclick="switchTab(this,'tab-approve')">承認待ち <span class="badge badge-red" style="font-size:10px;padding:1px 6px">3</span></div>
+  </div>
+  <div class="tab-content active" id="tab-my-req">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">申請一覧</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="openModal('punchApplyModal')">打刻申請</button>
+          <button class="btn btn-outline btn-sm" onclick="openModal('leaveApplyModal')">休暇申請</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('overtimeApplyModal')">残業申請</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>申請番号</th><th>種別</th><th>申請日</th><th>内容</th><th>状態</th><th>更新日</th></tr></thead>
+        <tbody>
+          <tr><td>WF-2026-0245</td><td>残業申請</td><td>6/18</td><td>6/18 残業2h</td><td><span class="badge badge-amber">承認待ち</span></td><td>6/18</td></tr>
+          <tr><td>WF-2026-0244</td><td>休暇申請</td><td>6/17</td><td>6/25 有給1日</td><td><span class="badge badge-amber">承認待ち</span></td><td>6/17</td></tr>
+          <tr><td>WF-2026-0238</td><td>残業申請</td><td>6/17</td><td>6/17 残業2h</td><td><span class="badge badge-green">承認済</span></td><td>6/17</td></tr>
+          <tr><td>WF-2026-0231</td><td>打刻申請</td><td>6/12</td><td>6/12 出勤時刻修正</td><td><span class="badge badge-green">承認済</span></td><td>6/13</td></tr>
+          <tr><td>WF-2026-0218</td><td>休暇申請</td><td>6/10</td><td>6/16 有給1日</td><td><span class="badge badge-green">承認済</span></td><td>6/11</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-approve">
+    <div class="card">
+      <div class="card-title">承認待ち一覧（管理者）</div>
+      <table>
+        <thead><tr><th>申請番号</th><th>申請者</th><th>種別</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr><td>WF-2026-0247</td><td>鈴木 花子</td><td>休暇申請</td><td>6/20 有給1日</td><td>6/18</td><td><button class="btn btn-success btn-sm" onclick="approveRequest(this)">承認</button> <button class="btn btn-outline btn-sm">却下</button></td></tr>
+          <tr><td>WF-2026-0246</td><td>佐藤 次郎</td><td>残業申請</td><td>6/18 残業3h</td><td>6/18</td><td><button class="btn btn-success btn-sm" onclick="approveRequest(this)">承認</button> <button class="btn btn-outline btn-sm">却下</button></td></tr>
+          <tr><td>WF-2026-0243</td><td>高橋 三郎</td><td>打刻申請</td><td>6/17 退勤時刻追加</td><td>6/17</td><td><button class="btn btn-success btn-sm" onclick="approveRequest(this)">承認</button> <button class="btn btn-outline btn-sm">却下</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 勤務実績一覧（管理者）─── -->
+<div class="page" id="page-attendance">
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">部署</div>
+        <select class="form-control" style="width:140px">
+          <option>全部署</option><option>営業部</option><option>開発部</option><option>総務部</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">対象月</div>
+        <input type="month" class="form-control" style="width:140px" value="2026-06">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">フィルタ</div>
+        <select class="form-control" style="width:130px">
+          <option>全員</option><option>エラーあり</option><option>残業超過</option>
+        </select>
+      </div>
+      <button class="btn btn-primary">🔍 検索</button>
+      <button class="btn btn-outline" style="margin-left:auto">📊 CSV出力</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>実働時間</th><th>時間外</th><th>深夜</th><th>休日</th><th>有休</th><th>エラー</th><th>状態</th></tr></thead>
+        <tbody>
+          <tr><td>E001</td><td>田中 太郎</td><td>営業部</td><td>152.5h</td><td>18.5h</td><td>2.5h</td><td>0h</td><td>3日</td><td><span class="badge badge-amber">2件</span></td><td><span class="badge badge-amber">未確定</span></td></tr>
+          <tr><td>E002</td><td>鈴木 花子</td><td>開発部</td><td>168.0h</td><td>28.0h</td><td>4.0h</td><td>8.0h</td><td>1日</td><td><span class="badge badge-red">1件</span></td><td><span class="badge badge-amber">未確定</span></td></tr>
+          <tr><td>E003</td><td>佐藤 次郎</td><td>開発部</td><td>143.0h</td><td>3.0h</td><td>0h</td><td>0h</td><td>5日</td><td><span class="badge badge-green">0件</span></td><td><span class="badge badge-green">確定済</span></td></tr>
+          <tr><td>E004</td><td>高橋 三郎</td><td>営業部</td><td>138.5h</td><td>0h</td><td>0h</td><td>0h</td><td>2日</td><td><span class="badge badge-green">0件</span></td><td><span class="badge badge-amber">未確定</span></td></tr>
+          <tr class="err-row"><td>E005</td><td>山本 四郎</td><td>総務部</td><td>155.0h</td><td>46.5h</td><td>1.0h</td><td>0h</td><td>0日</td><td><span class="badge badge-red">3件</span></td><td><span class="badge badge-red">要確認</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 集計・レポート ─── -->
+<div class="page" id="page-reports">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-monthly')">月次集計</div>
+    <div class="tab" onclick="switchTab(this,'tab-overtime-rep')">残業分析</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-rep')">休暇レポート</div>
+  </div>
+  <div class="tab-content active" id="tab-monthly">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0">📅 2026年6月 月次集計</div>
+        <div style="display:flex;gap:8px">
+          <span class="badge badge-amber">未確定</span>
+          <button class="btn btn-primary btn-sm" onclick="confirmMonth()">月次確定</button>
+          <button class="btn btn-outline btn-sm">給与ソフト出力</button>
+        </div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpi kpi-blue"><div class="kpi-val">49</div><div class="kpi-label">対象人数</div></div>
+        <div class="kpi kpi-green"><div class="kpi-val">7,432h</div><div class="kpi-label">総実働時間</div></div>
+        <div class="kpi kpi-amber"><div class="kpi-val">892h</div><div class="kpi-label">総時間外</div></div>
+        <div class="kpi kpi-red"><div class="kpi-val">3</div><div class="kpi-label">36協定要注意</div></div>
+        <div class="kpi"><div class="kpi-val" style="color:var(--purple)">8</div><div class="kpi-label">エラー残件数</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-overtime-rep">
+    <div class="card">
+      <div class="card-title">📈 部署別残業時間（当月）</div>
+      <div id="overtimeChart" style="padding:8px 0"></div>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-leave-rep">
+    <div class="card">
+      <div class="card-title">🌿 有給取得率（全社）</div>
+      <table>
+        <thead><tr><th>部署</th><th>対象者</th><th>5日達成</th><th>未達成</th><th>平均取得日数</th><th>達成率</th></tr></thead>
+        <tbody>
+          <tr><td>営業部</td><td>15名</td><td>12名</td><td>3名</td><td>6.2日</td><td><span class="badge badge-green">80%</span></td></tr>
+          <tr><td>開発部</td><td>20名</td><td>18名</td><td>2名</td><td>7.8日</td><td><span class="badge badge-green">90%</span></td></tr>
+          <tr><td>総務部</td><td>8名</td><td>4名</td><td>4名</td><td>3.5日</td><td><span class="badge badge-red">50%</span></td></tr>
+          <tr><td>人事部</td><td>6名</td><td>6名</td><td>0名</td><td>9.2日</td><td><span class="badge badge-green">100%</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── システム設定 ─── -->
+<div class="page" id="page-settings">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-employees')">従業員マスター</div>
+    <div class="tab" onclick="switchTab(this,'tab-work-rules')">就業ルール</div>
+    <div class="tab" onclick="switchTab(this,'tab-depts')">組織設定</div>
+  </div>
+  <div class="tab-content active" id="tab-employees">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">👥 従業員マスター</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('empModal')">+ 従業員登録</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="form-control" style="width:200px" placeholder="氏名・社員番号で検索">
+        <select class="form-control" style="width:120px"><option>全部署</option><option>営業部</option><option>開発部</option></select>
+        <select class="form-control" style="width:130px"><option>全ステータス</option><option>有効</option><option>無効</option></select>
+      </div>
+      <table>
+        <thead><tr><th>社員番号</th><th>氏名</th><th>部署</th><th>雇用形態</th><th>入社日</th><th>権限</th><th>ステータス</th></tr></thead>
+        <tbody>
+          <tr><td>E001</td><td>田中 太郎</td><td>営業部</td><td>正社員</td><td>2020/04/01</td><td><span class="badge badge-blue">管理者</span></td><td><span class="badge badge-green">有効</span></td></tr>
+          <tr><td>E002</td><td>鈴木 花子</td><td>開発部</td><td>正社員</td><td>2019/07/15</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-green">有効</span></td></tr>
+          <tr><td>E003</td><td>佐藤 次郎</td><td>開発部</td><td>契約社員</td><td>2022/01/06</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-green">有効</span></td></tr>
+          <tr><td>E099</td><td>伊藤 五郎</td><td>総務部</td><td>パート</td><td>2018/03/01</td><td><span class="badge badge-gray">一般</span></td><td><span class="badge badge-gray">無効</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-work-rules">
+    <div class="card">
+      <div class="card-title">⚙️ 就業ルール一覧</div>
+      <table>
+        <thead><tr><th>ルール名</th><th>所定開始</th><th>所定終了</th><th>所定時間</th><th>休憩</th><th>時間外割増</th><th>深夜割増</th><th>適用人数</th></tr></thead>
+        <tbody>
+          <tr><td>標準（正社員）</td><td>09:00</td><td>18:00</td><td>8h</td><td>60分</td><td>25%</td><td>25%</td><td>35名</td></tr>
+          <tr><td>フレックス</td><td>コアタイム10-15時</td><td>—</td><td>8h</td><td>60分</td><td>25%</td><td>25%</td><td>8名</td></tr>
+          <tr><td>パート（6h）</td><td>09:00</td><td>15:00</td><td>6h</td><td>45分</td><td>25%</td><td>25%</td><td>6名</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-depts">
+    <div class="card">
+      <div class="card-title">🏢 組織ツリー</div>
+      <div style="font-size:13px;line-height:2">
+        <div>📁 <strong>株式会社サンプル</strong></div>
+        <div style="padding-left:20px">├── 📂 <strong>営業部</strong>（15名）</div>
+        <div style="padding-left:40px">├── 📄 第1営業グループ（8名）</div>
+        <div style="padding-left:40px">└── 📄 第2営業グループ（7名）</div>
+        <div style="padding-left:20px">├── 📂 <strong>開発部</strong>（20名）</div>
+        <div style="padding-left:40px">├── 📄 フロントエンドチーム（8名）</div>
+        <div style="padding-left:40px">├── 📄 バックエンドチーム（8名）</div>
+        <div style="padding-left:40px">└── 📄 QAチーム（4名）</div>
+        <div style="padding-left:20px">├── 📂 <strong>総務部</strong>（8名）</div>
+        <div style="padding-left:20px">└── 📂 <strong>人事部</strong>（6名）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- content -->
+</div><!-- main -->
+</div><!-- app -->
+
+<!-- ─── Modals ─── -->
+<div class="modal-overlay" id="punchApplyModal">
+  <div class="modal">
+    <div class="modal-title">✏️ 打刻申請<span class="modal-close" onclick="closeModal('punchApplyModal')">×</span></div>
+    <div class="form-group"><div class="form-label">対象日</div><input type="date" class="form-control" value="2026-06-18"></div>
+    <div class="form-group"><div class="form-label">打刻種別</div><select class="form-control"><option>出勤</option><option>退勤</option><option>休憩開始</option><option>休憩終了</option></select></div>
+    <div class="form-group"><div class="form-label">修正時刻</div><input type="time" class="form-control"></div>
+    <div class="form-group"><div class="form-label">申請理由 *</div><textarea class="form-control" rows="3" placeholder="打刻忘れの理由を記入してください"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('punchApplyModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitRequest('punchApplyModal','打刻申請')">申請する</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leaveApplyModal">
+  <div class="modal">
+    <div class="modal-title">🌿 休暇申請<span class="modal-close" onclick="closeModal('leaveApplyModal')">×</span></div>
+    <div class="form-group"><div class="form-label">休暇種別</div><select class="form-control"><option>年次有給（全日）</option><option>年次有給（半日AM）</option><option>年次有給（半日PM）</option><option>時間単位有給</option><option>特別休暇（慶弔）</option><option>代休</option></select></div>
+    <div class="form-group"><div class="form-label">取得開始日</div><input type="date" class="form-control"></div>
+    <div class="form-group"><div class="form-label">取得終了日</div><input type="date" class="form-control"></div>
+    <div class="form-group"><div class="form-label">理由</div><textarea class="form-control" rows="2" placeholder="任意"></textarea></div>
+    <div style="background:var(--lblue);border-radius:8px;padding:12px;font-size:12px;margin-bottom:12px">
+      <strong>有給残日数：</strong>9.5日　（今年度分 7.0日 + 繰越 2.5日）
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('leaveApplyModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitRequest('leaveApplyModal','休暇申請')">申請する</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="overtimeApplyModal">
+  <div class="modal">
+    <div class="modal-title">⏱ 残業申請<span class="modal-close" onclick="closeModal('overtimeApplyModal')">×</span></div>
+    <div class="form-group"><div class="form-label">残業日</div><input type="date" class="form-control" value="2026-06-18"></div>
+    <div class="form-group"><div class="form-label">残業種別</div><select class="form-control"><option>事前申請</option><option>事後申請</option></select></div>
+    <div class="form-group"><div class="form-label">残業予定時間</div><input type="number" class="form-control" placeholder="例：2.5" step="0.5" min="0.5" max="8"></div>
+    <div class="form-group"><div class="form-label">理由</div><select class="form-control"><option>月次報告資料作成</option><option>顧客対応</option><option>システム障害対応</option><option>その他</option></select></div>
+    <div class="form-group"><div class="form-label">詳細（任意）</div><textarea class="form-control" rows="2"></textarea></div>
+    <div style="background:var(--lamber);border-radius:8px;padding:12px;font-size:12px;margin-bottom:12px">
+      ⚠️ 当月残業：18.5h / 45h（41%消化）
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('overtimeApplyModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitRequest('overtimeApplyModal','残業申請')">申請する</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="scheduleModal">
+  <div class="modal">
+    <div class="modal-title">📅 シフト登録<span class="modal-close" onclick="closeModal('scheduleModal')">×</span></div>
+    <div class="form-group"><div class="form-label">対象日</div><input type="date" class="form-control"></div>
+    <div class="form-group"><div class="form-label">シフトパターン</div>
+      <select class="form-control"><option>通常勤務（09:00-18:00）</option><option>早番（07:00-16:00）</option><option>遅番（11:00-20:00）</option><option>有給休暇</option><option>休日</option></select>
+    </div>
+    <div class="form-group"><div class="form-label">備考</div><textarea class="form-control" rows="2"></textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('scheduleModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitRequest('scheduleModal','シフト登録')">登録する</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="empModal">
+  <div class="modal">
+    <div class="modal-title">👤 従業員登録<span class="modal-close" onclick="closeModal('empModal')">×</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><div class="form-label">社員番号 *</div><input class="form-control" placeholder="E100"></div>
+      <div class="form-group"><div class="form-label">氏名（漢字）*</div><input class="form-control" placeholder="山田 一郎"></div>
+      <div class="form-group"><div class="form-label">氏名（カナ）</div><input class="form-control" placeholder="ヤマダ イチロウ"></div>
+      <div class="form-group"><div class="form-label">メールアドレス *</div><input class="form-control" type="email" placeholder="yamada@example.com"></div>
+      <div class="form-group"><div class="form-label">部署 *</div><select class="form-control"><option>営業部</option><option>開発部</option><option>総務部</option></select></div>
+      <div class="form-group"><div class="form-label">雇用形態 *</div><select class="form-control"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option></select></div>
+      <div class="form-group"><div class="form-label">入社日 *</div><input class="form-control" type="date"></div>
+      <div class="form-group"><div class="form-label">権限</div><select class="form-control"><option>一般従業員</option><option>部門長</option><option>管理者</option></select></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitRequest('empModal','従業員登録')">登録する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Clock ──────────────────────────────────────────────────────────────────
+function updateClock(){
+  const n=new Date();
+  const s=t=>String(t).padStart(2,'0');
+  const ts=`${s(n.getHours())}:${s(n.getMinutes())}:${s(n.getSeconds())}`;
+  const days=['日','月','火','水','木','金','土'];
+  const ds=`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${days[n.getDay()]}）`;
+  document.getElementById('clockDisplay').textContent=ts;
+  document.getElementById('punchClock').textContent=ts;
+  document.getElementById('punchDate').textContent=ds;
+  // today worked
+  const inH=9,inM=5,now=(n.getHours()*60+n.getMinutes())-(inH*60+inM)-60;
+  const wH=Math.max(0,Math.floor(now/60)),wM=Math.max(0,now%60);
+  document.getElementById('today-worked').textContent=`${wH}:${String(wM).padStart(2,'0')}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+const pageTitles={dashboard:'ダッシュボード',punch:'打刻',timecard:'タイムカード',
+  schedule:'スケジュール',leave:'休暇管理',overtime:'残業管理',
+  requests:'申請・承認',attendance:'勤務実績一覧',reports:'集計・レポート',settings:'システム設定'};
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('pageTitle').textContent=pageTitles[id]||id;
+  const navItems=document.querySelectorAll('.nav-item');
+  navItems.forEach(n=>{if(n.onclick&&n.onclick.toString().includes(`'${id}'`))n.classList.add('active')});
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+function switchTab(btn,id){
+  const container=btn.closest('.page')||document.body;
+  container.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  container.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Modals ──────────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')});
+});
+function submitRequest(modalId,type){
+  closeModal(modalId);
+  showToast(`✅ ${type}を提出しました。承認をお待ちください。`,'green');
+}
+
+// ── Punch ────────────────────────────────────────────────────────────────────
+let punchLog=JSON.parse(localStorage.getItem('punchLog')||'null')||[
+  {time:'09:05',type:'出勤',dot:'blue'},{time:'12:00',type:'休憩開始',dot:'amber'},{time:'13:00',type:'休憩終了',dot:'green'}
+];
+const dotMap={出勤:'blue',退勤:'red',休憩開始:'amber',休憩終了:'green'};
+function doPunch(type){
+  const n=new Date();
+  const ts=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  punchLog.push({time:ts,type,dot:dotMap[type]||'blue'});
+  localStorage.setItem('punchLog',JSON.stringify(punchLog));
+  renderPunchLog();
+  showToast(`✅ ${type}打刻：${ts}`,'blue');
+  const statusMap={出勤:'出勤中',退勤:'退勤済み',休憩開始:'休憩中',休憩終了:'出勤中'};
+  document.getElementById('punchStatus').textContent=statusMap[type]||type;
+}
+function renderPunchLog(){
+  const ul=document.getElementById('punchLog');
+  ul.innerHTML=punchLog.map(e=>`<li><span class="tl-time">${e.time}</span><span class="tl-dot tl-${e.dot}"></span><span>${e.type}</span></li>`).join('');
+}
+renderPunchLog();
+
+// ── Timecard ─────────────────────────────────────────────────────────────────
+let tcYear=2026,tcMonth=6;
+const sampleData=[
+  {d:1,shift:'通常',in:'09:05',out:'18:15',rest:'60',work:'8:10',ot:'0:15',late:'',status:'正常'},
+  {d:2,shift:'通常',in:'09:00',out:'20:30',rest:'60',work:'10:30',ot:'2:30',late:'',status:'正常'},
+  {d:3,shift:'',in:'',out:'',rest:'',work:'',ot:'',late:'',status:'休日'},
+  {d:4,shift:'',in:'',out:'',rest:'',work:'',ot:'',late:'',status:'休日'},
+  {d:5,shift:'通常',in:'09:00',out:'18:00',rest:'60',work:'8:00',ot:'0:00',late:'',status:'正常'},
+  {d:6,shift:'通常',in:'09:30',out:'18:00',rest:'60',work:'7:30',ot:'0:00',late:'0:30',status:'遅刻'},
+  {d:7,shift:'通常',in:'',out:'',rest:'',work:'',ot:'',late:'',status:'有給'},
+];
+function changeMonth(d){tcMonth+=d;if(tcMonth>12){tcMonth=1;tcYear++}if(tcMonth<1){tcMonth=12;tcYear--}renderTimecard()}
+const weekdays=['日','月','火','水','木','金','土'];
+function renderTimecard(){
+  document.getElementById('tcMonthLabel').textContent=`${tcYear}年${tcMonth}月`;
+  const tbody=document.getElementById('timecardBody');
+  const rows=[];
+  const days=new Date(tcYear,tcMonth,0).getDate();
+  for(let d=1;d<=days;d++){
+    const wd=new Date(tcYear,tcMonth-1,d).getDay();
+    const sample=sampleData.find(s=>s.d===d)||{shift:'通常',in:'09:00',out:'18:00',rest:'60',work:'8:00',ot:'0:00',late:'',status:'正常'};
+    if(wd===0||wd===6||sample.status==='休日'){
+      rows.push(`<tr style="background:#fafafa;color:#aaa"><td>${tcMonth}/${d}</td><td style="color:${wd===0?'var(--red)':'var(--blue)'}">${weekdays[wd]}</td><td colspan="8" style="text-align:center;font-size:12px">休日</td></tr>`);
+      continue;
+    }
+    if(sample.status==='有給'){
+      rows.push(`<tr style="background:#f0fdf4"><td>${tcMonth}/${d}</td><td>${weekdays[wd]}</td><td colspan="7" style="color:var(--green);font-size:12px;text-align:center">年次有給休暇</td><td><span class="badge badge-green">有給</span></td></tr>`);
+      continue;
+    }
+    const isErr=sample.status==='遅刻'||sample.status==='エラー';
+    const isToday=d===18&&tcMonth===6;
+    rows.push(`<tr class="${isErr?'err-row':''}" ${isToday?'style="background:var(--lblue)"':''}>
+      <td>${tcMonth}/${d}${isToday?' ★':''}</td>
+      <td>${weekdays[wd]}</td>
+      <td><span class="badge badge-blue" style="font-size:10px">${sample.shift}</span></td>
+      <td>${sample.in}</td><td>${sample.out||'—'}</td>
+      <td>${sample.rest?sample.rest+'分':'—'}</td>
+      <td>${sample.work}</td>
+      <td style="color:${sample.ot&&sample.ot!='0:00'?'var(--amber)':'inherit'}">${sample.ot||'—'}</td>
+      <td>—</td>
+      <td><span class="badge ${isErr?'badge-red':sample.status==='有給'?'badge-green':'badge-green'}">${sample.status}</span></td>
+    </tr>`);
+  }
+  tbody.innerHTML=rows.join('');
+}
+renderTimecard();
+
+// ── Calendar ─────────────────────────────────────────────────────────────────
+let calYear=2026,calMonth=6;
+const shiftColors={通常:'#bbf7d0',早番:'#bfdbfe',遅番:'#fde68a',有給:'#fecaca'};
+const sampleShifts={1:'通常',2:'通常',5:'通常',6:'早番',7:'有給',8:'通常',9:'通常',10:'通常',
+  11:'通常',12:'通常',13:'遅番',15:'通常',16:'通常',17:'通常',18:'通常',19:'通常',
+  20:'通常',22:'早番',23:'通常',24:'通常',25:'有給',26:'通常',27:'遅番'};
+function changeCalMonth(d){calMonth+=d;if(calMonth>12){calMonth=1;calYear++}if(calMonth<1){calMonth=12;calYear--}renderCalendar()}
+function renderCalendar(){
+  document.getElementById('calMonthLabel').textContent=`${calYear}年${calMonth}月`;
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach(d=>{
+    const h=document.createElement('div');h.className='cal-day-header';
+    h.style.color=d==='日'?'var(--red)':d==='土'?'var(--blue)':'var(--muted)';
+    h.textContent=d;grid.appendChild(h);
+  });
+  const first=new Date(calYear,calMonth-1,1).getDay();
+  const days=new Date(calYear,calMonth,0).getDate();
+  const today=new Date();
+  for(let i=0;i<first;i++){const c=document.createElement('div');c.className='cal-day other-month';grid.appendChild(c)}
+  for(let d=1;d<=days;d++){
+    const wd=new Date(calYear,calMonth-1,d).getDay();
+    const isToday=d===today.getDate()&&calMonth===today.getMonth()+1&&calYear===today.getFullYear();
+    const shift=sampleShifts[d];
+    const isHoliday=wd===0||wd===6;
+    const c=document.createElement('div');
+    c.className=`cal-day${isToday?' today':''}${isHoliday?' holiday':''}${shift?' has-work':''}`;
+    if(shift==='有給')c.className+=' absence';
+    c.innerHTML=`<div class="day-num" style="color:${wd===0?'var(--red)':wd===6?'var(--blue)':''}">${d}</div>
+      ${shift&&!isHoliday?`<span class="shift-tag" style="background:${shiftColors[shift]||'#e5e7eb'};color:#333">${shift}</span>`:''}`;
+    grid.appendChild(c);
+  }
+}
+renderCalendar();
+
+// ── Overtime chart ────────────────────────────────────────────────────────────
+function renderOvertimeChart(){
+  const data=[{dept:'営業部',h:22,max:45},{dept:'開発部',h:38,max:45},{dept:'総務部',h:12,max:45},{dept:'人事部',h:8,max:45}];
+  const container=document.getElementById('overtimeChart');
+  if(!container)return;
+  container.innerHTML=data.map(r=>{
+    const pct=Math.round(r.h/r.max*100);
+    const col=pct>80?'var(--red)':pct>60?'var(--amber)':'var(--green)';
+    return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:60px;font-size:12px;font-weight:700;text-align:right">${r.dept}</div>
+      <div style="flex:1;background:#f0f0f0;border-radius:99px;height:20px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:99px;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:700;transition:width .5s">${r.h}h</div>
+      </div>
+      <div style="width:60px;font-size:12px;color:var(--muted)">${pct}% / 45h</div>
+    </div>`;
+  }).join('');
+}
+renderOvertimeChart();
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+const alerts=[
+  {type:'amber',msg:'⚠️ 6月の残業申請が承認待ちです（2件）。処理をお願いします。'},
+  {type:'green',msg:'✅ 5月の月次集計が確定されました。給与ソフトへのエクスポートが可能です。'},
+];
+const alertArea=document.getElementById('alertArea');
+alerts.forEach(a=>{
+  const d=document.createElement('div');
+  d.className=`alert alert-${a.type}`;d.textContent=a.msg;alertArea.appendChild(d);
+});
+
+// ── Approve ───────────────────────────────────────────────────────────────────
+function approveRequest(btn){
+  const row=btn.closest('tr');
+  row.querySelector('td:nth-last-child(1)').innerHTML='<span class="badge badge-green">承認済</span>';
+  showToast('✅ 申請を承認しました','green');
+}
+
+// ── Confirm month ─────────────────────────────────────────────────────────────
+function confirmMonth(){
+  if(confirm('6月の月次集計を確定します。確定後は変更できません。よろしいですか？')){
+    showToast('✅ 月次集計を確定しました。給与ソフト出力が可能です。','blue');
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg,color='blue'){
+  const t=document.createElement('div');
+  const c={blue:['#E6F1FB','#185FA5'],green:['#E1F5EE','#0F6E56'],amber:['#FAEEDA','#854F0B'],red:['#FCEBEB','#A32D2D']}[color]||['#E6F1FB','#185FA5'];
+  t.style.cssText=`position:fixed;top:70px;right:20px;z-index:9999;background:${c[0]};color:${c[1]};border:1px solid ${c[1]}40;
+    padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;max-width:360px;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);animation:slideIn .3s ease`;
+  t.textContent=msg;
+  if(!document.getElementById('toastStyle')){
+    const s=document.createElement('style');s.id='toastStyle';
+    s.textContent='@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}';
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},3500);
+}
+</script>
+
+// ═══════════════════════════════════════════════════════════════
+// ★ SUPABASE 接続設定 ★
+//   Step 1: 下の2行を自分のSupabase情報に書き換えてください
+//   Step 2: GitHubにアップロードしてください
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://judzjxzmurlqchmuakod.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_VlmYhcRu5hwLDNOogDPpnw_AESVgp3q
+';
+
+// Supabase クライアント初期化
+let sb = null;
+async function initSupabase() {
+  if (!window.supabase) { console.warn('Supabase SDK not loaded'); return; }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('Supabase connected');
+  await checkLogin();
+}
+
+// ── ログイン状態チェック ──────────────────────────────────────────
+let currentUser = null;
+async function checkLogin() {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    // ユーザー情報をヘッダーに反映
+    const profile = await getProfile(currentUser.id);
+    if (profile) {
+      document.querySelector('.user-name').textContent =
+        `${profile.name} | ${profile.department || ''}`;
+      document.querySelector('.user-avatar').textContent =
+        profile.name ? profile.name[0] : '?';
+    }
+    hideLoginScreen();
+  } else {
+    showLoginScreen();
+  }
+}
+
+// ── プロフィール取得 ──────────────────────────────────────────────
+async function getProfile(userId) {
+  if (!sb) return null;
+  const { data } = await sb.from('employees').select('*').eq('auth_id', userId).single();
+  return data;
+}
+
+// ── ログイン画面 表示/非表示 ──────────────────────────────────────
+function showLoginScreen() {
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = 'flex';
+  document.querySelector('.app').style.display = 'none';
+}
+function hideLoginScreen() {
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = 'none';
+  document.querySelector('.app').style.display = 'flex';
+}
+
+// ── ログイン実行 ──────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'メールとパスワードを入力してください'; return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = 'ログインに失敗しました: ' + error.message; return; }
+  await checkLogin();
+  showToast('✅ ログインしました', 'green');
+}
+
+// ── ログアウト ────────────────────────────────────────────────────
+async function doLogout() {
+  if (!sb) return;
+  await sb.auth.signOut();
+  currentUser = null;
+  showLoginScreen();
+}
+
+// ── 打刻をDBに保存 ────────────────────────────────────────────────
+async function savePunchToDB(type) {
+  if (!sb || !currentUser) return;
+  const { error } = await sb.from('punch_records').insert({
+    user_id:    currentUser.id,
+    punch_type: type,
+    punched_at: new Date().toISOString(),
+    location:   null
+  });
+  if (error) console.error('打刻保存エラー:', error);
+}
+
+// ── 打刻履歴をDBから読み込み ──────────────────────────────────────
+async function loadTodayPunchFromDB() {
+  if (!sb || !currentUser) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await sb
+    .from('punch_records')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .gte('punched_at', today + 'T00:00:00')
+    .lte('punched_at', today + 'T23:59:59')
+    .order('punched_at', { ascending: true });
+  if (error) { console.error(error); return; }
+  const dotMap2 = { 出勤: 'blue', 退勤: 'red', 休憩開始: 'amber', 休憩終了: 'green' };
+  const ul = document.getElementById('punchLog');
+  if (data && data.length > 0) {
+    ul.innerHTML = data.map(r => {
+      const t = new Date(r.punched_at);
+      const ts = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+      return `<li><span class="tl-time">${ts}</span><span class="tl-dot tl-${dotMap2[r.punch_type]||'blue'}"></span><span>${r.punch_type}</span></li>`;
+    }).join('');
+  }
+}
+
+// ── 休暇申請をDBに保存 ────────────────────────────────────────────
+async function saveLeaveRequestToDB(formData) {
+  if (!sb || !currentUser) return false;
+  const { error } = await sb.from('leave_requests').insert({
+    user_id:     currentUser.id,
+    leave_type:  formData.leaveType,
+    start_date:  formData.startDate,
+    end_date:    formData.endDate,
+    reason:      formData.reason,
+    status:      'pending',
+    created_at:  new Date().toISOString()
+  });
+  if (error) { console.error('休暇申請保存エラー:', error); return false; }
+  return true;
+}
+
+// ── 残業申請をDBに保存 ────────────────────────────────────────────
+async function saveOvertimeRequestToDB(formData) {
+  if (!sb || !currentUser) return false;
+  const { error } = await sb.from('overtime_requests').insert({
+    user_id:        currentUser.id,
+    overtime_date:  formData.date,
+    hours:          parseFloat(formData.hours) || 0,
+    reason:         formData.reason,
+    status:         'pending',
+    created_at:     new Date().toISOString()
+  });
+  if (error) { console.error('残業申請保存エラー:', error); return false; }
+  return true;
+}
+
+// ── 既存の doPunch を上書き（DBへ保存する版）────────────────────
+const _origDoPunch = doPunch;
+window.doPunch = async function(type) {
+  _origDoPunch(type);          // 画面更新（元の処理）
+  await savePunchToDB(type);   // DB保存
+};
+
+// ── Enterキーでログイン ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginOverlay')?.style.display !== 'none') {
+    doLogin();
+  }
+});
+
+// ── 初期化実行 ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Supabase SDK が読み込まれるまで少し待つ
+  setTimeout(initSupabase, 300);
+  // 打刻ページが表示されたらDB読み込み
+  const origShowPage = window.showPage;
+  window.showPage = function(id) {
+    origShowPage(id);
+    if (id === 'punch') loadTodayPunchFromDB();
+  };
+});
+</script>
+</body>
+</html>
