@@ -194,6 +194,13 @@ select.form-control{cursor:pointer}
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('wcal_calendar')"><span class="nav-icon">📅</span>カレンダー編集</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('wcal_check')"><span class="nav-icon">⚠️</span>チェック結果</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
+  <div style="padding:8px 12px 12px" class="admin-menu" id="calLinkArea">
+    <a href="calendar_system.html" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">
+      <span style="font-size:16px">📅</span>
+      <span>変形労働カレンダー</span>
+      <span style="margin-left:auto;font-size:10px;opacity:.6">↗</span>
+    </a>
+  </div>
   <div style="padding:16px 16px 8px;margin-top:auto">
     <a href="kiosk.html" target="_blank" style="display:block;width:100%;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer;text-align:center;text-decoration:none">
       🖥️ 打刻専用画面を開く
@@ -1307,7 +1314,7 @@ function showToast(msg,color='blue'){
       el('hUserName').textContent = name + (dept?' | '+dept:'');
       el('hAvatar').textContent = name ? name[0] : '?';
       // 権限別UIを適用
-      setTimeout(applyRoleUI, 100);
+      setTimeout(function(){ if(typeof window.applyRoleUI=="function") window.applyRoleUI(); }, 300);
     });
   }
 
@@ -3469,7 +3476,7 @@ function showToast(msg,color='blue'){
   // ═══════════════════════════════════════════════════════
   // 権限別UI制御
   // ═══════════════════════════════════════════════════════
-  function applyRoleUI() {
+  window.applyRoleUI = function() {
     if (!myProfile) return;
     var role = myProfile.role || '一般';
     var isAdmin = role === '管理者' || role === '部門長';
@@ -3509,7 +3516,7 @@ function showToast(msg,color='blue'){
         repTarget.value = 'me';
       }
     }
-  }
+  };
 
   // loadProfile完了後にRole UIを適用
   var _origLoadProfile = window._loadProfileFn;
