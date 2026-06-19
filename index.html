@@ -191,9 +191,9 @@ select.form-control{cursor:pointer}
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('leave')"><span class="nav-icon">🌿</span>有休管理</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
   <div style="padding:16px 16px 8px;margin-top:auto">
-    <button onclick="showPage('kiosk')" style="width:100%;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer">
+    <a href="kiosk.html" target="_blank" style="display:block;width:100%;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer;text-align:center;text-decoration:none">
       🖥️ 打刻専用画面を開く
-    </button>
+    </a>
   </div>
 </nav>
 
@@ -871,73 +871,156 @@ select.form-control{cursor:pointer}
 </div>
 
 <div class="modal-overlay" id="empModal">
-  <div class="modal" style="width:580px;max-width:95vw">
+  <div class="modal" style="width:700px;max-width:95vw;max-height:90vh;overflow-y:auto">
     <div class="modal-title">
       <span id="empModalTitle">👤 従業員登録</span>
       <span class="modal-close" onclick="closeModal('empModal')">×</span>
     </div>
     <input type="hidden" id="empId">
     <input type="hidden" id="empAuthId">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group">
-        <div class="form-label">社員番号</div>
-        <input id="empNo" class="form-control" placeholder="E001">
+
+    <!-- タブ切り替え -->
+    <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:16px;flex-wrap:wrap">
+      <div class="tab active" onclick="switchEmpTab(this,0)" style="padding:8px 14px;font-size:12px">基本情報</div>
+      <div class="tab" onclick="switchEmpTab(this,1)" style="padding:8px 14px;font-size:12px">個人情報</div>
+      <div class="tab" onclick="switchEmpTab(this,2)" style="padding:8px 14px;font-size:12px">家族・扶養</div>
+      <div class="tab" onclick="switchEmpTab(this,3)" style="padding:8px 14px;font-size:12px">雇用・給与</div>
+      <div class="tab" onclick="switchEmpTab(this,4)" style="padding:8px 14px;font-size:12px">保険・税務</div>
+      <div class="tab" onclick="switchEmpTab(this,5)" style="padding:8px 14px;font-size:12px">振込先</div>
+      <div class="tab" onclick="switchEmpTab(this,6)" style="padding:8px 14px;font-size:12px">その他</div>
+    </div>
+
+    <div id="empTabPanels">
+      <!-- 基本情報 -->
+      <div class="emp-tab-panel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">社員番号</div><input id="e_employee_no" class="form-control" placeholder="E001"></div>
+          <div class="form-group"><div class="form-label">氏名（漢字）*</div><input id="e_name" class="form-control" placeholder="山田 一郎"></div>
+          <div class="form-group"><div class="form-label">氏名（カナ）</div><input id="e_name_kana" class="form-control" placeholder="ヤマダ イチロウ"></div>
+          <div class="form-group"><div class="form-label">メールアドレス</div><input id="e_email" class="form-control" type="email" placeholder="yamada@example.com"></div>
+          <div class="form-group"><div class="form-label">電話番号</div><input id="e_phone" class="form-control" placeholder="03-1234-5678"></div>
+          <div class="form-group"><div class="form-label">携帯番号</div><input id="e_mobile" class="form-control" placeholder="090-1234-5678"></div>
+          <div class="form-group"><div class="form-label">部署</div><input id="e_department" class="form-control" placeholder="営業部"></div>
+          <div class="form-group"><div class="form-label">役職</div><input id="e_position_title" class="form-control" placeholder="課長"></div>
+          <div class="form-group"><div class="form-label">権限</div>
+            <select id="e_role" class="form-control"><option value="一般">一般従業員</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">就業ルール</div><select id="e_work_rule_id" class="form-control"><option value="">選択してください</option></select></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">ステータス</div>
+            <select id="e_is_active" class="form-control"><option value="true">有効</option><option value="false">無効（退職等）</option></select>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">氏名（漢字）*</div>
-        <input id="empName" class="form-control" placeholder="山田 一郎">
+
+      <!-- 個人情報 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">生年月日</div><input id="e_birth_date" type="date" class="form-control"></div>
+          <div class="form-group"><div class="form-label">性別</div>
+            <select id="e_gender" class="form-control"><option value="">未選択</option><option>男性</option><option>女性</option><option>その他</option><option>未回答</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">血液型</div>
+            <select id="e_blood_type" class="form-control"><option value="">未選択</option><option>A</option><option>B</option><option>O</option><option>AB</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">国籍</div><input id="e_nationality" class="form-control" value="日本"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">郵便番号</div><input id="e_postal_code" class="form-control" placeholder="123-4567" style="width:140px"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">住所1（都道府県・市区町村）</div><input id="e_address1" class="form-control" placeholder="東京都千代田区丸の内1-1-1"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">住所2（建物名・号室）</div><input id="e_address2" class="form-control" placeholder="〇〇ビル3F"></div>
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">氏名（カナ）</div>
-        <input id="empKana" class="form-control" placeholder="ヤマダ イチロウ">
+
+      <!-- 家族・扶養 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">婚姻状況</div>
+            <select id="e_marital_status" class="form-control"><option value="">未選択</option><option>未婚</option><option>既婚</option><option>離別</option><option>死別</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">配偶者の扶養</div>
+            <select id="e_spouse_dependent" class="form-control"><option value="false">なし</option><option value="true">あり</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">扶養人数</div><input id="e_dependents_count" type="number" class="form-control" min="0" max="20" value="0"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">家族構成メモ</div>
+            <textarea id="e_family_info" class="form-control" rows="3" placeholder="配偶者：山田花子（1990年生）&#10;長男：山田太一（2020年生）"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">緊急連絡先</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group"><div class="form-label">氏名</div><input id="e_emergency_name" class="form-control" placeholder="山田 花子"></div>
+            <div class="form-group"><div class="form-label">続柄</div><input id="e_emergency_relation" class="form-control" placeholder="配偶者"></div>
+            <div class="form-group" style="grid-column:1/-1"><div class="form-label">電話番号</div><input id="e_emergency_phone" class="form-control" placeholder="090-9876-5432"></div>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">メールアドレス *</div>
-        <input id="empEmail" class="form-control" type="email" placeholder="yamada@example.com">
-        <div style="font-size:11px;color:#999;margin-top:3px">※新規登録時のみ入力（Supabaseで招待後に紐付け）</div>
+
+      <!-- 雇用・給与 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">雇用形態</div>
+            <select id="e_employment_type" class="form-control"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>派遣社員</option><option>嘱託</option><option>役員</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">給与形態</div>
+            <select id="e_salary_type" class="form-control"><option>月給</option><option>日給</option><option>時給</option><option>年俸</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">入社日</div><input id="e_joined_at" type="date" class="form-control"></div>
+          <div class="form-group"><div class="form-label">退職日</div><input id="e_retirement_date" type="date" class="form-control"></div>
+          <div class="form-group"><div class="form-label">契約終了日</div><input id="e_contract_end" type="date" class="form-control"></div>
+          <div class="form-group"><div class="form-label">試用期間終了日</div><input id="e_probation_end" type="date" class="form-control"></div>
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">部署</div>
-        <input id="empDept" class="form-control" placeholder="営業部">
+
+      <!-- 保険・税務 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">社会保険番号</div><input id="e_social_insurance_no" class="form-control"></div>
+          <div class="form-group"><div class="form-label">基礎年金番号</div><input id="e_pension_no" class="form-control"></div>
+          <div class="form-group"><div class="form-label">雇用保険番号</div><input id="e_employment_insurance" class="form-control"></div>
+          <div class="form-group"><div class="form-label">マイナンバー</div><input id="e_mynumber" class="form-control" type="password" placeholder="セキュリティのため非表示"></div>
+          <div class="form-group"><div class="form-label">税区分</div>
+            <select id="e_tax_status" class="form-control"><option>甲</option><option>乙</option></select>
+          </div>
+        </div>
+        <div style="background:var(--lamber);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--amber);margin-top:8px">
+          ⚠️ マイナンバー等の個人番号は厳重に管理してください。本番運用時は暗号化を推奨します。
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">雇用形態</div>
-        <select id="empEmpType" class="form-control">
-          <option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>派遣社員</option>
-        </select>
+
+      <!-- 振込先 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">銀行名</div><input id="e_bank_name" class="form-control" placeholder="〇〇銀行"></div>
+          <div class="form-group"><div class="form-label">支店名</div><input id="e_bank_branch" class="form-control" placeholder="△△支店"></div>
+          <div class="form-group"><div class="form-label">口座種別</div>
+            <select id="e_account_type" class="form-control"><option>普通</option><option>当座</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">口座番号</div><input id="e_account_number" class="form-control" placeholder="1234567"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">口座名義（カナ）</div><input id="e_account_holder" class="form-control" placeholder="ヤマダ イチロウ"></div>
+        </div>
       </div>
-      <div class="form-group">
-        <div class="form-label">入社日</div>
-        <input id="empJoinDate" class="form-control" type="date">
-      </div>
-      <div class="form-group">
-        <div class="form-label">権限</div>
-        <select id="empRole" class="form-control">
-          <option value="一般">一般従業員</option>
-          <option value="部門長">部門長</option>
-          <option value="管理者">管理者</option>
-        </select>
-      </div>
-      <div class="form-group" style="grid-column:1/-1">
-        <div class="form-label">就業ルール</div>
-        <select id="empWorkRule" class="form-control">
-          <option value="">選択してください</option>
-        </select>
-      </div>
-      <div class="form-group" style="grid-column:1/-1" id="empStatusRow" style="display:none">
-        <div class="form-label">ステータス</div>
-        <select id="empIsActive" class="form-control">
-          <option value="true">有効</option>
-          <option value="false">無効（退職等）</option>
-        </select>
+
+      <!-- その他 -->
+      <div class="emp-tab-panel" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><div class="form-label">最終学歴</div>
+            <select id="e_education" class="form-control"><option value="">未選択</option><option>中学校</option><option>高等学校</option><option>専門学校</option><option>短期大学</option><option>大学</option><option>大学院</option></select>
+          </div>
+          <div class="form-group"><div class="form-label">学校名</div><input id="e_school_name" class="form-control" placeholder="〇〇大学"></div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">資格・免許</div>
+            <textarea id="e_qualifications" class="form-control" rows="2" placeholder="普通自動車運転免許、日商簿記2級 等"></textarea>
+          </div>
+          <div class="form-group" style="grid-column:1/-1"><div class="form-label">備考</div>
+            <textarea id="e_notes" class="form-control" rows="3" placeholder="自由メモ"></textarea>
+          </div>
+        </div>
       </div>
     </div>
-    <div style="background:var(--lblue);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--blue);margin:8px 0">
-      💡 新規登録後、Supabase の Authentication → Users から招待メールを送ってください
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-      <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="saveEmployee()">保存する</button>
+
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <button id="empDeleteBtn" class="btn btn-outline" style="color:var(--red);display:none" onclick="deleteEmployee()">🗑️ 削除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveEmployee()">保存する</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2402,70 +2485,7 @@ function showToast(msg,color='blue'){
     var tot = document.getElementById('tcMonthTotal');
     if (tot) win.document.write('<p style="margin-top:12px;font-size:12px">'+tot.textContent+'</p>');
     win.document.write('<p style="margin-top:20px;font-size:11px;color:#999">本人確認署名：___________________　上長確認署名：___________________</p>');
-    win.document.write('
-<!-- ─── 打刻専用画面（キオスクモード） ─── -->
-<div id="kioskScreen" style="display:none;position:fixed;inset:0;background:#1a3a5c;z-index:8888;flex-direction:column;align-items:center;justify-content:center">
-  <!-- ヘッダー -->
-  <div style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,.3);padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
-    <div style="color:#fff;font-size:18px;font-weight:700">⏰ 打刻専用端末</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div id="kioskClock" style="color:rgba(255,255,255,.8);font-size:22px;font-variant-numeric:tabular-nums;font-weight:700"></div>
-      <button onclick="closeKiosk()" style="padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:12px;cursor:pointer">閉じる</button>
-    </div>
-  </div>
-
-  <!-- 職員選択 or 打刻画面 -->
-  <div id="kioskSelectView" style="width:100%;max-width:900px;padding:80px 20px 20px">
-    <div style="text-align:center;color:#fff;margin-bottom:24px">
-      <div style="font-size:24px;font-weight:700;margin-bottom:6px">職員を選んでください</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.6)">名前をタップすると打刻画面に移ります</div>
-    </div>
-    <!-- 検索 -->
-    <input id="kioskSearch" type="text" placeholder="名前で検索..." oninput="filterKioskList()"
-      style="width:100%;padding:14px 18px;border-radius:12px;border:none;font-size:16px;margin-bottom:16px;box-sizing:border-box;background:rgba(255,255,255,.15);color:#fff;outline:none"
-      placeholder="名前で検索...">
-    <!-- 職員一覧グリッド -->
-    <div id="kioskEmpGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;max-height:60vh;overflow-y:auto"></div>
-  </div>
-
-  <!-- 打刻操作画面 -->
-  <div id="kioskPunchView" style="display:none;width:100%;max-width:600px;padding:80px 20px 20px;text-align:center">
-    <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:32px;margin-bottom:20px">
-      <div style="font-size:60px;font-weight:700;color:#fff;line-height:1;margin-bottom:8px" id="kioskUserAvatar">?</div>
-      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px" id="kioskUserName">---</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.6)" id="kioskUserDept">---</div>
-      <div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,.5)" id="kioskLastPunch">最終打刻: 読み込み中...</div>
-    </div>
-    <!-- 打刻ボタン -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <button onclick="kioskDoPunch('出勤')" class="kiosk-btn" style="background:#22c55e;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
-        🟢<br>出 勤
-      </button>
-      <button onclick="kioskDoPunch('退勤')" class="kiosk-btn" style="background:#ef4444;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
-        🔴<br>退 勤
-      </button>
-      <button onclick="kioskDoPunch('休憩開始')" class="kiosk-btn" style="background:#f59e0b;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
-        🟡 休憩開始
-      </button>
-      <button onclick="kioskDoPunch('休憩終了')" class="kiosk-btn" style="background:#8b5cf6;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
-        🟣 休憩終了
-      </button>
-    </div>
-    <!-- 戻るボタン -->
-    <button onclick="kioskBackToList()" style="padding:12px 32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:10px;color:#fff;font-size:14px;cursor:pointer">
-      ← 職員一覧に戻る
-    </button>
-  </div>
-
-  <!-- 打刻完了メッセージ -->
-  <div id="kioskSuccess" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;flex-direction:column;text-align:center">
-    <div style="font-size:80px;margin-bottom:16px" id="kioskSuccessIcon">✅</div>
-    <div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:8px" id="kioskSuccessMsg">打刻しました</div>
-    <div style="font-size:18px;color:rgba(255,255,255,.7)" id="kioskSuccessTime"></div>
-  </div>
-</div>
-
-</body></html>');
+    win.document.write('</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 500);
   };
@@ -2650,142 +2670,6 @@ function showToast(msg,color='blue'){
   // ═══════════════════════════════════════════════════════
   // 打刻専用画面（キオスク）
   // ═══════════════════════════════════════════════════════
-  var _kioskEmps = [];
-  var _kioskUser = null;
-  var _kioskClockTimer = null;
-
-  window.showPage = (function(orig) {
-    return function(id) {
-      if (orig) orig(id);
-      if (id === 'kiosk') openKiosk();
-    };
-  })(window.showPage);
-
-  window.openKiosk = function() {
-    var screen = document.getElementById('kioskScreen');
-    if (screen) {
-      screen.style.display = 'flex';
-      startKioskClock();
-      loadKioskEmps();
-    }
-  };
-
-  window.closeKiosk = function() {
-    var screen = document.getElementById('kioskScreen');
-    if (screen) screen.style.display = 'none';
-    if (_kioskClockTimer) clearInterval(_kioskClockTimer);
-  };
-
-  function startKioskClock() {
-    function tick() {
-      var el = document.getElementById('kioskClock');
-      if (!el) return;
-      var n = new Date();
-      var p = function(v){ return String(v).padStart(2,'0'); };
-      var days = ['日','月','火','水','木','金','土'];
-      el.textContent = n.getFullYear()+'年'+( n.getMonth()+1)+'月'+n.getDate()+'日（'+days[n.getDay()]+'） '+p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds());
-    }
-    tick();
-    _kioskClockTimer = setInterval(tick, 1000);
-  }
-
-  function loadKioskEmps() {
-    if (!sb) return;
-    sb.from('employees').select('id,auth_id,name,department,employee_no').eq('is_active',true)
-      .order('name',{ascending:true})
-      .then(function(r) {
-        _kioskEmps = r.data || [];
-        renderKioskGrid(_kioskEmps);
-      });
-  }
-
-  function renderKioskGrid(emps) {
-    var grid = document.getElementById('kioskEmpGrid');
-    if (!grid) return;
-    grid.innerHTML = emps.map(function(e) {
-      var initial = e.name ? e.name[0] : '?';
-      var colors  = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556'];
-      var color   = colors[e.name.charCodeAt(0) % colors.length];
-      return '<div onclick="_kioskSelectEmp(this)" data-id="'+e.id+'" data-auth="'+e.auth_id+'" data-name="'+e.name+'" data-dept="'+(e.department||'')+'"'+
-        ' style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .15s"'+
-        ' onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.12)'"'+
-        '>'+
-        '<div style="width:56px;height:56px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:24px;font-weight:700;color:#fff">'+initial+'</div>'+
-        '<div style="color:#fff;font-size:15px;font-weight:700;margin-bottom:4px">'+e.name+'</div>'+
-        '<div style="color:rgba(255,255,255,.6);font-size:12px">'+(e.department||'')+'</div>'+
-        '</div>';
-    }).join('');
-  }
-
-  window.filterKioskList = function() {
-    var q = (document.getElementById('kioskSearch').value||'').toLowerCase();
-    var filtered = _kioskEmps.filter(function(e){ return e.name.toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q); });
-    renderKioskGrid(filtered);
-  };
-
-  window._kioskSelectEmp = function(btn) {
-    _kioskUser = {
-      id:   btn.getAttribute('data-id'),
-      auth: btn.getAttribute('data-auth'),
-      name: btn.getAttribute('data-name'),
-      dept: btn.getAttribute('data-dept')
-    };
-    // 画面切替
-    document.getElementById('kioskSelectView').style.display = 'none';
-    document.getElementById('kioskPunchView').style.display  = 'block';
-    // ユーザー情報表示
-    var n = _kioskUser.name;
-    document.getElementById('kioskUserAvatar').textContent = n ? n[0] : '?';
-    document.getElementById('kioskUserName').textContent   = n;
-    document.getElementById('kioskUserDept').textContent   = _kioskUser.dept || '';
-    // 最終打刻取得
-    var today = jstToday();
-    sb.from('punch_records').select('punch_type,punched_at').eq('user_id',_kioskUser.auth)
-      .gte('punched_at', today+'T00:00:00+09:00')
-      .order('punched_at',{ascending:false}).limit(1)
-      .then(function(r) {
-        var el = document.getElementById('kioskLastPunch');
-        if (r.data && r.data.length > 0) {
-          el.textContent = '最終打刻: ' + r.data[0].punch_type + ' ' + jstTime(r.data[0].punched_at);
-        } else {
-          el.textContent = '本日の打刻なし';
-        }
-      });
-  };
-
-  window.kioskBackToList = function() {
-    _kioskUser = null;
-    document.getElementById('kioskSelectView').style.display = 'block';
-    document.getElementById('kioskPunchView').style.display  = 'none';
-    document.getElementById('kioskSearch').value = '';
-    renderKioskGrid(_kioskEmps);
-  };
-
-  window.kioskDoPunch = function(type) {
-    if (!_kioskUser || !sb) return;
-    sb.from('punch_records').insert({
-      user_id:    _kioskUser.auth,
-      punch_type: type,
-      punched_at: new Date().toISOString()
-    }).then(function(r) {
-      if (r.error) {
-        alert('打刻に失敗しました: ' + r.error.message);
-        return;
-      }
-      // 完了メッセージ表示
-      var icons = {'出勤':'🟢','退勤':'🔴','休憩開始':'🟡','休憩終了':'🟣'};
-      var suc = document.getElementById('kioskSuccess');
-      document.getElementById('kioskSuccessIcon').textContent = icons[type]||'✅';
-      document.getElementById('kioskSuccessMsg').textContent  = _kioskUser.name + ' さんが' + type + 'しました';
-      document.getElementById('kioskSuccessTime').textContent = jstTime(new Date().toISOString());
-      suc.style.display = 'flex';
-      // 3秒後に職員一覧に戻る
-      setTimeout(function() {
-        suc.style.display = 'none';
-        kioskBackToList();
-      }, 3000);
-    });
-  };
 
 
   // 起動
@@ -2855,67 +2739,6 @@ function showToast(msg,color='blue'){
 </script>
 
 
-<!-- ─── 打刻専用画面（キオスクモード） ─── -->
-<div id="kioskScreen" style="display:none;position:fixed;inset:0;background:#1a3a5c;z-index:8888;flex-direction:column;align-items:center;justify-content:center">
-  <!-- ヘッダー -->
-  <div style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,.3);padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
-    <div style="color:#fff;font-size:18px;font-weight:700">⏰ 打刻専用端末</div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div id="kioskClock" style="color:rgba(255,255,255,.8);font-size:22px;font-variant-numeric:tabular-nums;font-weight:700"></div>
-      <button onclick="closeKiosk()" style="padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:12px;cursor:pointer">閉じる</button>
-    </div>
-  </div>
-
-  <!-- 職員選択 or 打刻画面 -->
-  <div id="kioskSelectView" style="width:100%;max-width:900px;padding:80px 20px 20px">
-    <div style="text-align:center;color:#fff;margin-bottom:24px">
-      <div style="font-size:24px;font-weight:700;margin-bottom:6px">職員を選んでください</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.6)">名前をタップすると打刻画面に移ります</div>
-    </div>
-    <!-- 検索 -->
-    <input id="kioskSearch" type="text" placeholder="名前で検索..." oninput="filterKioskList()"
-      style="width:100%;padding:14px 18px;border-radius:12px;border:none;font-size:16px;margin-bottom:16px;box-sizing:border-box;background:rgba(255,255,255,.15);color:#fff;outline:none"
-      placeholder="名前で検索...">
-    <!-- 職員一覧グリッド -->
-    <div id="kioskEmpGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;max-height:60vh;overflow-y:auto"></div>
-  </div>
-
-  <!-- 打刻操作画面 -->
-  <div id="kioskPunchView" style="display:none;width:100%;max-width:600px;padding:80px 20px 20px;text-align:center">
-    <div style="background:rgba(255,255,255,.1);border-radius:20px;padding:32px;margin-bottom:20px">
-      <div style="font-size:60px;font-weight:700;color:#fff;line-height:1;margin-bottom:8px" id="kioskUserAvatar">?</div>
-      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px" id="kioskUserName">---</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.6)" id="kioskUserDept">---</div>
-      <div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,.5)" id="kioskLastPunch">最終打刻: 読み込み中...</div>
-    </div>
-    <!-- 打刻ボタン -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <button onclick="kioskDoPunch('出勤')" class="kiosk-btn" style="background:#22c55e;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
-        🟢<br>出 勤
-      </button>
-      <button onclick="kioskDoPunch('退勤')" class="kiosk-btn" style="background:#ef4444;color:#fff;padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;cursor:pointer">
-        🔴<br>退 勤
-      </button>
-      <button onclick="kioskDoPunch('休憩開始')" class="kiosk-btn" style="background:#f59e0b;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
-        🟡 休憩開始
-      </button>
-      <button onclick="kioskDoPunch('休憩終了')" class="kiosk-btn" style="background:#8b5cf6;color:#fff;padding:20px 16px;border:none;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer">
-        🟣 休憩終了
-      </button>
-    </div>
-    <!-- 戻るボタン -->
-    <button onclick="kioskBackToList()" style="padding:12px 32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:10px;color:#fff;font-size:14px;cursor:pointer">
-      ← 職員一覧に戻る
-    </button>
-  </div>
-
-  <!-- 打刻完了メッセージ -->
-  <div id="kioskSuccess" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.8);align-items:center;justify-content:center;flex-direction:column;text-align:center">
-    <div style="font-size:80px;margin-bottom:16px" id="kioskSuccessIcon">✅</div>
-    <div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:8px" id="kioskSuccessMsg">打刻しました</div>
-    <div style="font-size:18px;color:rgba(255,255,255,.7)" id="kioskSuccessTime"></div>
-  </div>
-</div>
 
 </body>
 </html>
