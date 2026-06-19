@@ -2493,319 +2493,10 @@ function showToast(msg,color='blue'){
     var tot = document.getElementById('tcMonthTotal');
     if (tot) win.document.write('<p style="margin-top:12px;font-size:12px">'+tot.textContent+'</p>');
     win.document.write('<p style="margin-top:20px;font-size:11px;color:#999">本人確認署名：___________________　上長確認署名：___________________</p>');
-    win.document.write('
-<!-- ─── 勤務パターン管理 ─── -->
-<div class="page" id="page-wcal_patterns">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:0">📋 勤務パターン一覧</div>
-      <button class="btn btn-primary btn-sm" onclick="openPatternModal()">+ 新規パターン</button>
-    </div>
-    <table>
-      <thead><tr><th>パターンID</th><th>パターン名</th><th>雇用区分</th><th>年度</th><th>対象期間</th><th>適用人数</th><th>NG</th><th>操作</th></tr></thead>
-      <tbody id="patternListBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ─── カレンダー編集 ─── -->
-<div class="page" id="page-wcal_calendar">
-  <div class="card">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-      <div class="form-group" style="margin-bottom:0">
-        <div class="form-label">勤務パターン</div>
-        <select id="calPatternSel" class="form-control" style="width:220px" onchange="loadCalendar()">
-          <option value="">選択してください</option>
-        </select>
-      </div>
-      <div class="form-group" style="margin-bottom:0">
-        <div class="form-label">表示月</div>
-        <div style="display:flex;gap:4px;align-items:center">
-          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(-1)">←</button>
-          <span id="calEditMonthLabel" style="font-size:14px;font-weight:700;min-width:80px;text-align:center">2026年4月</span>
-          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(1)">→</button>
-        </div>
-      </div>
-      <button class="btn btn-success btn-sm" onclick="saveCalendar()" style="margin-left:auto">💾 保存</button>
-      <button class="btn btn-outline btn-sm" onclick="exportCalendarCSV()">📊 CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="printCalendar()">🖨️ 印刷</button>
-    </div>
-
-    <!-- 集計サマリー -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="calSummary">
-      <div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">出勤日: <strong id="sumWorkDays">0</strong>日</div>
-      <div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong id="sumHoliDays">0</strong>日</div>
-      <div style="background:var(--lpurple);border-radius:8px;padding:8px 14px;font-size:12px">法定休日: <strong id="sumLegalDays">0</strong>日</div>
-      <div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">所定時間: <strong id="sumWorkHours">0.00</strong>h</div>
-      <div id="calNgBadge" style="display:none;background:var(--lred);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red)">⚠️ NG: <strong id="calNgCount">0</strong>件</div>
-    </div>
-
-    <!-- カレンダーテーブル -->
-    <div style="overflow-x:auto">
-      <table id="calEditTable">
-        <thead>
-          <tr>
-            <th style="width:40px">日</th>
-            <th style="width:28px">曜</th>
-            <th style="width:100px">勤務区分</th>
-            <th style="width:70px">所定時間</th>
-            <th style="width:70px">始業</th>
-            <th style="width:70px">終業</th>
-            <th style="width:60px">休憩(分)</th>
-            <th>備考</th>
-            <th style="width:50px">判定</th>
-          </tr>
-        </thead>
-        <tbody id="calEditBody">
-          <tr><td colspan="9" style="text-align:center;padding:20px;color:#999">パターンを選択してください</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ─── チェック結果 ─── -->
-<div class="page" id="page-wcal_check">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <div class="card-title" style="margin-bottom:0">⚠️ チェック結果（NG一覧）</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="checkPatternSel" class="form-control" style="width:200px;font-size:12px" onchange="runAllChecks()">
-          <option value="">全パターン</option>
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="runAllChecks()">🔍 再チェック</button>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px" id="checkSummaryCards"></div>
-    <table>
-      <thead><tr><th>パターン</th><th>対象日/週</th><th>チェック種別</th><th>内容</th><th>判定</th></tr></thead>
-      <tbody id="checkResultBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:#999">チェックを実行してください</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- 勤務パターン登録/編集モーダル -->
-<div class="modal-overlay" id="patternModal">
-  <div class="modal" style="width:560px">
-    <div class="modal-title">
-      <span id="patternModalTitle">📋 勤務パターン登録</span>
-      <span class="modal-close" onclick="closeModal('patternModal')">×</span>
-    </div>
-    <input type="hidden" id="pm_id">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="form-group"><div class="form-label">パターンID *</div><input id="pm_code" class="form-control" placeholder="A"></div>
-      <div class="form-group"><div class="form-label">パターン名 *</div><input id="pm_name" class="form-control" placeholder="Aパターン（正職員）"></div>
-      <div class="form-group"><div class="form-label">雇用区分</div>
-        <select id="pm_employment_type" class="form-control">
-          <option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option>
-        </select>
-      </div>
-      <div class="form-group"><div class="form-label">年度</div><input id="pm_fiscal_year" type="number" class="form-control" value="2026"></div>
-      <div class="form-group"><div class="form-label">対象開始日</div><input id="pm_start_date" type="date" class="form-control"></div>
-      <div class="form-group"><div class="form-label">対象終了日</div><input id="pm_end_date" type="date" class="form-control"></div>
-      <div class="form-group"><div class="form-label">週上限時間(h)</div><input id="pm_weekly_limit" type="number" class="form-control" value="40" step="0.5"></div>
-      <div class="form-group"><div class="form-label">年間労働日数上限</div><input id="pm_annual_days_limit" type="number" class="form-control" value="280"></div>
-      <div class="form-group"><div class="form-label">年間休日最低日数</div><input id="pm_annual_holiday_min" type="number" class="form-control" value="118"></div>
-      <div class="form-group" style="grid-column:1/-1"><div class="form-label">備考</div><textarea id="pm_note" class="form-control" rows="2"></textarea></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
-      <button id="pmDeleteBtn" class="btn btn-outline" style="color:var(--red);display:none" onclick="deletePattern()">🗑️ 削除</button>
-      <div style="display:flex;gap:8px;margin-left:auto">
-        <button class="btn btn-outline btn-sm" onclick="duplicatePattern()" id="pmDuplicateBtn" style="display:none">📋 複製</button>
-        <button class="btn btn-outline" onclick="closeModal('patternModal')">キャンセル</button>
-        <button class="btn btn-primary" onclick="savePattern()">保存する</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-</body></html>');
+    win.document.write('</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 500);
   };
-
-  // ── 残業分析レポート ─────────────────────────────────────
-  function loadOvertimeReport() {
-    var now = new Date();
-    var rows = [];
-    var promises = [];
-    for (var i = 5; i >= 0; i--) {
-      (function(offset) {
-        var d = new Date(now.getFullYear(), now.getMonth()-offset, 1);
-        var y = d.getFullYear(), m = d.getMonth()+1;
-        var ms = y+'-'+p2(m)+'-01', me2 = y+'-'+p2(m)+'-'+p2(new Date(y,m,0).getDate());
-        promises.push(
-          sb.from('punch_records').select('*').eq('user_id',me.id)
-            .gte('punched_at',ms+'T00:00:00+09:00').lte('punched_at',me2+'T23:59:59+09:00')
-            .order('punched_at',{ascending:true})
-            .then(function(r){ return {y:y,m:m,punches:r.data||[]}; })
-        );
-      })(i);
-    }
-    Promise.all(promises).then(function(results) {
-      var tbody = document.getElementById('otReportBody'); if(!tbody) return;
-      var chartHTML = '';
-      tbody.innerHTML = results.map(function(res) {
-        var totalWork=0, totalOt=0, totalLate=0;
-        var dateMap = {};
-        res.punches.forEach(function(p) {
-          var d = jstDate(p.punched_at);
-          if (!dateMap[d]) dateMap[d] = [];
-          dateMap[d].push(p);
-        });
-        Object.keys(dateMap).forEach(function(d) {
-          var dr   = dateMap[d];
-          var inR  = dr.find(function(x){ return x.punch_type==='出勤'; });
-          var outR = dr.find(function(x){ return x.punch_type==='退勤'; });
-          var rb1  = dr.find(function(x){ return x.punch_type==='休憩開始'; });
-          var rb2  = dr.find(function(x){ return x.punch_type==='休憩終了'; });
-          if (inR&&outR) {
-            var rm = (rb1&&rb2)?Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000):0;
-            var wm = Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm;
-            totalWork += wm;
-            totalOt   += Math.max(0,wm-480);
-          }
-        });
-        var otH  = (totalOt/60).toFixed(1);
-        var pct  = Math.round(totalOt/60/45*100);
-        var color = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
-        var isThisMonth = res.y===now.getFullYear()&&res.m===(now.getMonth()+1);
-        return '<tr'+(isThisMonth?' style="background:var(--lblue)"':'')+'>'+
-          '<td>'+(isThisMonth?'<strong>':'')+res.y+'年'+res.m+'月'+(isThisMonth?'（今月）</strong>':'')+'</td>'+
-          '<td>—</td><td>'+otH+'h</td><td>—</td><td>—</td>'+
-          '<td><strong style="color:'+color+'">'+otH+'h</strong></td>'+
-          '<td>45h</td>'+
-          '<td><div class="progress" style="width:80px"><div class="progress-bar" style="width:'+Math.min(pct,100)+'%;background:'+color+'"></div></div></td>'+
-        '</tr>';
-      }).join('');
-      // バーチャート
-      var chart = document.getElementById('otChartArea');
-      if (chart) {
-        chart.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;height:120px;padding:8px 0">' +
-          results.map(function(res) {
-            var totalOt2=0;
-            var dm={};
-            res.punches.forEach(function(p){ var d=jstDate(p.punched_at); if(!dm[d])dm[d]=[]; dm[d].push(p); });
-            Object.keys(dm).forEach(function(d){
-              var dr=dm[d], inR=dr.find(function(x){return x.punch_type==='出勤';}), outR=dr.find(function(x){return x.punch_type==='退勤';});
-              if(inR&&outR){ var rm=0; totalOt2+=Math.max(0,Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm-480); }
-            });
-            var h = Math.min((totalOt2/60)/45*100, 100);
-            var color2 = h>=90?'var(--red)':h>=70?'var(--amber)':'var(--blue)';
-            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'+
-              '<div style="font-size:10px;color:var(--muted)">'+(totalOt2/60).toFixed(0)+'h</div>'+
-              '<div style="width:100%;background:'+color2+';height:'+h+'%;border-radius:4px 4px 0 0;min-height:3px"></div>'+
-              '<div style="font-size:10px;color:var(--muted)">'+res.m+'月</div>'+
-            '</div>';
-          }).join('') + '</div>';
-      }
-    });
-  }
-
-  // ── 休暇レポート ─────────────────────────────────────────
-  function loadLeaveReport() {
-    Promise.all([
-      sb.from('employees').select('auth_id,name,department').eq('is_active',true),
-      sb.from('leave_balances').select('*').eq('year',new Date().getFullYear()),
-      sb.from('leave_requests').select('user_id,start_date,end_date,unit,hour_count').eq('status','approved').eq('leave_type','年次有給休暇').gte('start_date',new Date().getFullYear()+'-01-01')
-    ]).then(function(rs) {
-      var emps = rs[0].data||[];
-      var bals = rs[1].data||[];
-      var reqs = rs[2].data||[];
-      var balMap = {}; bals.forEach(function(b){ balMap[b.user_id]=b; });
-      // 使用日数集計
-      var usedMap = {};
-      reqs.forEach(function(r) {
-        if(!usedMap[r.user_id]) usedMap[r.user_id]=0;
-        var d = r.unit==='half_am'||r.unit==='half_pm'?0.5:r.unit==='hour'?(r.hour_count||0)/8:Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
-        usedMap[r.user_id]+=d;
-      });
-      // 部署別集計
-      var deptMap = {};
-      emps.forEach(function(e) {
-        var dept = e.department||'未設定';
-        if (!deptMap[dept]) deptMap[dept]={total:0,achieved:0,totalUsed:0};
-        deptMap[dept].total++;
-        var used = usedMap[e.auth_id]||0;
-        deptMap[dept].totalUsed += used;
-        if (used>=5) deptMap[dept].achieved++;
-      });
-      var tbody = document.getElementById('leaveReportBody'); if(!tbody) return;
-      var depts = Object.keys(deptMap);
-      tbody.innerHTML = depts.map(function(dept) {
-        var d = deptMap[dept];
-        var rate = Math.round(d.achieved/d.total*100);
-        var avg  = (d.totalUsed/d.total).toFixed(1);
-        var bc   = rate>=80?'badge-green':rate>=50?'badge-amber':'badge-red';
-        return '<tr>'+
-          '<td>'+dept+'</td><td>'+d.total+'名</td><td>'+d.achieved+'名</td>'+
-          '<td>'+(d.total-d.achieved)+'名</td><td>'+avg+'日</td>'+
-          '<td><span class="badge '+bc+'">'+rate+'%</span></td>'+
-        '</tr>';
-      }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">データがありません</td></tr>';
-    });
-  }
-
-  // showPage拡張（reportsページ）- loadPageに統合済み
-
-
-
-  // ═══════════════════════════════════════════════════════
-  // 権限別UI制御
-  // ═══════════════════════════════════════════════════════
-  function applyRoleUI() {
-    if (!myProfile) return;
-    var role = myProfile.role || '一般';
-    var isAdmin = role === '管理者' || role === '部門長';
-
-    // サイドバー切り替え
-    document.querySelectorAll('.staff-menu').forEach(function(el) {
-      el.style.display = isAdmin ? 'none' : '';
-    });
-    document.querySelectorAll('.admin-menu').forEach(function(el) {
-      el.style.display = isAdmin ? 'flex' : 'none';
-    });
-    // nav-section は flex ではなく block
-    document.querySelectorAll('.nav-section.admin-menu, .nav-section.staff-menu').forEach(function(el) {
-      el.style.display = isAdmin ? (el.classList.contains('admin-menu') ? 'block' : 'none') :
-                                   (el.classList.contains('staff-menu') ? 'block' : 'none');
-    });
-
-    // ページタイトルの表示
-    var titleEl = document.getElementById('pageTitle');
-    if (titleEl) {
-      if (isAdmin) titleEl.textContent = '管理者ダッシュボード';
-    }
-
-    // 申請承認タブ: 管理者のみ承認待ち一覧を表示
-    var approveTab = document.querySelector('.tab[onclick*="tab-approve"]');
-    if (approveTab) approveTab.style.display = isAdmin ? '' : 'none';
-
-    // 休暇残高管理タブ: 管理者のみ
-    var balTab = document.querySelector('.tab[onclick*="tab-leave-balance"]');
-    if (balTab) balTab.style.display = isAdmin ? '' : 'none';
-
-    // 集計レポートの全員表示: 管理者のみ
-    var repTarget = document.getElementById('reportTarget');
-    if (repTarget) {
-      if (!isAdmin) {
-        repTarget.style.display = 'none';
-        repTarget.value = 'me';
-      }
-    }
-  }
-
-  // loadProfile完了後にRole UIを適用
-  var _origLoadProfile = window._loadProfileFn;
-  // loadProfile内でapplyRoleUIを呼ぶ
-  // （_loadProfileを上書き）
-  var __origLP = null;
-
-  // ═══════════════════════════════════════════════════════
-  // 打刻専用画面（キオスク）
-  // ═══════════════════════════════════════════════════════
-
-
   // ═══════════════════════════════════════════════════════
   // 変形労働時間カレンダー機能
   // ═══════════════════════════════════════════════════════
@@ -3518,5 +3209,316 @@ function showToast(msg,color='blue'){
   </div>
 </div>
 
+
+<!-- ─── 勤務パターン管理 ─── -->
+<div class="page" id="page-wcal_patterns">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">📋 勤務パターン一覧</div>
+      <button class="btn btn-primary btn-sm" onclick="openPatternModal()">+ 新規パターン</button>
+    </div>
+    <table>
+      <thead><tr><th>パターンID</th><th>パターン名</th><th>雇用区分</th><th>年度</th><th>対象期間</th><th>適用人数</th><th>NG</th><th>操作</th></tr></thead>
+      <tbody id="patternListBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── カレンダー編集 ─── -->
+<div class="page" id="page-wcal_calendar">
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">勤務パターン</div>
+        <select id="calPatternSel" class="form-control" style="width:220px" onchange="loadCalendar()">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">表示月</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(-1)">←</button>
+          <span id="calEditMonthLabel" style="font-size:14px;font-weight:700;min-width:80px;text-align:center">2026年4月</span>
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(1)">→</button>
+        </div>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="saveCalendar()" style="margin-left:auto">💾 保存</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCalendarCSV()">📊 CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="printCalendar()">🖨️ 印刷</button>
+    </div>
+
+    <!-- 集計サマリー -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="calSummary">
+      <div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">出勤日: <strong id="sumWorkDays">0</strong>日</div>
+      <div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong id="sumHoliDays">0</strong>日</div>
+      <div style="background:var(--lpurple);border-radius:8px;padding:8px 14px;font-size:12px">法定休日: <strong id="sumLegalDays">0</strong>日</div>
+      <div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">所定時間: <strong id="sumWorkHours">0.00</strong>h</div>
+      <div id="calNgBadge" style="display:none;background:var(--lred);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red)">⚠️ NG: <strong id="calNgCount">0</strong>件</div>
+    </div>
+
+    <!-- カレンダーテーブル -->
+    <div style="overflow-x:auto">
+      <table id="calEditTable">
+        <thead>
+          <tr>
+            <th style="width:40px">日</th>
+            <th style="width:28px">曜</th>
+            <th style="width:100px">勤務区分</th>
+            <th style="width:70px">所定時間</th>
+            <th style="width:70px">始業</th>
+            <th style="width:70px">終業</th>
+            <th style="width:60px">休憩(分)</th>
+            <th>備考</th>
+            <th style="width:50px">判定</th>
+          </tr>
+        </thead>
+        <tbody id="calEditBody">
+          <tr><td colspan="9" style="text-align:center;padding:20px;color:#999">パターンを選択してください</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── チェック結果 ─── -->
+<div class="page" id="page-wcal_check">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">⚠️ チェック結果（NG一覧）</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="checkPatternSel" class="form-control" style="width:200px;font-size:12px" onchange="runAllChecks()">
+          <option value="">全パターン</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="runAllChecks()">🔍 再チェック</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px" id="checkSummaryCards"></div>
+    <table>
+      <thead><tr><th>パターン</th><th>対象日/週</th><th>チェック種別</th><th>内容</th><th>判定</th></tr></thead>
+      <tbody id="checkResultBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:#999">チェックを実行してください</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 勤務パターン登録/編集モーダル -->
+<div class="modal-overlay" id="patternModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">
+      <span id="patternModalTitle">📋 勤務パターン登録</span>
+      <span class="modal-close" onclick="closeModal('patternModal')">×</span>
+    </div>
+    <input type="hidden" id="pm_id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><div class="form-label">パターンID *</div><input id="pm_code" class="form-control" placeholder="A"></div>
+      <div class="form-group"><div class="form-label">パターン名 *</div><input id="pm_name" class="form-control" placeholder="Aパターン（正職員）"></div>
+      <div class="form-group"><div class="form-label">雇用区分</div>
+        <select id="pm_employment_type" class="form-control">
+          <option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">年度</div><input id="pm_fiscal_year" type="number" class="form-control" value="2026"></div>
+      <div class="form-group"><div class="form-label">対象開始日</div><input id="pm_start_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">対象終了日</div><input id="pm_end_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">週上限時間(h)</div><input id="pm_weekly_limit" type="number" class="form-control" value="40" step="0.5"></div>
+      <div class="form-group"><div class="form-label">年間労働日数上限</div><input id="pm_annual_days_limit" type="number" class="form-control" value="280"></div>
+      <div class="form-group"><div class="form-label">年間休日最低日数</div><input id="pm_annual_holiday_min" type="number" class="form-control" value="118"></div>
+      <div class="form-group" style="grid-column:1/-1"><div class="form-label">備考</div><textarea id="pm_note" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+      <button id="pmDeleteBtn" class="btn btn-outline" style="color:var(--red);display:none" onclick="deletePattern()">🗑️ 削除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline btn-sm" onclick="duplicatePattern()" id="pmDuplicateBtn" style="display:none">📋 複製</button>
+        <button class="btn btn-outline" onclick="closeModal('patternModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="savePattern()">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body></html>');
+    win.document.close();
+    setTimeout(function(){ win.print(); }, 500);
+  };
+
+  // ── 残業分析レポート ─────────────────────────────────────
+  function loadOvertimeReport() {
+    var now = new Date();
+    var rows = [];
+    var promises = [];
+    for (var i = 5; i >= 0; i--) {
+      (function(offset) {
+        var d = new Date(now.getFullYear(), now.getMonth()-offset, 1);
+        var y = d.getFullYear(), m = d.getMonth()+1;
+        var ms = y+'-'+p2(m)+'-01', me2 = y+'-'+p2(m)+'-'+p2(new Date(y,m,0).getDate());
+        promises.push(
+          sb.from('punch_records').select('*').eq('user_id',me.id)
+            .gte('punched_at',ms+'T00:00:00+09:00').lte('punched_at',me2+'T23:59:59+09:00')
+            .order('punched_at',{ascending:true})
+            .then(function(r){ return {y:y,m:m,punches:r.data||[]}; })
+        );
+      })(i);
+    }
+    Promise.all(promises).then(function(results) {
+      var tbody = document.getElementById('otReportBody'); if(!tbody) return;
+      var chartHTML = '';
+      tbody.innerHTML = results.map(function(res) {
+        var totalWork=0, totalOt=0, totalLate=0;
+        var dateMap = {};
+        res.punches.forEach(function(p) {
+          var d = jstDate(p.punched_at);
+          if (!dateMap[d]) dateMap[d] = [];
+          dateMap[d].push(p);
+        });
+        Object.keys(dateMap).forEach(function(d) {
+          var dr   = dateMap[d];
+          var inR  = dr.find(function(x){ return x.punch_type==='出勤'; });
+          var outR = dr.find(function(x){ return x.punch_type==='退勤'; });
+          var rb1  = dr.find(function(x){ return x.punch_type==='休憩開始'; });
+          var rb2  = dr.find(function(x){ return x.punch_type==='休憩終了'; });
+          if (inR&&outR) {
+            var rm = (rb1&&rb2)?Math.round((new Date(rb2.punched_at)-new Date(rb1.punched_at))/60000):0;
+            var wm = Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm;
+            totalWork += wm;
+            totalOt   += Math.max(0,wm-480);
+          }
+        });
+        var otH  = (totalOt/60).toFixed(1);
+        var pct  = Math.round(totalOt/60/45*100);
+        var color = pct>=90?'var(--red)':pct>=70?'var(--amber)':'var(--green)';
+        var isThisMonth = res.y===now.getFullYear()&&res.m===(now.getMonth()+1);
+        return '<tr'+(isThisMonth?' style="background:var(--lblue)"':'')+'>'+
+          '<td>'+(isThisMonth?'<strong>':'')+res.y+'年'+res.m+'月'+(isThisMonth?'（今月）</strong>':'')+'</td>'+
+          '<td>—</td><td>'+otH+'h</td><td>—</td><td>—</td>'+
+          '<td><strong style="color:'+color+'">'+otH+'h</strong></td>'+
+          '<td>45h</td>'+
+          '<td><div class="progress" style="width:80px"><div class="progress-bar" style="width:'+Math.min(pct,100)+'%;background:'+color+'"></div></div></td>'+
+        '</tr>';
+      }).join('');
+      // バーチャート
+      var chart = document.getElementById('otChartArea');
+      if (chart) {
+        chart.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;height:120px;padding:8px 0">' +
+          results.map(function(res) {
+            var totalOt2=0;
+            var dm={};
+            res.punches.forEach(function(p){ var d=jstDate(p.punched_at); if(!dm[d])dm[d]=[]; dm[d].push(p); });
+            Object.keys(dm).forEach(function(d){
+              var dr=dm[d], inR=dr.find(function(x){return x.punch_type==='出勤';}), outR=dr.find(function(x){return x.punch_type==='退勤';});
+              if(inR&&outR){ var rm=0; totalOt2+=Math.max(0,Math.round((new Date(outR.punched_at)-new Date(inR.punched_at))/60000)-rm-480); }
+            });
+            var h = Math.min((totalOt2/60)/45*100, 100);
+            var color2 = h>=90?'var(--red)':h>=70?'var(--amber)':'var(--blue)';
+            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'+
+              '<div style="font-size:10px;color:var(--muted)">'+(totalOt2/60).toFixed(0)+'h</div>'+
+              '<div style="width:100%;background:'+color2+';height:'+h+'%;border-radius:4px 4px 0 0;min-height:3px"></div>'+
+              '<div style="font-size:10px;color:var(--muted)">'+res.m+'月</div>'+
+            '</div>';
+          }).join('') + '</div>';
+      }
+    });
+  }
+
+  // ── 休暇レポート ─────────────────────────────────────────
+  function loadLeaveReport() {
+    Promise.all([
+      sb.from('employees').select('auth_id,name,department').eq('is_active',true),
+      sb.from('leave_balances').select('*').eq('year',new Date().getFullYear()),
+      sb.from('leave_requests').select('user_id,start_date,end_date,unit,hour_count').eq('status','approved').eq('leave_type','年次有給休暇').gte('start_date',new Date().getFullYear()+'-01-01')
+    ]).then(function(rs) {
+      var emps = rs[0].data||[];
+      var bals = rs[1].data||[];
+      var reqs = rs[2].data||[];
+      var balMap = {}; bals.forEach(function(b){ balMap[b.user_id]=b; });
+      // 使用日数集計
+      var usedMap = {};
+      reqs.forEach(function(r) {
+        if(!usedMap[r.user_id]) usedMap[r.user_id]=0;
+        var d = r.unit==='half_am'||r.unit==='half_pm'?0.5:r.unit==='hour'?(r.hour_count||0)/8:Math.round((new Date(r.end_date)-new Date(r.start_date))/86400000)+1;
+        usedMap[r.user_id]+=d;
+      });
+      // 部署別集計
+      var deptMap = {};
+      emps.forEach(function(e) {
+        var dept = e.department||'未設定';
+        if (!deptMap[dept]) deptMap[dept]={total:0,achieved:0,totalUsed:0};
+        deptMap[dept].total++;
+        var used = usedMap[e.auth_id]||0;
+        deptMap[dept].totalUsed += used;
+        if (used>=5) deptMap[dept].achieved++;
+      });
+      var tbody = document.getElementById('leaveReportBody'); if(!tbody) return;
+      var depts = Object.keys(deptMap);
+      tbody.innerHTML = depts.map(function(dept) {
+        var d = deptMap[dept];
+        var rate = Math.round(d.achieved/d.total*100);
+        var avg  = (d.totalUsed/d.total).toFixed(1);
+        var bc   = rate>=80?'badge-green':rate>=50?'badge-amber':'badge-red';
+        return '<tr>'+
+          '<td>'+dept+'</td><td>'+d.total+'名</td><td>'+d.achieved+'名</td>'+
+          '<td>'+(d.total-d.achieved)+'名</td><td>'+avg+'日</td>'+
+          '<td><span class="badge '+bc+'">'+rate+'%</span></td>'+
+        '</tr>';
+      }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#999">データがありません</td></tr>';
+    });
+  }
+
+  // showPage拡張（reportsページ）- loadPageに統合済み
+
+
+
+  // ═══════════════════════════════════════════════════════
+  // 権限別UI制御
+  // ═══════════════════════════════════════════════════════
+  function applyRoleUI() {
+    if (!myProfile) return;
+    var role = myProfile.role || '一般';
+    var isAdmin = role === '管理者' || role === '部門長';
+
+    // サイドバー切り替え
+    document.querySelectorAll('.staff-menu').forEach(function(el) {
+      el.style.display = isAdmin ? 'none' : '';
+    });
+    document.querySelectorAll('.admin-menu').forEach(function(el) {
+      el.style.display = isAdmin ? 'flex' : 'none';
+    });
+    // nav-section は flex ではなく block
+    document.querySelectorAll('.nav-section.admin-menu, .nav-section.staff-menu').forEach(function(el) {
+      el.style.display = isAdmin ? (el.classList.contains('admin-menu') ? 'block' : 'none') :
+                                   (el.classList.contains('staff-menu') ? 'block' : 'none');
+    });
+
+    // ページタイトルの表示
+    var titleEl = document.getElementById('pageTitle');
+    if (titleEl) {
+      if (isAdmin) titleEl.textContent = '管理者ダッシュボード';
+    }
+
+    // 申請承認タブ: 管理者のみ承認待ち一覧を表示
+    var approveTab = document.querySelector('.tab[onclick*="tab-approve"]');
+    if (approveTab) approveTab.style.display = isAdmin ? '' : 'none';
+
+    // 休暇残高管理タブ: 管理者のみ
+    var balTab = document.querySelector('.tab[onclick*="tab-leave-balance"]');
+    if (balTab) balTab.style.display = isAdmin ? '' : 'none';
+
+    // 集計レポートの全員表示: 管理者のみ
+    var repTarget = document.getElementById('reportTarget');
+    if (repTarget) {
+      if (!isAdmin) {
+        repTarget.style.display = 'none';
+        repTarget.value = 'me';
+      }
+    }
+  }
+
+  // loadProfile完了後にRole UIを適用
+  var _origLoadProfile = window._loadProfileFn;
+  // loadProfile内でapplyRoleUIを呼ぶ
+  // （_loadProfileを上書き）
+  var __origLP = null;
+
+  // ═══════════════════════════════════════════════════════
+  // 打刻専用画面（キオスク）
+  // ═══════════════════════════════════════════════════════
 </body>
 </html>
