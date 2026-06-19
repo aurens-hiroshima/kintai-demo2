@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>打刻専用端末</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Meiryo,sans-serif;background:#1a3a5c;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+.header{background:rgba(0,0,0,.3);padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
+.header-title{font-size:20px;font-weight:700}
+.clock{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.date-text{font-size:13px;color:rgba(255,255,255,.5);text-align:right;margin-top:2px}
+.main{flex:1;display:flex;gap:0;overflow:hidden}
+/* Left: employee list */
+.emp-panel{width:280px;background:rgba(0,0,0,.2);border-right:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;flex-shrink:0}
+.emp-panel-title{padding:16px;font-size:14px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
+.emp-search{padding:10px 12px}
+.emp-search input{width:100%;padding:10px 14px;border-radius:10px;border:none;font-size:14px;background:rgba(255,255,255,.12);color:#fff;outline:none}
+.emp-search input::placeholder{color:rgba(255,255,255,.35)}
+.emp-list{flex:1;overflow-y:auto;padding:4px 8px}
+.emp-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;border-radius:12px;background:transparent;color:#fff;cursor:pointer;text-align:left;transition:all .15s;font-size:14px;font-family:inherit;margin-bottom:4px}
+.emp-btn:hover{background:rgba(255,255,255,.12)}
+.emp-btn.selected{background:rgba(24,95,165,.5);border:1px solid rgba(24,95,165,.8)}
+.emp-avatar-sm{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0}
+.emp-info{flex:1;min-width:0}
+.emp-info-name{font-weight:700;font-size:14px}
+.emp-info-dept{font-size:11px;color:rgba(255,255,255,.5)}
+.emp-status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* Right: punch area */
+.punch-panel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.punch-empty{text-align:center;color:rgba(255,255,255,.4)}
+.punch-empty-icon{font-size:48px;margin-bottom:12px}
+.punch-empty-text{font-size:18px}
+.punch-content{width:100%;max-width:600px}
+.punch-user-card{background:rgba(255,255,255,.08);border-radius:20px;padding:28px;text-align:center;margin-bottom:24px}
+.punch-user-avatar{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;margin:0 auto 12px}
+.punch-user-name{font-size:28px;font-weight:700;margin-bottom:4px}
+.punch-user-dept{font-size:14px;color:rgba(255,255,255,.5)}
+.punch-user-status{display:inline-block;padding:5px 16px;border-radius:99px;font-size:13px;font-weight:700;margin-top:10px}
+.punch-btns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+.punch-btn{padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s}
+.punch-btn:active{transform:scale(.96)}
+.punch-btn-sm{padding:20px 16px;font-size:16px}
+/* Punch log */
+.punch-log{background:rgba(0,0,0,.2);border-radius:16px;padding:16px 20px}
+.punch-log-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:12px}
+.punch-log-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px}
+.punch-log-item:last-child{border-bottom:none}
+.punch-log-time{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;width:60px}
+.punch-log-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.punch-log-empty{text-align:center;color:rgba(255,255,255,.3);font-size:13px;padding:16px 0}
+/* Success */
+.success-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;flex-direction:column;z-index:100}
+.success-icon{font-size:100px;margin-bottom:16px}
+.success-msg{font-size:32px;font-weight:700;margin-bottom:8px;text-align:center}
+.success-time{font-size:22px;color:rgba(255,255,255,.7)}
+/* Responsive */
+@media(max-width:768px){
+  .main{flex-direction:column}
+  .emp-panel{width:100%;height:auto;max-height:35vh;border-right:none;border-bottom:1px solid rgba(255,255,255,.1)}
+  .punch-panel{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">⏰ 打刻専用端末</div>
+  <div>
+    <div class="clock" id="mainClock">--:--:--</div>
+    <div class="date-text" id="mainDate"></div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Left: Employee list -->
+  <div class="emp-panel">
+    <div class="emp-panel-title">職員一覧 <span id="empCount" style="font-weight:400;color:rgba(255,255,255,.4)"></span></div>
+    <div class="emp-search"><input id="searchInput" type="text" placeholder="名前で検索..." oninput="filterList()"></div>
+    <div class="emp-list" id="empList"></div>
+  </div>
+
+  <!-- Right: Punch area -->
+  <div class="punch-panel">
+    <!-- 未選択 -->
+    <div class="punch-empty" id="emptyState">
+      <div class="punch-empty-icon">👈</div>
+      <div class="punch-empty-text">左の一覧から職員を選んでください</div>
+    </div>
+
+    <!-- 選択後 -->
+    <div class="punch-content" id="punchContent" style="display:none">
+      <div class="punch-user-card">
+        <div class="punch-user-avatar" id="puAvatar" style="background:#185FA5">?</div>
+        <div class="punch-user-name" id="puName">---</div>
+        <div class="punch-user-dept" id="puDept">---</div>
+        <div id="puStatusArea"></div>
+      </div>
+
+      <div class="punch-btns">
+        <button class="punch-btn" style="background:#22c55e" onclick="doPunch('出勤')">🟢 出 勤</button>
+        <button class="punch-btn" style="background:#ef4444" onclick="doPunch('退勤')">🔴 退 勤</button>
+        <button class="punch-btn punch-btn-sm" style="background:#f59e0b" onclick="doPunch('休憩開始')">🟡 休憩開始</button>
+        <button class="punch-btn punch-btn-sm" style="background:#8b5cf6" onclick="doPunch('休憩終了')">🟣 休憩終了</button>
+      </div>
+
+      <div class="punch-log">
+        <div class="punch-log-title">📋 本日の打刻ログ</div>
+        <div id="punchLogArea">
+          <div class="punch-log-empty">打刻データなし</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-icon" id="sucIcon">✅</div>
+  <div class="success-msg" id="sucMsg">打刻しました</div>
+  <div class="success-time" id="sucTime"></div>
+</div>
+
+<script>
+var SB_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+var sb = null;
+var allEmps = [];
+var selUser = null;
+var todayPunches = {};
+
+function p2(n){ return String(n).padStart(2,'0'); }
+function jstToday(){
+  var d = new Date(Date.now() + 9*3600000);
+  return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());
+}
+function jstTime(iso){
+  var d = new Date(new Date(iso).getTime() + 9*3600000);
+  return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes());
+}
+function jstTimeFull(iso){
+  var d = new Date(new Date(iso).getTime() + 9*3600000);
+  return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())+':'+p2(d.getUTCSeconds());
+}
+
+// Clock
+function tickClock(){
+  var n = new Date();
+  var days = ['日','月','火','水','木','金','土'];
+  document.getElementById('mainClock').textContent = p2(n.getHours())+':'+p2(n.getMinutes())+':'+p2(n.getSeconds());
+  document.getElementById('mainDate').textContent = n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日（'+days[n.getDay()]+'）';
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// Init
+window.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    if (!window.supabase) { alert('Supabase SDKの読み込みに失敗しました'); return; }
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    loadEmps();
+  }, 300);
+});
+
+// Load employees (exclude admin)
+function loadEmps(){
+  sb.from('employees').select('id,auth_id,name,department,employee_no,role')
+    .eq('is_active', true)
+    .order('department', {ascending:true})
+    .then(function(r){
+      // Filter out admin users
+      allEmps = (r.data||[]).filter(function(e){
+        return e.role !== '管理者';
+      });
+      // Get today's punch status for all
+      loadTodayStatus();
+    });
+}
+
+function loadTodayStatus(){
+  var today = jstToday();
+  sb.from('punch_records').select('user_id,punch_type,punched_at')
+    .gte('punched_at', today+'T00:00:00+09:00')
+    .order('punched_at', {ascending:false})
+    .then(function(r){
+      todayPunches = {};
+      (r.data||[]).forEach(function(p){
+        if (!todayPunches[p.user_id]) todayPunches[p.user_id] = [];
+        todayPunches[p.user_id].push(p);
+      });
+      renderEmpList(allEmps);
+    });
+}
+
+function renderEmpList(emps){
+  var list = document.getElementById('empList');
+  var colors = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556','#3B6D11','#993C1D'];
+  var countEl = document.getElementById('empCount');
+  if (countEl) countEl.textContent = '（' + emps.length + '名）';
+
+  // Group by department
+  var deptMap = {};
+  emps.forEach(function(e){
+    var dept = e.department || '未設定';
+    if (!deptMap[dept]) deptMap[dept] = [];
+    deptMap[dept].push(e);
+  });
+
+  var html = '';
+  Object.keys(deptMap).forEach(function(dept){
+    html += '<div style="font-size:11px;color:rgba(255,255,255,.35);padding:12px 14px 4px;font-weight:700;letter-spacing:.05em">'+dept+'</div>';
+    deptMap[dept].forEach(function(e){
+      var c = colors[e.name.charCodeAt(0) % colors.length];
+      var isSelected = selUser && selUser.auth === e.auth_id;
+      var punches = todayPunches[e.auth_id] || [];
+      var latestPunch = punches.length > 0 ? punches[0].punch_type : null;
+      var dotColor = 'rgba(255,255,255,.2)';
+      var statusLabel = '';
+      if (latestPunch === '出勤' || latestPunch === '休憩終了') { dotColor = '#22c55e'; statusLabel = '出勤中'; }
+      else if (latestPunch === '退勤') { dotColor = 'rgba(255,255,255,.2)'; statusLabel = '退勤済'; }
+      else if (latestPunch === '休憩開始') { dotColor = '#f59e0b'; statusLabel = '休憩中'; }
+
+      html += '<button class="emp-btn'+(isSelected?' selected':'')+'" data-auth="'+e.auth_id+'" data-name="'+e.name+'" data-dept="'+(e.department||'')+'" onclick="selectEmp(this)">'+
+        '<div class="emp-avatar-sm" style="background:'+c+'">'+e.name[0]+'</div>'+
+        '<div class="emp-info">'+
+          '<div class="emp-info-name">'+e.name+'</div>'+
+          '<div class="emp-info-dept">'+(statusLabel?statusLabel:'未打刻')+'</div>'+
+        '</div>'+
+        '<div class="emp-status-dot" style="background:'+dotColor+'"></div>'+
+      '</button>';
+    });
+  });
+  list.innerHTML = html || '<div style="text-align:center;padding:20px;color:rgba(255,255,255,.3);font-size:13px">職員がいません</div>';
+}
+
+function filterList(){
+  var q = document.getElementById('searchInput').value.toLowerCase();
+  var filtered = allEmps.filter(function(e){
+    return e.name.toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q);
+  });
+  renderEmpList(filtered);
+}
+
+// Select employee
+function selectEmp(btn){
+  var authId = btn.getAttribute('data-auth');
+  var name   = btn.getAttribute('data-name');
+  var dept   = btn.getAttribute('data-dept');
+
+  selUser = { auth: authId, name: name, dept: dept };
+
+  // Highlight selected
+  document.querySelectorAll('.emp-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+
+  // Show punch area
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('punchContent').style.display = 'block';
+
+  // User info
+  var colors = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556','#3B6D11','#993C1D'];
+  var c = colors[name.charCodeAt(0) % colors.length];
+  document.getElementById('puAvatar').style.background = c;
+  document.getElementById('puAvatar').textContent = name[0];
+  document.getElementById('puName').textContent = name;
+  document.getElementById('puDept').textContent = dept;
+
+  // Status badge
+  var punches = todayPunches[authId] || [];
+  var latest = punches.length > 0 ? punches[0].punch_type : null;
+  var statusHTML = '';
+  if (latest === '出勤' || latest === '休憩終了') {
+    statusHTML = '<div class="punch-user-status" style="background:rgba(34,197,94,.25);color:#86efac">出勤中</div>';
+  } else if (latest === '退勤') {
+    statusHTML = '<div class="punch-user-status" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)">退勤済み</div>';
+  } else if (latest === '休憩開始') {
+    statusHTML = '<div class="punch-user-status" style="background:rgba(245,158,11,.25);color:#fcd34d">休憩中</div>';
+  } else {
+    statusHTML = '<div class="punch-user-status" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">未打刻</div>';
+  }
+  document.getElementById('puStatusArea').innerHTML = statusHTML;
+
+  // Load punch log
+  loadPunchLog(authId);
+}
+
+// Load punch log for selected user
+function loadPunchLog(authId){
+  var today = jstToday();
+  sb.from('punch_records').select('punch_type,punched_at')
+    .eq('user_id', authId)
+    .gte('punched_at', today+'T00:00:00+09:00')
+    .lte('punched_at', today+'T23:59:59+09:00')
+    .order('punched_at', {ascending:true})
+    .then(function(r){
+      var area = document.getElementById('punchLogArea');
+      var data = r.data || [];
+      if (data.length === 0) {
+        area.innerHTML = '<div class="punch-log-empty">本日の打刻はまだありません</div>';
+        return;
+      }
+      var dotColors = { '出勤':'#22c55e', '退勤':'#ef4444', '休憩開始':'#f59e0b', '休憩終了':'#8b5cf6' };
+      area.innerHTML = data.map(function(p){
+        var time = jstTimeFull(p.punched_at);
+        var dot  = dotColors[p.punch_type] || '#888';
+        return '<div class="punch-log-item">'+
+          '<div class="punch-log-time">'+time+'</div>'+
+          '<div class="punch-log-dot" style="background:'+dot+'"></div>'+
+          '<div>'+p.punch_type+'</div>'+
+        '</div>';
+      }).join('');
+    });
+}
+
+// Do punch
+function doPunch(type){
+  if (!selUser || !sb) return;
+  // Disable buttons briefly
+  var btns = document.querySelectorAll('.punch-btn');
+  btns.forEach(function(b){ b.disabled = true; b.style.opacity = '.5'; });
+
+  sb.from('punch_records').insert({
+    user_id: selUser.auth,
+    punch_type: type,
+    punched_at: new Date().toISOString()
+  }).then(function(r){
+    btns.forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
+
+    if (r.error) {
+      alert('打刻に失敗しました: ' + r.error.message);
+      return;
+    }
+
+    // Show success
+    var icons = { '出勤':'🟢', '退勤':'🔴', '休憩開始':'🟡', '休憩終了':'🟣' };
+    document.getElementById('sucIcon').textContent = icons[type] || '✅';
+    document.getElementById('sucMsg').textContent = selUser.name + ' さんが' + type + 'しました';
+    var n = new Date();
+    document.getElementById('sucTime').textContent = p2(n.getHours())+':'+p2(n.getMinutes())+':'+p2(n.getSeconds());
+    document.getElementById('successOverlay').style.display = 'flex';
+
+    // 3 seconds then refresh
+    setTimeout(function(){
+      document.getElementById('successOverlay').style.display = 'none';
+      // Refresh status and log
+      loadTodayStatus();
+      loadPunchLog(selUser.auth);
+      // Re-select to update status badge
+      setTimeout(function(){
+        var btn = document.querySelector('.emp-btn[data-auth="'+selUser.auth+'"]');
+        if (btn) selectEmp(btn);
+      }, 500);
+    }, 2500);
+  });
+}
+</script>
+</body>
+</html>
