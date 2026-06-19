@@ -189,6 +189,10 @@ select.form-control{cursor:pointer}
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('reports')"><span class="nav-icon">📊</span>集計・レポート</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('requests')"><span class="nav-icon">✅</span>申請承認</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('leave')"><span class="nav-icon">🌿</span>有休管理</div>
+  <div class="nav-section admin-menu" style="display:none">変形労働カレンダー</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('wcal_patterns')"><span class="nav-icon">📋</span>勤務パターン</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('wcal_calendar')"><span class="nav-icon">📅</span>カレンダー編集</div>
+  <div class="nav-item admin-menu" style="display:none" onclick="showPage('wcal_check')"><span class="nav-icon">⚠️</span>チェック結果</div>
   <div class="nav-item admin-menu" style="display:none" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>システム設定</div>
   <div style="padding:16px 16px 8px;margin-top:auto">
     <a href="kiosk.html" target="_blank" style="display:block;width:100%;padding:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:#fff;font-size:12px;cursor:pointer;text-align:center;text-decoration:none">
@@ -1342,8 +1346,12 @@ function showToast(msg,color='blue'){
     if (id==='leave')     loadLeave();
     if (id==='overtime')  loadOvertime();
     if (id==='requests')  { loadMyReqs(); loadApprovals(); }
-    if (id==='attendance')loadAttendance();
-    if (id==='settings')  loadSettings();
+    if (id==='attendance')  loadAttendance();
+    if (id==='settings')    loadSettings();
+    if (id==='reports')     loadMonthlyReport();
+    if (id==='wcal_patterns') loadWcalPage('wcal_patterns');
+    if (id==='wcal_calendar') loadWcalPage('wcal_calendar');
+    if (id==='wcal_check')    loadWcalPage('wcal_check');
   }
 
   // ダッシュボード
@@ -2485,7 +2493,133 @@ function showToast(msg,color='blue'){
     var tot = document.getElementById('tcMonthTotal');
     if (tot) win.document.write('<p style="margin-top:12px;font-size:12px">'+tot.textContent+'</p>');
     win.document.write('<p style="margin-top:20px;font-size:11px;color:#999">本人確認署名：___________________　上長確認署名：___________________</p>');
-    win.document.write('</body></html>');
+    win.document.write('
+<!-- ─── 勤務パターン管理 ─── -->
+<div class="page" id="page-wcal_patterns">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">📋 勤務パターン一覧</div>
+      <button class="btn btn-primary btn-sm" onclick="openPatternModal()">+ 新規パターン</button>
+    </div>
+    <table>
+      <thead><tr><th>パターンID</th><th>パターン名</th><th>雇用区分</th><th>年度</th><th>対象期間</th><th>適用人数</th><th>NG</th><th>操作</th></tr></thead>
+      <tbody id="patternListBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── カレンダー編集 ─── -->
+<div class="page" id="page-wcal_calendar">
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">勤務パターン</div>
+        <select id="calPatternSel" class="form-control" style="width:220px" onchange="loadCalendar()">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">表示月</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(-1)">←</button>
+          <span id="calEditMonthLabel" style="font-size:14px;font-weight:700;min-width:80px;text-align:center">2026年4月</span>
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(1)">→</button>
+        </div>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="saveCalendar()" style="margin-left:auto">💾 保存</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCalendarCSV()">📊 CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="printCalendar()">🖨️ 印刷</button>
+    </div>
+
+    <!-- 集計サマリー -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="calSummary">
+      <div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">出勤日: <strong id="sumWorkDays">0</strong>日</div>
+      <div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong id="sumHoliDays">0</strong>日</div>
+      <div style="background:var(--lpurple);border-radius:8px;padding:8px 14px;font-size:12px">法定休日: <strong id="sumLegalDays">0</strong>日</div>
+      <div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">所定時間: <strong id="sumWorkHours">0.00</strong>h</div>
+      <div id="calNgBadge" style="display:none;background:var(--lred);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red)">⚠️ NG: <strong id="calNgCount">0</strong>件</div>
+    </div>
+
+    <!-- カレンダーテーブル -->
+    <div style="overflow-x:auto">
+      <table id="calEditTable">
+        <thead>
+          <tr>
+            <th style="width:40px">日</th>
+            <th style="width:28px">曜</th>
+            <th style="width:100px">勤務区分</th>
+            <th style="width:70px">所定時間</th>
+            <th style="width:70px">始業</th>
+            <th style="width:70px">終業</th>
+            <th style="width:60px">休憩(分)</th>
+            <th>備考</th>
+            <th style="width:50px">判定</th>
+          </tr>
+        </thead>
+        <tbody id="calEditBody">
+          <tr><td colspan="9" style="text-align:center;padding:20px;color:#999">パターンを選択してください</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── チェック結果 ─── -->
+<div class="page" id="page-wcal_check">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">⚠️ チェック結果（NG一覧）</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="checkPatternSel" class="form-control" style="width:200px;font-size:12px" onchange="runAllChecks()">
+          <option value="">全パターン</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="runAllChecks()">🔍 再チェック</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px" id="checkSummaryCards"></div>
+    <table>
+      <thead><tr><th>パターン</th><th>対象日/週</th><th>チェック種別</th><th>内容</th><th>判定</th></tr></thead>
+      <tbody id="checkResultBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:#999">チェックを実行してください</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 勤務パターン登録/編集モーダル -->
+<div class="modal-overlay" id="patternModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">
+      <span id="patternModalTitle">📋 勤務パターン登録</span>
+      <span class="modal-close" onclick="closeModal('patternModal')">×</span>
+    </div>
+    <input type="hidden" id="pm_id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><div class="form-label">パターンID *</div><input id="pm_code" class="form-control" placeholder="A"></div>
+      <div class="form-group"><div class="form-label">パターン名 *</div><input id="pm_name" class="form-control" placeholder="Aパターン（正職員）"></div>
+      <div class="form-group"><div class="form-label">雇用区分</div>
+        <select id="pm_employment_type" class="form-control">
+          <option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">年度</div><input id="pm_fiscal_year" type="number" class="form-control" value="2026"></div>
+      <div class="form-group"><div class="form-label">対象開始日</div><input id="pm_start_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">対象終了日</div><input id="pm_end_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">週上限時間(h)</div><input id="pm_weekly_limit" type="number" class="form-control" value="40" step="0.5"></div>
+      <div class="form-group"><div class="form-label">年間労働日数上限</div><input id="pm_annual_days_limit" type="number" class="form-control" value="280"></div>
+      <div class="form-group"><div class="form-label">年間休日最低日数</div><input id="pm_annual_holiday_min" type="number" class="form-control" value="118"></div>
+      <div class="form-group" style="grid-column:1/-1"><div class="form-label">備考</div><textarea id="pm_note" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+      <button id="pmDeleteBtn" class="btn btn-outline" style="color:var(--red);display:none" onclick="deletePattern()">🗑️ 削除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline btn-sm" onclick="duplicatePattern()" id="pmDuplicateBtn" style="display:none">📋 複製</button>
+        <button class="btn btn-outline" onclick="closeModal('patternModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="savePattern()">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body></html>');
     win.document.close();
     setTimeout(function(){ win.print(); }, 500);
   };
@@ -2672,6 +2806,524 @@ function showToast(msg,color='blue'){
   // ═══════════════════════════════════════════════════════
 
 
+  // ═══════════════════════════════════════════════════════
+  // 変形労働時間カレンダー機能
+  // ═══════════════════════════════════════════════════════
+  var _patterns = [];
+  var _calEditYear  = new Date().getFullYear();
+  var _calEditMonth = new Date().getMonth() + 1;
+  var _calDays = {};   // {date_str: {day_type, scheduled_hours, start_time, end_time, break_minutes, note}}
+  var _currentPatternId = null;
+
+  // ── ページ切替フック ────────────────────────────────────
+  // (loadPage内でwcalページを処理)
+
+  function loadWcalPage(id) {
+    if (!sb) return;
+    if (id === 'wcal_patterns') loadPatternList();
+    if (id === 'wcal_calendar') { loadPatternSelects(); loadCalendar(); }
+    if (id === 'wcal_check')    { loadCheckPatternSelect(); runAllChecks(); }
+  }
+
+  // ── 勤務パターン一覧 ───────────────────────────────────
+  function loadPatternList() {
+    sb.from('work_patterns').select('*, employees(id)').order('pattern_code').then(function(r) {
+      _patterns = r.data || [];
+      var tbody = document.getElementById('patternListBody');
+      if (!tbody) return;
+      if (!_patterns.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#999">勤務パターンがありません。「新規パターン」から追加してください。</td></tr>';
+        return;
+      }
+      tbody.innerHTML = _patterns.map(function(p) {
+        var period = (p.start_date || '—') + ' 〜 ' + (p.end_date || '—');
+        var empCount = p.employees ? p.employees.length : 0;
+        return '<tr>' +
+          '<td><span class="badge badge-blue" style="font-size:12px">' + p.pattern_code + '</span></td>' +
+          '<td><strong>' + p.pattern_name + '</strong></td>' +
+          '<td>' + (p.employment_type || '—') + '</td>' +
+          '<td>' + (p.fiscal_year || '—') + '年度</td>' +
+          '<td style="font-size:12px">' + period + '</td>' +
+          '<td>' + empCount + '名</td>' +
+          '<td><span id="ng_' + p.id.slice(0,8) + '" class="badge badge-gray">—</span></td>' +
+          '<td>' +
+            '<button class="btn btn-outline btn-sm" data-id="' + p.id + '" onclick="_editPattern(this)" style="margin-right:4px">編集</button>' +
+            '<button class="btn btn-primary btn-sm" data-id="' + p.id + '" data-name="' + p.pattern_name + '" onclick="_openCalFromPattern(this)">カレンダー</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+      // NG件数を非同期で取得
+      _patterns.forEach(function(p) { checkPatternNG(p); });
+    });
+  }
+
+  window.openPatternModal = function() {
+    document.getElementById('pm_id').value = '';
+    document.getElementById('pm_code').value = '';
+    document.getElementById('pm_name').value = '';
+    document.getElementById('pm_employment_type').value = '正職員';
+    document.getElementById('pm_fiscal_year').value = new Date().getFullYear();
+    document.getElementById('pm_start_date').value = '';
+    document.getElementById('pm_end_date').value = '';
+    document.getElementById('pm_weekly_limit').value = '40';
+    document.getElementById('pm_annual_days_limit').value = '280';
+    document.getElementById('pm_annual_holiday_min').value = '118';
+    document.getElementById('pm_note').value = '';
+    document.getElementById('patternModalTitle').textContent = '📋 勤務パターン登録';
+    document.getElementById('pmDeleteBtn').style.display = 'none';
+    document.getElementById('pmDuplicateBtn').style.display = 'none';
+    if (window.openModal) openModal('patternModal');
+  };
+
+  window._editPattern = function(btn) {
+    var id = btn.getAttribute('data-id');
+    var p = _patterns.find(function(x) { return x.id === id; });
+    if (!p) return;
+    document.getElementById('pm_id').value = p.id;
+    document.getElementById('pm_code').value = p.pattern_code || '';
+    document.getElementById('pm_name').value = p.pattern_name || '';
+    document.getElementById('pm_employment_type').value = p.employment_type || '正職員';
+    document.getElementById('pm_fiscal_year').value = p.fiscal_year || new Date().getFullYear();
+    document.getElementById('pm_start_date').value = p.start_date || '';
+    document.getElementById('pm_end_date').value = p.end_date || '';
+    document.getElementById('pm_weekly_limit').value = p.weekly_limit || 40;
+    document.getElementById('pm_annual_days_limit').value = p.annual_days_limit || 280;
+    document.getElementById('pm_annual_holiday_min').value = p.annual_holiday_min || 118;
+    document.getElementById('pm_note').value = p.note || '';
+    document.getElementById('patternModalTitle').textContent = '📋 勤務パターン編集：' + p.pattern_name;
+    document.getElementById('pmDeleteBtn').style.display = 'inline-flex';
+    document.getElementById('pmDuplicateBtn').style.display = 'inline-flex';
+    if (window.openModal) openModal('patternModal');
+  };
+
+  window.savePattern = function() {
+    var id = document.getElementById('pm_id').value;
+    var code = document.getElementById('pm_code').value.trim();
+    var name = document.getElementById('pm_name').value.trim();
+    if (!code || !name) { if (window.showToast) showToast('パターンIDと名前は必須です', 'red'); return; }
+    var data = {
+      pattern_code: code, pattern_name: name,
+      employment_type: document.getElementById('pm_employment_type').value,
+      fiscal_year: parseInt(document.getElementById('pm_fiscal_year').value) || null,
+      start_date: document.getElementById('pm_start_date').value || null,
+      end_date: document.getElementById('pm_end_date').value || null,
+      weekly_limit: parseFloat(document.getElementById('pm_weekly_limit').value) || 40,
+      annual_days_limit: parseInt(document.getElementById('pm_annual_days_limit').value) || 280,
+      annual_holiday_min: parseInt(document.getElementById('pm_annual_holiday_min').value) || 118,
+      note: document.getElementById('pm_note').value || null,
+      updated_at: new Date().toISOString()
+    };
+    var pr = id ? sb.from('work_patterns').update(data).eq('id', id)
+                : sb.from('work_patterns').insert(data);
+    pr.then(function(r) {
+      if (r.error) { if (window.showToast) showToast('保存失敗: ' + r.error.message, 'red'); return; }
+      if (window.closeModal) closeModal('patternModal');
+      if (window.showToast) showToast('✅ 勤務パターンを保存しました', 'green');
+      loadPatternList();
+    });
+  };
+
+  window.deletePattern = function() {
+    var id = document.getElementById('pm_id').value;
+    if (!id || !confirm('このパターンを削除しますか？関連するカレンダーも削除されます。')) return;
+    sb.from('work_patterns').delete().eq('id', id).then(function(r) {
+      if (r.error) { if (window.showToast) showToast('削除失敗: ' + r.error.message, 'red'); return; }
+      if (window.closeModal) closeModal('patternModal');
+      if (window.showToast) showToast('削除しました', 'amber');
+      loadPatternList();
+    });
+  };
+
+  window.duplicatePattern = function() {
+    var id = document.getElementById('pm_id').value;
+    var p = _patterns.find(function(x) { return x.id === id; });
+    if (!p) return;
+    var newCode = p.pattern_code + '_copy';
+    var newName = p.pattern_name + '（コピー）';
+    sb.from('work_patterns').insert({
+      pattern_code: newCode, pattern_name: newName,
+      employment_type: p.employment_type, fiscal_year: p.fiscal_year,
+      start_date: p.start_date, end_date: p.end_date,
+      weekly_limit: p.weekly_limit, annual_days_limit: p.annual_days_limit,
+      annual_holiday_min: p.annual_holiday_min
+    }).then(function(r) {
+      if (r.error) { if (window.showToast) showToast('複製失敗: ' + r.error.message, 'red'); return; }
+      if (window.closeModal) closeModal('patternModal');
+      if (window.showToast) showToast('✅ パターンを複製しました', 'green');
+      loadPatternList();
+    });
+  };
+
+  // ── カレンダー編集 ─────────────────────────────────────
+  function loadPatternSelects() {
+    sb.from('work_patterns').select('id,pattern_code,pattern_name').eq('is_active', true).order('pattern_code').then(function(r) {
+      var opts = (r.data || []).map(function(p) {
+        return '<option value="' + p.id + '">[' + p.pattern_code + '] ' + p.pattern_name + '</option>';
+      }).join('');
+      ['calPatternSel', 'checkPatternSel'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          var cur = el.value;
+          el.innerHTML = '<option value="">選択してください</option>' + opts;
+          if (cur) el.value = cur;
+        }
+      });
+    });
+  }
+
+  window._openCalFromPattern = function(btn) {
+    var id = btn.getAttribute('data-id');
+    if (window.showPage) showPage('wcal_calendar');
+    setTimeout(function() {
+      var sel = document.getElementById('calPatternSel');
+      if (sel) { sel.value = id; loadCalendar(); }
+    }, 300);
+  };
+
+  window.changeCalEditMonth = function(d) {
+    _calEditMonth += d;
+    if (_calEditMonth > 12) { _calEditMonth = 1; _calEditYear++; }
+    if (_calEditMonth < 1)  { _calEditMonth = 12; _calEditYear--; }
+    loadCalendar();
+  };
+
+  window.loadCalendar = function() {
+    var sel = document.getElementById('calPatternSel');
+    _currentPatternId = sel ? sel.value : null;
+    var lbl = document.getElementById('calEditMonthLabel');
+    if (lbl) lbl.textContent = _calEditYear + '年' + _calEditMonth + '月';
+    if (!_currentPatternId) {
+      var tbody = document.getElementById('calEditBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#999">パターンを選択してください</td></tr>';
+      return;
+    }
+    var start = _calEditYear + '-' + p2(_calEditMonth) + '-01';
+    var lastDay = new Date(_calEditYear, _calEditMonth, 0).getDate();
+    var end   = _calEditYear + '-' + p2(_calEditMonth) + '-' + p2(lastDay);
+    sb.from('work_calendar_days').select('*').eq('work_pattern_id', _currentPatternId)
+      .gte('work_date', start).lte('work_date', end).then(function(r) {
+        _calDays = {};
+        (r.data || []).forEach(function(d) { _calDays[d.work_date] = d; });
+        renderCalEditTable(lastDay);
+      });
+  };
+
+  function renderCalEditTable(days) {
+    var tbody = document.getElementById('calEditBody');
+    if (!tbody) return;
+    var wdays = ['日','月','火','水','木','金','土'];
+    var rows = [];
+    var sumWork = 0, sumHoli = 0, sumLegal = 0, sumHours = 0;
+    var ngList = [];
+
+    for (var d = 1; d <= days; d++) {
+      var ds  = _calEditYear + '-' + p2(_calEditMonth) + '-' + p2(d);
+      var wd  = new Date(_calEditYear, _calEditMonth-1, d).getDay();
+      var rec = _calDays[ds] || {};
+      var dayType = rec.day_type || (wd === 0 ? '法定休日' : wd === 6 ? '休日' : '勤務');
+      var schHours = parseFloat(rec.scheduled_hours) || (dayType === '勤務' ? 8 : 0);
+      var st  = rec.start_time ? rec.start_time.slice(0,5) : (dayType === '勤務' ? '09:00' : '');
+      var et  = rec.end_time   ? rec.end_time.slice(0,5)   : (dayType === '勤務' ? '18:00' : '');
+      var brk = rec.break_minutes !== undefined ? rec.break_minutes : (dayType === '勤務' ? 60 : 0);
+      var note = rec.note || '';
+
+      if (dayType === '勤務') { sumWork++; sumHours += schHours; }
+      else if (dayType === '法定休日') sumLegal++;
+      else sumHoli++;
+
+      // NG判定（1日10h超）
+      var ng = '';
+      if (dayType === '勤務' && schHours > 10) {
+        ng = '<span class="badge badge-red" style="font-size:10px">10h超</span>';
+        ngList.push({date: ds, msg: '1日10時間超（' + schHours + 'h）'});
+      }
+
+      var bgColor = dayType === '法定休日' ? 'background:#fef2f2' : dayType === '休日' ? 'background:#f9fafb' : '';
+      var wdColor = wd === 0 ? 'color:var(--red)' : wd === 6 ? 'color:var(--blue)' : '';
+      var typeOpts = ['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t) {
+        return '<option value="' + t + '"' + (dayType === t ? ' selected' : '') + '>' + t + '</option>';
+      }).join('');
+
+      rows.push('<tr style="' + bgColor + '" data-date="' + ds + '">' +
+        '<td style="text-align:center;font-weight:700">' + d + '</td>' +
+        '<td style="text-align:center;' + wdColor + '">' + wdays[wd] + '</td>' +
+        '<td><select class="form-control" style="font-size:11px;padding:4px;width:90px" onchange="onDayTypeChange(this,\'' + ds + '\')">' + typeOpts + '</select></td>' +
+        '<td><input type="number" class="form-control cal-hours" style="font-size:11px;padding:4px;width:60px" value="' + schHours.toFixed(2) + '" step="0.25" min="0" max="24" data-date="' + ds + '"></td>' +
+        '<td><input type="time" class="form-control cal-start" style="font-size:11px;padding:4px" value="' + st + '" data-date="' + ds + '"></td>' +
+        '<td><input type="time" class="form-control cal-end" style="font-size:11px;padding:4px" value="' + et + '" data-date="' + ds + '"></td>' +
+        '<td><input type="number" class="form-control cal-break" style="font-size:11px;padding:4px;width:55px" value="' + brk + '" min="0" max="240" data-date="' + ds + '"></td>' +
+        '<td><input type="text" class="form-control cal-note" style="font-size:11px;padding:4px" value="' + note + '" data-date="' + ds + '" placeholder="振替等"></td>' +
+        '<td style="text-align:center">' + ng + '</td>' +
+      '</tr>');
+    }
+    tbody.innerHTML = rows.join('');
+
+    // 集計更新
+    var e = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    e('sumWorkDays', sumWork);
+    e('sumHoliDays', sumHoli);
+    e('sumLegalDays', sumLegal);
+    e('sumWorkHours', sumHours.toFixed(2));
+    var ngBadge = document.getElementById('calNgBadge');
+    var ngCount = document.getElementById('calNgCount');
+    if (ngBadge) ngBadge.style.display = ngList.length > 0 ? 'block' : 'none';
+    if (ngCount) ngCount.textContent = ngList.length;
+  }
+
+  window.onDayTypeChange = function(sel, ds) {
+    var row = document.querySelector('tr[data-date="' + ds + '"]');
+    if (!row) return;
+    var type = sel.value;
+    var isWork = type === '勤務' || type === '振替出勤';
+    var hoursInput = row.querySelector('.cal-hours');
+    var breakInput = row.querySelector('.cal-break');
+    if (hoursInput) hoursInput.value = isWork ? '8.00' : '0.00';
+    if (breakInput) breakInput.value = isWork ? '60' : '0';
+    row.style.background = type === '法定休日' ? '#fef2f2' : type === '休日' || type === '振替休日' ? '#f9fafb' : '';
+  };
+
+  window.saveCalendar = function() {
+    if (!_currentPatternId) { if (window.showToast) showToast('パターンを選択してください', 'red'); return; }
+    var rows = document.querySelectorAll('#calEditBody tr[data-date]');
+    var upserts = [];
+    rows.forEach(function(row) {
+      var ds   = row.getAttribute('data-date');
+      var wd   = new Date(ds).getDay();
+      var wdays = ['日','月','火','水','木','金','土'];
+      var typeSel = row.querySelector('select');
+      var hoursEl = row.querySelector('.cal-hours');
+      var startEl = row.querySelector('.cal-start');
+      var endEl   = row.querySelector('.cal-end');
+      var breakEl = row.querySelector('.cal-break');
+      var noteEl  = row.querySelector('.cal-note');
+      upserts.push({
+        work_pattern_id: _currentPatternId,
+        work_date:       ds,
+        day_of_week:     wdays[wd],
+        day_type:        typeSel ? typeSel.value : '勤務',
+        scheduled_hours: parseFloat(hoursEl ? hoursEl.value : 0) || 0,
+        start_time:      startEl ? (startEl.value || null) : null,
+        end_time:        endEl   ? (endEl.value   || null) : null,
+        break_minutes:   parseInt(breakEl ? breakEl.value : 0) || 0,
+        note:            noteEl  ? (noteEl.value  || null) : null,
+        updated_at:      new Date().toISOString()
+      });
+    });
+    sb.from('work_calendar_days').upsert(upserts, {onConflict: 'work_pattern_id,work_date'}).then(function(r) {
+      if (r.error) { if (window.showToast) showToast('保存失敗: ' + r.error.message, 'red'); return; }
+      if (window.showToast) showToast('✅ カレンダーを保存しました（' + upserts.length + '日分）', 'green');
+      loadCalendar();
+    });
+  };
+
+  // ── チェック機能 ───────────────────────────────────────
+  function loadCheckPatternSelect() {
+    sb.from('work_patterns').select('id,pattern_code,pattern_name').order('pattern_code').then(function(r) {
+      var sel = document.getElementById('checkPatternSel');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">全パターン</option>' +
+        (r.data || []).map(function(p) {
+          return '<option value="' + p.id + '">[' + p.pattern_code + '] ' + p.pattern_name + '</option>';
+        }).join('');
+    });
+  }
+
+  window.runAllChecks = function() {
+    var sel = document.getElementById('checkPatternSel');
+    var patternId = sel ? sel.value : '';
+    var q = sb.from('work_calendar_days').select('*, work_patterns(pattern_name, weekly_limit, annual_days_limit, annual_holiday_min)');
+    if (patternId) q = q.eq('work_pattern_id', patternId);
+    q.order('work_date').then(function(r) {
+      var data = r.data || [];
+      var errors = [];
+      var patternMap = {};  // patternId -> array of days
+
+      data.forEach(function(d) {
+        var pid = d.work_pattern_id;
+        if (!patternMap[pid]) patternMap[pid] = { name: d.work_patterns ? d.work_patterns.pattern_name : '不明', days: [], limits: d.work_patterns };
+        patternMap[pid].days.push(d);
+      });
+
+      Object.keys(patternMap).forEach(function(pid) {
+        var info = patternMap[pid];
+        var days = info.days;
+        var limits = info.limits || {};
+        var weeklyLimit = limits.weekly_limit || 40;
+        var annualDaysLimit = limits.annual_days_limit || 280;
+        var annualHolidayMin = limits.annual_holiday_min || 118;
+
+        // 1日10h超チェック
+        days.forEach(function(d) {
+          if (d.day_type === '勤務' && parseFloat(d.scheduled_hours) > 10) {
+            errors.push({ pattern: info.name, target: d.work_date, type: '1日10h超', msg: d.work_date + ' 所定' + d.scheduled_hours + 'h', result: 'NG' });
+          }
+        });
+
+        // 週別チェック
+        var weekMap = {};
+        days.forEach(function(d) {
+          var dt = new Date(d.work_date);
+          var yr = dt.getFullYear();
+          var wk = getWeekNumber(dt);
+          var key = yr + '-W' + wk;
+          if (!weekMap[key]) weekMap[key] = { hours: 0, legalHoli: 0, days: [] };
+          weekMap[key].hours += parseFloat(d.scheduled_hours) || 0;
+          if (d.day_type === '法定休日') weekMap[key].legalHoli++;
+          weekMap[key].days.push(d.work_date);
+        });
+
+        var weekKeys = Object.keys(weekMap).sort();
+        var over48weeks = [];
+
+        weekKeys.forEach(function(wk) {
+          var info2 = weekMap[wk];
+          // 週52h超
+          if (info2.hours > 52) {
+            errors.push({ pattern: info.name, target: wk, type: '週52h超', msg: '週計' + info2.hours.toFixed(1) + 'h', result: 'NG' });
+          }
+          // 週48h超
+          if (info2.hours > 48) over48weeks.push(wk);
+          // 法定休日なし
+          if (info2.legalHoli === 0 && info2.days.length >= 7) {
+            errors.push({ pattern: info.name, target: wk, type: '法定休日なし', msg: '週内に法定休日なし', result: 'NG' });
+          }
+        });
+
+        // 週48h超 連続3週以上
+        var consecutive = 1;
+        for (var i = 1; i < over48weeks.length; i++) {
+          if (weeksDiff(over48weeks[i-1], over48weeks[i]) === 1) {
+            consecutive++;
+            if (consecutive >= 3) {
+              errors.push({ pattern: info.name, target: over48weeks[i-2] + '〜' + over48weeks[i], type: '週48h超連続3週', msg: '連続' + consecutive + '週間週48h超', result: 'NG' });
+            }
+          } else { consecutive = 1; }
+        }
+
+        // 年間集計
+        var workDays = days.filter(function(d) { return d.day_type === '勤務' || d.day_type === '振替出勤'; }).length;
+        var holiDays = days.filter(function(d) { return d.day_type !== '勤務' && d.day_type !== '振替出勤'; }).length;
+
+        if (workDays > annualDaysLimit) {
+          errors.push({ pattern: info.name, target: '年間', type: '年間労働日数超過', msg: '労働日数' + workDays + '日 > 上限' + annualDaysLimit + '日', result: 'NG' });
+        }
+        if (holiDays < annualHolidayMin) {
+          errors.push({ pattern: info.name, target: '年間', type: '年間休日不足', msg: '休日' + holiDays + '日 < 最低' + annualHolidayMin + '日', result: 'NG' });
+        }
+      });
+
+      // 表示
+      var tbody = document.getElementById('checkResultBody');
+      var cards = document.getElementById('checkSummaryCards');
+      if (cards) {
+        var ngCount = errors.filter(function(e) { return e.result === 'NG'; }).length;
+        var patCount = Object.keys(patternMap).length;
+        cards.innerHTML =
+          '<div style="background:var(--lblue);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--blue)">' + patCount + '</div><div style="font-size:12px;color:var(--muted)">対象パターン</div></div>' +
+          '<div style="background:' + (ngCount > 0 ? 'var(--lred)' : 'var(--lgreen)') + ';border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:' + (ngCount > 0 ? 'var(--red)' : 'var(--green)') + '">' + ngCount + '</div><div style="font-size:12px">NG件数</div></div>' +
+          '<div style="background:var(--lgreen);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--green)">' + (errors.length > 0 ? 0 : patCount) + '</div><div style="font-size:12px">問題なし</div></div>';
+      }
+      if (tbody) {
+        tbody.innerHTML = errors.length > 0 ? errors.map(function(e) {
+          return '<tr><td><span class="badge badge-blue" style="font-size:11px">' + e.pattern + '</span></td>' +
+            '<td style="font-size:12px">' + e.target + '</td>' +
+            '<td><span class="badge badge-amber" style="font-size:11px">' + e.type + '</span></td>' +
+            '<td style="font-size:12px">' + e.msg + '</td>' +
+            '<td><span class="badge badge-red">NG</span></td></tr>';
+        }).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--green)">✅ NGなし。すべてのチェックをクリアしました。</td></tr>';
+      }
+    });
+  };
+
+  // パターンごとのNG件数をバッジに反映
+  function checkPatternNG(p) {
+    sb.from('work_calendar_days').select('scheduled_hours,day_type').eq('work_pattern_id', p.id).then(function(r) {
+      var days = r.data || [];
+      var ng = days.filter(function(d) { return d.day_type === '勤務' && parseFloat(d.scheduled_hours) > 10; }).length;
+      var badge = document.getElementById('ng_' + p.id.slice(0,8));
+      if (badge) {
+        badge.textContent = ng > 0 ? ng + 'NG' : 'OK';
+        badge.className = 'badge ' + (ng > 0 ? 'badge-red' : 'badge-green');
+      }
+    });
+  }
+
+  // 週番号計算
+  function getWeekNumber(d) {
+    var date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    var dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    var yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  }
+  function weeksDiff(w1, w2) {
+    var n1 = parseInt(w1.replace(/\D/g,'')), n2 = parseInt(w2.replace(/\D/g,''));
+    return n2 - n1;
+  }
+
+  // CSV出力
+  window.exportCalendarCSV = function() {
+    if (!_currentPatternId) { if (window.showToast) showToast('パターンを選択してください', 'red'); return; }
+    var rows = [['日付','曜日','勤務区分','所定時間','始業','終業','休憩(分)','備考']];
+    document.querySelectorAll('#calEditBody tr[data-date]').forEach(function(row) {
+      var ds = row.getAttribute('data-date');
+      var wd = new Date(ds).getDay();
+      var wdays = ['日','月','火','水','木','金','土'];
+      var typeSel = row.querySelector('select');
+      var hoursEl = row.querySelector('.cal-hours');
+      var startEl = row.querySelector('.cal-start');
+      var endEl   = row.querySelector('.cal-end');
+      var breakEl = row.querySelector('.cal-break');
+      var noteEl  = row.querySelector('.cal-note');
+      rows.push([ds, wdays[wd], typeSel ? typeSel.value : '', hoursEl ? hoursEl.value : '', startEl ? startEl.value : '', endEl ? endEl.value : '', breakEl ? breakEl.value : '', noteEl ? noteEl.value : '']);
+    });
+    var bom = '\uFEFF';
+    var csv = bom + rows.map(function(r) { return r.join(','); }).join('\n');
+    var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = _calEditYear + '年' + _calEditMonth + '月_勤務カレンダー.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (window.showToast) showToast('✅ CSVをダウンロードしました', 'green');
+  };
+
+  // 印刷
+  window.printCalendar = function() {
+    var table = document.getElementById('calEditTable');
+    if (!table) return;
+    var win = window.open('', '_blank');
+    var sel = document.getElementById('calPatternSel');
+    var patName = sel ? sel.options[sel.selectedIndex].text : '';
+    win.document.write('<html><head><title>勤務カレンダー</title>');
+    win.document.write('<style>body{font-family:Meiryo,sans-serif;font-size:11px;margin:15px}');
+    win.document.write('h2{font-size:14px;margin-bottom:4px}');
+    win.document.write('table{width:100%;border-collapse:collapse}');
+    win.document.write('th,td{border:1px solid #ccc;padding:4px 6px}');
+    win.document.write('th{background:#1a3a5c;color:#fff}');
+    win.document.write('tr:nth-child(even){background:#f9f9f9}');
+    win.document.write('</style></head><body>');
+    win.document.write('<h2>勤務カレンダー ' + _calEditYear + '年' + _calEditMonth + '月</h2>');
+    win.document.write('<p style="font-size:11px;color:#666;margin-bottom:8px">パターン：' + patName + '</p>');
+    win.document.write(table.outerHTML);
+    win.document.write('</body></html>');
+    win.document.close();
+    setTimeout(function() { win.print(); }, 500);
+  };
+
+
+
+  // 従業員モーダル タブ切り替え
+  window.switchEmpTab = function(btn, idx) {
+    var panels = document.querySelectorAll('.emp-tab-panel');
+    var tabs   = document.querySelectorAll('#empModal .tab');
+    panels.forEach(function(p) { p.style.display = 'none'; });
+    tabs.forEach(function(t)   { t.classList.remove('active'); });
+    if (panels[idx]) panels[idx].style.display = 'block';
+    btn.classList.add('active');
+  };
+
   // 起動
   document.addEventListener('DOMContentLoaded', function() {
     // ボタンイベント
@@ -2739,6 +3391,132 @@ function showToast(msg,color='blue'){
 </script>
 
 
+
+
+<!-- ─── 勤務パターン管理 ─── -->
+<div class="page" id="page-wcal_patterns">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">📋 勤務パターン一覧</div>
+      <button class="btn btn-primary btn-sm" onclick="openPatternModal()">+ 新規パターン</button>
+    </div>
+    <table>
+      <thead><tr><th>パターンID</th><th>パターン名</th><th>雇用区分</th><th>年度</th><th>対象期間</th><th>適用人数</th><th>NG</th><th>操作</th></tr></thead>
+      <tbody id="patternListBody"><tr><td colspan="8" style="text-align:center;padding:20px;color:#999">読み込み中...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── カレンダー編集 ─── -->
+<div class="page" id="page-wcal_calendar">
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">勤務パターン</div>
+        <select id="calPatternSel" class="form-control" style="width:220px" onchange="loadCalendar()">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <div class="form-label">表示月</div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(-1)">←</button>
+          <span id="calEditMonthLabel" style="font-size:14px;font-weight:700;min-width:80px;text-align:center">2026年4月</span>
+          <button class="btn btn-outline btn-sm" onclick="changeCalEditMonth(1)">→</button>
+        </div>
+      </div>
+      <button class="btn btn-success btn-sm" onclick="saveCalendar()" style="margin-left:auto">💾 保存</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCalendarCSV()">📊 CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="printCalendar()">🖨️ 印刷</button>
+    </div>
+
+    <!-- 集計サマリー -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="calSummary">
+      <div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">出勤日: <strong id="sumWorkDays">0</strong>日</div>
+      <div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong id="sumHoliDays">0</strong>日</div>
+      <div style="background:var(--lpurple);border-radius:8px;padding:8px 14px;font-size:12px">法定休日: <strong id="sumLegalDays">0</strong>日</div>
+      <div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">所定時間: <strong id="sumWorkHours">0.00</strong>h</div>
+      <div id="calNgBadge" style="display:none;background:var(--lred);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red)">⚠️ NG: <strong id="calNgCount">0</strong>件</div>
+    </div>
+
+    <!-- カレンダーテーブル -->
+    <div style="overflow-x:auto">
+      <table id="calEditTable">
+        <thead>
+          <tr>
+            <th style="width:40px">日</th>
+            <th style="width:28px">曜</th>
+            <th style="width:100px">勤務区分</th>
+            <th style="width:70px">所定時間</th>
+            <th style="width:70px">始業</th>
+            <th style="width:70px">終業</th>
+            <th style="width:60px">休憩(分)</th>
+            <th>備考</th>
+            <th style="width:50px">判定</th>
+          </tr>
+        </thead>
+        <tbody id="calEditBody">
+          <tr><td colspan="9" style="text-align:center;padding:20px;color:#999">パターンを選択してください</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── チェック結果 ─── -->
+<div class="page" id="page-wcal_check">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:0">⚠️ チェック結果（NG一覧）</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="checkPatternSel" class="form-control" style="width:200px;font-size:12px" onchange="runAllChecks()">
+          <option value="">全パターン</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="runAllChecks()">🔍 再チェック</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px" id="checkSummaryCards"></div>
+    <table>
+      <thead><tr><th>パターン</th><th>対象日/週</th><th>チェック種別</th><th>内容</th><th>判定</th></tr></thead>
+      <tbody id="checkResultBody"><tr><td colspan="5" style="text-align:center;padding:20px;color:#999">チェックを実行してください</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 勤務パターン登録/編集モーダル -->
+<div class="modal-overlay" id="patternModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">
+      <span id="patternModalTitle">📋 勤務パターン登録</span>
+      <span class="modal-close" onclick="closeModal('patternModal')">×</span>
+    </div>
+    <input type="hidden" id="pm_id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><div class="form-label">パターンID *</div><input id="pm_code" class="form-control" placeholder="A"></div>
+      <div class="form-group"><div class="form-label">パターン名 *</div><input id="pm_name" class="form-control" placeholder="Aパターン（正職員）"></div>
+      <div class="form-group"><div class="form-label">雇用区分</div>
+        <select id="pm_employment_type" class="form-control">
+          <option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">年度</div><input id="pm_fiscal_year" type="number" class="form-control" value="2026"></div>
+      <div class="form-group"><div class="form-label">対象開始日</div><input id="pm_start_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">対象終了日</div><input id="pm_end_date" type="date" class="form-control"></div>
+      <div class="form-group"><div class="form-label">週上限時間(h)</div><input id="pm_weekly_limit" type="number" class="form-control" value="40" step="0.5"></div>
+      <div class="form-group"><div class="form-label">年間労働日数上限</div><input id="pm_annual_days_limit" type="number" class="form-control" value="280"></div>
+      <div class="form-group"><div class="form-label">年間休日最低日数</div><input id="pm_annual_holiday_min" type="number" class="form-control" value="118"></div>
+      <div class="form-group" style="grid-column:1/-1"><div class="form-label">備考</div><textarea id="pm_note" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+      <button id="pmDeleteBtn" class="btn btn-outline" style="color:var(--red);display:none" onclick="deletePattern()">🗑️ 削除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline btn-sm" onclick="duplicatePattern()" id="pmDuplicateBtn" style="display:none">📋 複製</button>
+        <button class="btn btn-outline" onclick="closeModal('patternModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="savePattern()">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
