@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>変形労働時間カレンダー管理システム</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3a5c;--blue:#185FA5;--lblue:#E6F1FB;--green:#0F6E56;--lgreen:#E1F5EE;
+  --red:#A32D2D;--lred:#FCEBEB;--amber:#854F0B;--lamber:#FAEEDA;--border:#e0e4ea;
+  --gray:#f5f7fa;--white:#fff;--muted:#666;
+}
+body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--gray);color:#222;font-size:14px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--navy);position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.content{padding:20px}
+.sidebar-logo{padding:18px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sidebar-logo .title{color:#fff;font-size:15px;font-weight:700}
+.sidebar-logo .sub{color:rgba(255,255,255,.4);font-size:11px;margin-top:3px}
+.nav-sec{padding:10px 16px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.1em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:rgba(255,255,255,.75);cursor:pointer;transition:all .15s;font-size:13px;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;border-left-color:#4fa3e8}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.page{display:none}
+.page.active{display:block}
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1050a0}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:#333}.btn-outline:hover{background:var(--gray)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.form-group{margin-bottom:12px}
+.form-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+.form-control{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit}
+.form-control:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.1)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--navy);color:#fff;padding:8px 10px;text-align:left;font-weight:600;font-size:12px}
+td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:nth-child(even) td{background:#fafbfc}
+tr:hover td{background:var(--lblue)}
+.badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-green{background:var(--lgreen);color:var(--green)}
+.badge-red{background:var(--lred);color:var(--red)}
+.badge-blue{background:var(--lblue);color:var(--blue)}
+.badge-amber{background:var(--lamber);color:var(--amber)}
+.badge-gray{background:#eef0f3;color:#555}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:16px;padding:28px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;transform:translateY(20px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:20px;display:flex;justify-content:space-between}
+.modal-close{cursor:pointer;font-size:20px;color:var(--muted);line-height:1}
+
+/* ─── カレンダーテーブル ─── */
+.cal-wrapper{overflow-x:auto}
+.cal-table{border-collapse:collapse;font-size:12px;min-width:900px;width:100%}
+.cal-table th{background:var(--navy);color:#fff;padding:6px 8px;text-align:center;font-size:11px;white-space:nowrap}
+.cal-table td{padding:3px 4px;border:1px solid #ddd;vertical-align:middle;text-align:center}
+.cal-table .day-num{font-weight:700;font-size:13px;width:30px}
+.cal-table .day-sun{color:var(--red)}
+.cal-table .day-sat{color:var(--blue)}
+.cal-table .day-legal{background:#fde8e8;color:var(--red)}
+.cal-table .day-holiday{background:#f0f0f0;color:#888}
+.cal-table .day-work{background:#fff}
+.cal-table .day-work-alt{background:#e8f4e8}
+.cal-table select.day-type{font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;width:80px}
+.cal-table input.hours-input{font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;width:55px;text-align:center}
+.cal-table input.time-input{font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;width:58px}
+.cal-table input.note-input{font-size:11px;padding:2px 4px;border:1px solid #ccc;border-radius:4px;width:90px}
+.cal-table .week-sum{background:#f0f4ff;font-weight:700;font-size:11px}
+.cal-table .ng-cell{color:var(--red);font-weight:700}
+.cal-table .ok-cell{color:var(--green);font-weight:700}
+
+/* チェックサマリー */
+.check-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.check-card{border-radius:10px;padding:14px;text-align:center;border:1px solid var(--border)}
+.check-card .val{font-size:26px;font-weight:700;line-height:1}
+.check-card .lbl{font-size:11px;color:var(--muted);margin-top:4px}
+.check-card.ok{background:var(--lgreen);border-color:#9fe1cb}
+.check-card.ng{background:var(--lred);border-color:#f5c1c1}
+.check-card.info{background:var(--lblue);border-color:#b5d4f4}
+
+/* 年間サマリー */
+.year-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:16px}
+.month-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px}
+.month-row.ng{background:var(--lred);border-color:#f5c1c1}
+
+/* NG badge inside table */
+.ng-badge{background:var(--lred);color:var(--red);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.ok-badge{background:var(--lgreen);color:var(--green);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+
+/* login */
+#loginScreen{display:flex;position:fixed;inset:0;background:var(--navy);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="loginScreen">
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:36px">📅</div>
+    <div style="color:#fff;font-size:20px;font-weight:700;margin-top:8px">変形労働時間カレンダー</div>
+    <div style="color:rgba(255,255,255,.5);font-size:13px;margin-top:4px">管理システム</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:28px;width:340px">
+    <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px">ログイン</div>
+    <div class="form-group"><label class="form-label">メールアドレス</label><input id="loginEmail" type="email" class="form-control" placeholder="admin@example.com"></div>
+    <div class="form-group"><label class="form-label">パスワード</label><input id="loginPass" type="password" class="form-control"></div>
+    <div id="loginErr" style="color:var(--red);font-size:12px;margin-bottom:8px;min-height:16px"></div>
+    <button onclick="doLogin()" style="width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">ログイン</button>
+  </div>
+</div>
+
+<!-- メインアプリ -->
+<div class="app" style="display:none" id="mainApp">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="title">📅 変形労働カレンダー</div>
+      <div class="sub">管理システム</div>
+    </div>
+    <div class="nav-sec">メニュー</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span>ダッシュボード</div>
+    <div class="nav-item" onclick="showPage('patterns')"><span class="nav-icon">📋</span>勤務パターン</div>
+    <div class="nav-item" onclick="showPage('calendar')"><span class="nav-icon">📅</span>カレンダー編集</div>
+    <div class="nav-item" onclick="showPage('check')"><span class="nav-icon">⚠️</span>チェック結果</div>
+    <div class="nav-item" onclick="showPage('employees')"><span class="nav-icon">👥</span>職員マスター</div>
+    <div class="nav-item" onclick="showPage('output')"><span class="nav-icon">📄</span>出力</div>
+    <div style="padding:16px;margin-top:auto">
+      <div style="color:rgba(255,255,255,.6);font-size:11px;margin-bottom:8px" id="loginUserInfo"></div>
+      <button onclick="doLogout()" style="width:100%;padding:7px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;font-size:12px;cursor:pointer">ログアウト</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div style="font-size:17px;font-weight:700;color:var(--navy)" id="pageTitle">ダッシュボード</div>
+      <div style="font-size:13px;color:var(--muted)" id="topUserName"></div>
+    </div>
+    <div class="content">
+
+      <!-- ─── ダッシュボード ─── -->
+      <div class="page active" id="page-dashboard">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px" id="dashKpis"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card">
+            <div class="card-title">📋 勤務パターン一覧</div>
+            <div id="dashPatterns"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚠️ 最新NG件数</div>
+            <div id="dashNg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── 勤務パターン ─── -->
+      <div class="page" id="page-patterns">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:0">📋 勤務パターン一覧</div>
+            <button class="btn btn-primary btn-sm" onclick="openPatternModal()">+ 新規パターン</button>
+          </div>
+          <table><thead><tr><th>パターンID</th><th>パターン名</th><th>雇用区分</th><th>年度</th><th>対象期間</th><th>週上限</th><th>NG件数</th><th>操作</th></tr></thead>
+          <tbody id="patternBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ─── カレンダー編集 ─── -->
+      <div class="page" id="page-calendar">
+        <div class="card" style="padding:14px">
+          <!-- ヘッダー操作バー -->
+          <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+            <div>
+              <div class="form-label">勤務パターン</div>
+              <select id="calPatSel" class="form-control" style="width:240px" onchange="onPatternChange()">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            <div>
+              <div class="form-label">表示月</div>
+              <div style="display:flex;gap:4px;align-items:center">
+                <button class="btn btn-outline btn-sm" onclick="changeMonth(-1)">←</button>
+                <span id="calMonthLabel" style="font-size:14px;font-weight:700;min-width:80px;text-align:center"></span>
+                <button class="btn btn-outline btn-sm" onclick="changeMonth(1)">→</button>
+              </div>
+            </div>
+            <div>
+              <div class="form-label">一括設定</div>
+              <select id="bulkDayType" class="form-control" style="width:90px">
+                <option>勤務</option><option>休日</option><option>法定休日</option>
+              </select>
+            </div>
+            <div>
+              <div class="form-label">一括時間</div>
+              <input id="bulkHours" type="number" class="form-control" style="width:70px" value="8" step="0.5">
+            </div>
+            <div>
+              <div class="form-label">始業</div>
+              <input id="bulkStart" type="time" class="form-control" style="width:90px" value="08:30">
+            </div>
+            <div>
+              <div class="form-label">終業</div>
+              <input id="bulkEnd" type="time" class="form-control" style="width:90px" value="17:30">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="bulkSetWeekdays()">平日一括</button>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn btn-success btn-sm" onclick="saveCalendar()">💾 保存</button>
+              <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV</button>
+              <button class="btn btn-outline btn-sm" onclick="printCal()">🖨️ 印刷</button>
+            </div>
+          </div>
+
+          <!-- 月次サマリー -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px" id="monthSummary"></div>
+
+          <!-- カレンダーテーブル -->
+          <div class="cal-wrapper">
+            <table class="cal-table" id="calTable">
+              <thead>
+                <tr>
+                  <th style="width:32px">日</th>
+                  <th style="width:24px">曜</th>
+                  <th style="width:90px">勤務区分</th>
+                  <th style="width:60px">所定時間</th>
+                  <th style="width:65px">始業</th>
+                  <th style="width:65px">終業</th>
+                  <th style="width:50px">休憩</th>
+                  <th>備考</th>
+                  <th style="width:44px">週計</th>
+                  <th style="width:44px">判定</th>
+                </tr>
+              </thead>
+              <tbody id="calBody"></tbody>
+              <tfoot id="calFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── チェック結果 ─── -->
+      <div class="page" id="page-check">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:0">⚠️ 法令チェック結果</div>
+            <div style="display:flex;gap:8px">
+              <select id="checkPatSel" class="form-control" style="width:200px;font-size:12px">
+                <option value="">全パターン</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="runCheck()">🔍 チェック実行</button>
+            </div>
+          </div>
+          <div class="check-grid" id="checkCards"></div>
+          <table><thead><tr><th>パターン</th><th>対象</th><th>チェック種別</th><th>内容</th><th>判定</th></tr></thead>
+          <tbody id="checkBody"></tbody></table>
+        </div>
+
+        <!-- 年間サマリー -->
+        <div class="card">
+          <div class="card-title">📊 年間集計サマリー</div>
+          <div id="yearSummary"></div>
+        </div>
+      </div>
+
+      <!-- ─── 職員マスター ─── -->
+      <div class="page" id="page-employees">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="margin-bottom:0">👥 職員一覧</div>
+            <button class="btn btn-primary btn-sm" onclick="openEmpModal()">+ 職員登録</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input id="empSearch" class="form-control" style="width:180px" placeholder="氏名検索" oninput="filterEmps()">
+            <select id="empDeptFilter" class="form-control" style="width:130px" onchange="filterEmps()"><option value="">全部署</option></select>
+            <select id="empPatFilter" class="form-control" style="width:170px" onchange="filterEmps()"><option value="">全パターン</option></select>
+          </div>
+          <table><thead><tr><th>職員ID</th><th>氏名</th><th>部門</th><th>勤務パターン</th><th>雇用区分</th><th>在籍区分</th><th>操作</th></tr></thead>
+          <tbody id="empBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- ─── 出力 ─── -->
+      <div class="page" id="page-output">
+        <div class="card">
+          <div class="card-title">📄 出力設定</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div class="form-group">
+                <label class="form-label">出力パターン</label>
+                <select id="outPatSel" class="form-control"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">年度</label>
+                <select id="outYear" class="form-control">
+                  <option>2026</option><option>2025</option><option>2027</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+                <button class="btn btn-primary" onclick="outputPrintAll()">🖨️ 年間カレンダー印刷</button>
+                <button class="btn btn-outline" onclick="outputCSVAll()">📊 年間CSV出力</button>
+                <button class="btn btn-outline" onclick="outputCheckReport()">⚠️ チェックレポート出力</button>
+              </div>
+            </div>
+            <div id="outputPreview" style="background:var(--gray);border-radius:8px;padding:16px;font-size:12px;color:var(--muted)">
+              パターンを選択すると年間サマリーが表示されます
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- app -->
+
+<!-- ─── パターンモーダル ─── -->
+<div class="modal-overlay" id="patternModal">
+  <div class="modal">
+    <div class="modal-title"><span id="pmTitle">勤務パターン登録</span><span class="modal-close" onclick="closeModal('patternModal')">×</span></div>
+    <input type="hidden" id="pmId">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">パターンID *</label><input id="pmCode" class="form-control" placeholder="A"></div>
+      <div class="form-group"><label class="form-label">パターン名 *</label><input id="pmName" class="form-control" placeholder="Aパターン（正職員）"></div>
+      <div class="form-group"><label class="form-label">雇用区分</label>
+        <select id="pmEmpType" class="form-control"><option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">年度</label><input id="pmYear" type="number" class="form-control" value="2026"></div>
+      <div class="form-group"><label class="form-label">対象開始日</label><input id="pmStart" type="date" class="form-control"></div>
+      <div class="form-group"><label class="form-label">対象終了日</label><input id="pmEnd" type="date" class="form-control"></div>
+      <div class="form-group"><label class="form-label">週上限時間</label><input id="pmWeekLimit" type="number" class="form-control" value="40" step="0.5"></div>
+      <div class="form-group"><label class="form-label">年間労働日数上限</label><input id="pmAnnualDays" type="number" class="form-control" value="280"></div>
+      <div class="form-group"><label class="form-label">年間休日最低日数</label><input id="pmAnnualHoli" type="number" class="form-control" value="118"></div>
+      <div class="form-group"><label class="form-label">基準始業時刻</label><input id="pmDefStart" type="time" class="form-control" value="08:30"></div>
+      <div class="form-group"><label class="form-label">基準終業時刻</label><input id="pmDefEnd" type="time" class="form-control" value="17:30"></div>
+      <div class="form-group"><label class="form-label">基準休憩(分)</label><input id="pmDefBreak" type="number" class="form-control" value="60"></div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">備考</label><textarea id="pmNote" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+      <div style="display:flex;gap:8px">
+        <button id="pmDelBtn" class="btn btn-outline btn-sm" style="color:var(--red);display:none" onclick="deletePattern()">🗑️ 削除</button>
+        <button id="pmDupBtn" class="btn btn-outline btn-sm" style="display:none" onclick="duplicatePattern()">📋 複製</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="closeModal('patternModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="savePattern()">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 職員モーダル ─── -->
+<div class="modal-overlay" id="empModal">
+  <div class="modal" style="width:520px">
+    <div class="modal-title"><span id="emTitle">職員登録</span><span class="modal-close" onclick="closeModal('empModal')">×</span></div>
+    <input type="hidden" id="emId">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label class="form-label">職員ID</label><input id="emCode" class="form-control" placeholder="E001"></div>
+      <div class="form-group"><label class="form-label">氏名 *</label><input id="emName" class="form-control" placeholder="山田 一郎"></div>
+      <div class="form-group"><label class="form-label">部門</label><input id="emDept" class="form-control" placeholder="総務部"></div>
+      <div class="form-group"><label class="form-label">勤務パターン</label>
+        <select id="emPattern" class="form-control"><option value="">選択してください</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">雇用区分</label>
+        <select id="emEmpType" class="form-control"><option>正職員</option><option>嘱託職員</option><option>パート</option><option>アルバイト</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">在籍区分</label>
+        <select id="emStatus" class="form-control"><option>在籍</option><option>休職</option><option>退職</option></select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1"><label class="form-label">備考</label><input id="emNote" class="form-control"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px">
+      <button id="emDelBtn" class="btn btn-outline btn-sm" style="color:var(--red);display:none" onclick="deleteEmp()">🗑️ 削除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveEmp()">保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Supabase接続 ───────────────────────────────────────────
+var SB_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+var sb = null, me = null;
+var _patterns = [], _employees = [], _allEmps = [];
+var _calYear = new Date().getFullYear();
+var _calMonth = new Date().getMonth() + 1;
+var _currentPatId = null;
+var _calData = {}; // date_str -> record
+
+function p2(n){ return String(n).padStart(2,'0'); }
+function lastDay(y,m){ return new Date(y,m,0).getDate(); }
+function weekday(y,m,d){ return new Date(y,m-1,d).getDay(); }
+var WDAYS = ['日','月','火','水','木','金','土'];
+var WDAY_COLORS = ['color:var(--red)','','','','','','color:var(--blue)'];
+
+// ─── 起動 ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    if(!window.supabase){ alert('SDK読み込みエラー'); return; }
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    sb.auth.getSession().then(function(r){
+      if(r.data.session){
+        me = r.data.session.user;
+        onLogin();
+      } else {
+        document.getElementById('loginScreen').style.display = 'flex';
+      }
+    });
+    document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  }, 300);
+});
+
+function doLogin(){
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass  = document.getElementById('loginPass').value;
+  var err   = document.getElementById('loginErr');
+  err.textContent = '';
+  if(!email||!pass){ err.textContent='入力してください'; return; }
+  err.textContent = 'ログイン中...';
+  sb.auth.signInWithPassword({email:email,password:pass}).then(function(r){
+    if(r.error){ err.textContent='ログイン失敗: '+r.error.message; return; }
+    me = r.data.user;
+    onLogin();
+  });
+}
+function doLogout(){
+  sb.auth.signOut().then(function(){
+    me = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+  });
+}
+function onLogin(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  document.getElementById('topUserName').textContent = me.email;
+  document.getElementById('loginUserInfo').textContent = me.email;
+  loadAll();
+}
+
+// ─── データ読み込み ─────────────────────────────────────────
+function loadAll(){
+  loadPatterns().then(function(){
+    loadDashboard();
+    loadEmployees();
+    populateSelects();
+  });
+}
+
+function loadPatterns(){
+  return sb.from('work_patterns').select('*').order('pattern_code').then(function(r){
+    _patterns = r.data||[];
+    renderPatternList();
+    return _patterns;
+  });
+}
+
+function loadEmployees(){
+  sb.from('employees').select('*, work_patterns(pattern_name)').order('name').then(function(r){
+    _allEmps = r.data||[];
+    renderEmpList(_allEmps);
+    // 部署フィルター更新
+    var depts = [...new Set(_allEmps.map(function(e){return e.department;}).filter(Boolean))];
+    var df = document.getElementById('empDeptFilter');
+    df.innerHTML = '<option value="">全部署</option>' + depts.map(function(d){return '<option>'+d+'</option>';}).join('');
+  });
+}
+
+function populateSelects(){
+  var opts = _patterns.map(function(p){ return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>'; }).join('');
+  ['calPatSel','checkPatSel','outPatSel'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    var pre = id==='checkPatSel' ? '<option value="">全パターン</option>' : '<option value="">選択してください</option>';
+    el.innerHTML = pre + opts;
+  });
+  var emPat = document.getElementById('emPattern');
+  if(emPat) emPat.innerHTML = '<option value="">選択してください</option>' + opts;
+  var empPatF = document.getElementById('empPatFilter');
+  if(empPatF) empPatF.innerHTML = '<option value="">全パターン</option>' + opts;
+}
+
+// ─── ページ切替 ──────────────────────────────────────────────
+var pageTitles = {dashboard:'ダッシュボード',patterns:'勤務パターン管理',calendar:'カレンダー編集',check:'チェック結果',employees:'職員マスター',output:'出力'};
+function showPage(id){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  var page = document.getElementById('page-'+id);
+  if(page) page.classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[id]||id;
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    if(n.getAttribute('onclick') && n.getAttribute('onclick').includes("'"+id+"'")) n.classList.add('active');
+  });
+  if(id==='dashboard') loadDashboard();
+  if(id==='patterns')  { loadPatterns(); }
+  if(id==='calendar')  { populateSelects(); if(_currentPatId) loadCalendar(); }
+  if(id==='check')     { populateSelects(); }
+  if(id==='employees') { loadEmployees(); populateSelects(); }
+  if(id==='output')    populateSelects();
+}
+
+// ─── ダッシュボード ─────────────────────────────────────────
+function loadDashboard(){
+  // KPI
+  var kpis = document.getElementById('dashKpis');
+  kpis.innerHTML =
+    mkKpi('📋', _patterns.length, '勤務パターン数', 'info') +
+    mkKpi('👥', _allEmps.length, '在籍職員数', 'info') +
+    mkKpi('✅', _patterns.length, '登録年度', 'info') +
+    mkKpi('⚠️', '—', 'NG件数', 'info');
+
+  // パターン一覧
+  var dp = document.getElementById('dashPatterns');
+  dp.innerHTML = _patterns.map(function(p){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
+      '<div><span class="badge badge-blue" style="margin-right:6px">'+p.pattern_code+'</span>' + p.pattern_name + '</div>' +
+      '<div style="font-size:12px;color:var(--muted)">' + (p.employment_type||'') + '</div>' +
+      '</div>';
+  }).join('') || '<div style="color:var(--muted);font-size:13px">パターンがありません</div>';
+}
+function mkKpi(icon, val, lbl, type){
+  return '<div class="card" style="text-align:center;padding:16px">' +
+    '<div style="font-size:22px">'+icon+'</div>' +
+    '<div style="font-size:26px;font-weight:700;margin:4px 0">'+val+'</div>' +
+    '<div style="font-size:12px;color:var(--muted)">'+lbl+'</div></div>';
+}
+
+// ─── 勤務パターン ───────────────────────────────────────────
+function renderPatternList(){
+  var tbody = document.getElementById('patternBody');
+  if(!tbody) return;
+  tbody.innerHTML = _patterns.map(function(p){
+    var period = (p.start_date?p.start_date.slice(0,7):'—') + ' 〜 ' + (p.end_date?p.end_date.slice(0,7):'—');
+    return '<tr>' +
+      '<td><span class="badge badge-blue">'+p.pattern_code+'</span></td>' +
+      '<td><strong>'+p.pattern_name+'</strong></td>' +
+      '<td>'+(p.employment_type||'—')+'</td>' +
+      '<td>'+(p.fiscal_year||'—')+'年度</td>' +
+      '<td style="font-size:12px">'+period+'</td>' +
+      '<td>'+(p.weekly_limit||40)+'h</td>' +
+      '<td><span class="badge badge-gray" id="ng_'+p.id.slice(0,8)+'">—</span></td>' +
+      '<td style="display:flex;gap:4px">' +
+        '<button class="btn btn-outline btn-sm" data-id="'+p.id+'" onclick="_editPat(this)">編集</button>' +
+        '<button class="btn btn-primary btn-sm" data-id="'+p.id+'" onclick="_openCal(this)">カレンダー</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">パターンがありません</td></tr>';
+}
+
+function openPatternModal(){
+  document.getElementById('pmId').value='';
+  document.getElementById('pmCode').value='';
+  document.getElementById('pmName').value='';
+  document.getElementById('pmEmpType').value='正職員';
+  document.getElementById('pmYear').value=new Date().getFullYear();
+  document.getElementById('pmStart').value='';
+  document.getElementById('pmEnd').value='';
+  document.getElementById('pmWeekLimit').value='40';
+  document.getElementById('pmAnnualDays').value='280';
+  document.getElementById('pmAnnualHoli').value='118';
+  document.getElementById('pmDefStart').value='08:30';
+  document.getElementById('pmDefEnd').value='17:30';
+  document.getElementById('pmDefBreak').value='60';
+  document.getElementById('pmNote').value='';
+  document.getElementById('pmTitle').textContent='勤務パターン登録';
+  document.getElementById('pmDelBtn').style.display='none';
+  document.getElementById('pmDupBtn').style.display='none';
+  openModal('patternModal');
+}
+function _editPat(btn){
+  var p = _patterns.find(function(x){return x.id===btn.getAttribute('data-id');});
+  if(!p) return;
+  document.getElementById('pmId').value=p.id;
+  document.getElementById('pmCode').value=p.pattern_code||'';
+  document.getElementById('pmName').value=p.pattern_name||'';
+  document.getElementById('pmEmpType').value=p.employment_type||'正職員';
+  document.getElementById('pmYear').value=p.fiscal_year||new Date().getFullYear();
+  document.getElementById('pmStart').value=p.start_date||'';
+  document.getElementById('pmEnd').value=p.end_date||'';
+  document.getElementById('pmWeekLimit').value=p.weekly_limit||40;
+  document.getElementById('pmAnnualDays').value=p.annual_days_limit||280;
+  document.getElementById('pmAnnualHoli').value=p.annual_holiday_min||118;
+  document.getElementById('pmDefStart').value=(p.default_start||'08:30').slice(0,5);
+  document.getElementById('pmDefEnd').value=(p.default_end||'17:30').slice(0,5);
+  document.getElementById('pmDefBreak').value=p.default_break||60;
+  document.getElementById('pmNote').value=p.note||'';
+  document.getElementById('pmTitle').textContent='勤務パターン編集：'+p.pattern_name;
+  document.getElementById('pmDelBtn').style.display='inline-flex';
+  document.getElementById('pmDupBtn').style.display='inline-flex';
+  openModal('patternModal');
+}
+function savePattern(){
+  var id = document.getElementById('pmId').value;
+  var code = document.getElementById('pmCode').value.trim();
+  var name = document.getElementById('pmName').value.trim();
+  if(!code||!name){ toast('パターンIDと名前は必須です','red'); return; }
+  var data = {
+    pattern_code:code, pattern_name:name,
+    employment_type:document.getElementById('pmEmpType').value,
+    fiscal_year:parseInt(document.getElementById('pmYear').value)||null,
+    start_date:document.getElementById('pmStart').value||null,
+    end_date:document.getElementById('pmEnd').value||null,
+    weekly_limit:parseFloat(document.getElementById('pmWeekLimit').value)||40,
+    annual_days_limit:parseInt(document.getElementById('pmAnnualDays').value)||280,
+    annual_holiday_min:parseInt(document.getElementById('pmAnnualHoli').value)||118,
+    default_start:document.getElementById('pmDefStart').value||null,
+    default_end:document.getElementById('pmDefEnd').value||null,
+    default_break:parseInt(document.getElementById('pmDefBreak').value)||60,
+    note:document.getElementById('pmNote').value||null,
+    updated_at:new Date().toISOString()
+  };
+  var pr = id ? sb.from('work_patterns').update(data).eq('id',id) : sb.from('work_patterns').insert(data);
+  pr.then(function(r){
+    if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
+    closeModal('patternModal');
+    toast('✅ 保存しました','green');
+    loadPatterns().then(populateSelects);
+  });
+}
+function deletePattern(){
+  var id = document.getElementById('pmId').value;
+  if(!id||!confirm('削除しますか？カレンダーデータも削除されます。')) return;
+  sb.from('work_patterns').delete().eq('id',id).then(function(r){
+    if(r.error){toast('削除失敗','red');return;}
+    closeModal('patternModal');
+    toast('削除しました','amber');
+    loadPatterns().then(populateSelects);
+  });
+}
+function duplicatePattern(){
+  var id = document.getElementById('pmId').value;
+  var p = _patterns.find(function(x){return x.id===id;});
+  if(!p) return;
+  sb.from('work_patterns').insert({
+    pattern_code:p.pattern_code+'_copy', pattern_name:p.pattern_name+'（コピー）',
+    employment_type:p.employment_type, fiscal_year:p.fiscal_year,
+    start_date:p.start_date, end_date:p.end_date,
+    weekly_limit:p.weekly_limit, annual_days_limit:p.annual_days_limit,
+    annual_holiday_min:p.annual_holiday_min,
+    default_start:p.default_start, default_end:p.default_end, default_break:p.default_break
+  }).then(function(r){
+    if(r.error){toast('複製失敗','red');return;}
+    closeModal('patternModal');
+    toast('✅ 複製しました','green');
+    loadPatterns().then(populateSelects);
+  });
+}
+function _openCal(btn){
+  _currentPatId = btn.getAttribute('data-id');
+  showPage('calendar');
+  setTimeout(function(){
+    document.getElementById('calPatSel').value = _currentPatId;
+    loadCalendar();
+  }, 100);
+}
+
+// ─── カレンダー編集 ─────────────────────────────────────────
+function onPatternChange(){
+  _currentPatId = document.getElementById('calPatSel').value;
+  loadCalendar();
+}
+function changeMonth(d){
+  _calMonth += d;
+  if(_calMonth>12){_calMonth=1;_calYear++;}
+  if(_calMonth<1){_calMonth=12;_calYear--;}
+  loadCalendar();
+}
+function loadCalendar(){
+  var lbl = document.getElementById('calMonthLabel');
+  if(lbl) lbl.textContent = _calYear+'年'+_calMonth+'月';
+  if(!_currentPatId){
+    document.getElementById('calBody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">パターンを選択してください</td></tr>';
+    return;
+  }
+  var y=_calYear, m=_calMonth;
+  var start = y+'-'+p2(m)+'-01';
+  var end   = y+'-'+p2(m)+'-'+p2(lastDay(y,m));
+  sb.from('work_calendar_days').select('*').eq('work_pattern_id',_currentPatId)
+    .gte('work_date',start).lte('work_date',end).then(function(r){
+      _calData = {};
+      (r.data||[]).forEach(function(d){_calData[d.work_date]=d;});
+      renderCalTable();
+    });
+}
+function renderCalTable(){
+  var y=_calYear, m=_calMonth;
+  var days = lastDay(y,m);
+  var tbody = document.getElementById('calBody');
+  var pat = _patterns.find(function(p){return p.id===_currentPatId;})||{};
+  var defSt = (pat.default_start||'08:30').slice(0,5);
+  var defEn = (pat.default_end||'17:30').slice(0,5);
+  var defBr = pat.default_break||60;
+  var rows='', workDays=0, holiDays=0, legalDays=0, totalHours=0;
+  var weekHours=0, weekWorkDays=0, weekLegal=0, weekNg='';
+
+  for(var d=1;d<=days;d++){
+    var ds = y+'-'+p2(m)+'-'+p2(d);
+    var wd = weekday(y,m,d);
+    var rec = _calData[ds]||{};
+    var isFirstWeek = (d===1) || (wd===0);
+    // 週の区切り
+    if(wd===0 && d>1){
+      // 前週の集計行を挿入
+      var weekNgHtml = weekNg ? '<span class="ng-badge">'+weekNg+'</span>' : '<span class="ok-badge">OK</span>';
+      rows += '<tr class="week-sum"><td colspan="3" style="text-align:right;font-size:11px;color:var(--muted)">週計▼</td>' +
+        '<td style="font-size:11px;font-weight:700;color:'+(weekHours>52?'var(--red)':weekHours>48?'var(--amber)':'inherit')+'">'+weekHours.toFixed(1)+'h</td>' +
+        '<td colspan="4" style="font-size:11px;color:var(--muted)">'+weekWorkDays+'日 / 法休'+weekLegal+'日</td>' +
+        '<td colspan="2">'+weekNgHtml+'</td></tr>';
+      weekHours=0; weekWorkDays=0; weekLegal=0; weekNg='';
+    }
+
+    var defType = (wd===0)?'法定休日':(wd===6)?'休日':'勤務';
+    var dayType = rec.day_type||defType;
+    var isWork  = dayType==='勤務'||dayType==='振替出勤';
+    var schH    = rec.scheduled_hours!==undefined ? parseFloat(rec.scheduled_hours) : (isWork?8:0);
+    var st      = rec.start_time ? rec.start_time.slice(0,5) : (isWork?defSt:'');
+    var en      = rec.end_time   ? rec.end_time.slice(0,5)   : (isWork?defEn:'');
+    var br      = rec.break_minutes!==undefined ? rec.break_minutes : (isWork?defBr:0);
+    var note    = rec.note||'';
+
+    if(isWork){workDays++;totalHours+=schH;weekHours+=schH;weekWorkDays++;}
+    else if(dayType==='法定休日'){legalDays++;weekLegal++;}
+    else holiDays++;
+
+    // 1日チェック
+    var dayNg='';
+    if(isWork && schH>10){ dayNg='10h超'; weekNg+=(weekNg?',':'')+'10h超'; }
+
+    var rowBg = dayType==='法定休日'?'background:#fde8e8':dayType==='休日'||dayType==='振替休日'?'background:#f5f5f5':'';
+    var wdCol = WDAY_COLORS[wd];
+    var typeOpts=['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t){
+      return '<option value="'+t+'"'+(dayType===t?' selected':'')+'>'+t+'</option>';
+    }).join('');
+
+    rows += '<tr style="'+rowBg+'" data-date="'+ds+'">' +
+      '<td class="day-num '+(dayNg?'ng-cell':'')+'" style="'+wdCol+'">'+d+'</td>' +
+      '<td style="'+wdCol+'">'+WDAYS[wd]+'</td>' +
+      '<td><select class="day-type" onchange="onTypeChange(this,\''+ds+'\')">'+typeOpts+'</select></td>' +
+      '<td><input class="hours-input" type="number" value="'+schH.toFixed(2)+'" step="0.25" min="0" max="24" data-date="'+ds+'"></td>' +
+      '<td><input class="time-input" type="time" value="'+st+'" data-date="'+ds+'" data-role="start"></td>' +
+      '<td><input class="time-input" type="time" value="'+en+'" data-date="'+ds+'" data-role="end"></td>' +
+      '<td><input class="hours-input" type="number" value="'+br+'" step="5" min="0" max="240" style="width:50px" data-date="'+ds+'" data-role="break"></td>' +
+      '<td><input class="note-input" type="text" value="'+note+'" data-date="'+ds+'" placeholder="備考"></td>' +
+      '<td></td>' +
+      '<td style="text-align:center">'+(dayNg?'<span class="ng-badge">'+dayNg+'</span>':'')+'</td>' +
+    '</tr>';
+  }
+  // 最終週集計
+  var weekNgHtml2 = weekNg ? '<span class="ng-badge">'+weekNg+'</span>' : '<span class="ok-badge">OK</span>';
+  rows += '<tr class="week-sum"><td colspan="3" style="text-align:right;font-size:11px;color:var(--muted)">週計▼</td>' +
+    '<td style="font-size:11px;font-weight:700">'+weekHours.toFixed(1)+'h</td>' +
+    '<td colspan="4" style="font-size:11px;color:var(--muted)">'+weekWorkDays+'日 / 法休'+weekLegal+'日</td>' +
+    '<td colspan="2">'+weekNgHtml2+'</td></tr>';
+
+  tbody.innerHTML = rows;
+
+  // 月次サマリー
+  var summary = document.getElementById('monthSummary');
+  if(summary){
+    summary.innerHTML =
+      '<div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">出勤日: <strong>'+workDays+'</strong>日</div>' +
+      '<div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong>'+holiDays+'</strong>日</div>' +
+      '<div style="background:var(--lred);border-radius:8px;padding:8px 14px;font-size:12px">法定休日: <strong>'+legalDays+'</strong>日</div>' +
+      '<div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">所定時間: <strong>'+(totalHours).toFixed(2)+'</strong>h</div>';
+  }
+}
+
+function onTypeChange(sel, ds){
+  var row = document.querySelector('tr[data-date="'+ds+'"]');
+  if(!row) return;
+  var type = sel.value;
+  var isWork = type==='勤務'||type==='振替出勤';
+  var hEl = row.querySelector('.hours-input');
+  var bEl = row.querySelectorAll('.hours-input')[1];
+  if(hEl) hEl.value = isWork ? '8.00' : '0.00';
+  row.style.background = type==='法定休日'?'#fde8e8':type==='休日'||type==='振替休日'?'#f5f5f5':'';
+}
+
+function bulkSetWeekdays(){
+  if(!_currentPatId){toast('パターンを選択してください','red');return;}
+  var type  = document.getElementById('bulkDayType').value;
+  var hours = document.getElementById('bulkHours').value;
+  var start = document.getElementById('bulkStart').value;
+  var end   = document.getElementById('bulkEnd').value;
+  document.querySelectorAll('#calBody tr[data-date]').forEach(function(row){
+    var ds  = row.getAttribute('data-date');
+    var wd  = new Date(ds).getDay();
+    if(wd>=1 && wd<=5){ // 平日のみ
+      var typeSel = row.querySelector('.day-type');
+      var hEl     = row.querySelector('.hours-input');
+      var sEl     = row.querySelector('[data-role="start"]');
+      var eEl     = row.querySelector('[data-role="end"]');
+      if(typeSel) typeSel.value = type;
+      if(hEl)     hEl.value     = hours;
+      if(sEl)     sEl.value     = start;
+      if(eEl)     eEl.value     = end;
+    }
+  });
+  renderCalTable(); // re-render to update summary
+  toast('平日を一括設定しました','green');
+}
+
+function saveCalendar(){
+  if(!_currentPatId){toast('パターンを選択してください','red');return;}
+  var upserts = [];
+  var y=_calYear,m=_calMonth;
+  document.querySelectorAll('#calBody tr[data-date]').forEach(function(row){
+    var ds  = row.getAttribute('data-date');
+    var wd  = new Date(ds).getDay();
+    var typeSel = row.querySelector('.day-type');
+    var hEls    = row.querySelectorAll('.hours-input');
+    var sEl     = row.querySelector('[data-role="start"]');
+    var eEl     = row.querySelector('[data-role="end"]');
+    var bEl     = row.querySelector('[data-role="break"]');
+    var noteEl  = row.querySelector('.note-input');
+    if(!typeSel) return;
+    upserts.push({
+      work_pattern_id: _currentPatId,
+      work_date: ds,
+      day_of_week: WDAYS[wd],
+      day_type: typeSel.value,
+      scheduled_hours: parseFloat(hEls[0]?hEls[0].value:0)||0,
+      start_time: sEl?(sEl.value||null):null,
+      end_time: eEl?(eEl.value||null):null,
+      break_minutes: parseInt(bEl?bEl.value:0)||0,
+      note: noteEl?(noteEl.value||null):null,
+      updated_at: new Date().toISOString()
+    });
+  });
+  sb.from('work_calendar_days').upsert(upserts,{onConflict:'work_pattern_id,work_date'}).then(function(r){
+    if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
+    toast('✅ '+upserts.length+'日分を保存しました','green');
+    loadCalendar();
+  });
+}
+
+// ─── チェック ───────────────────────────────────────────────
+function runCheck(){
+  var patId = document.getElementById('checkPatSel').value;
+  var q = sb.from('work_calendar_days').select('*, work_patterns(pattern_name,weekly_limit,annual_days_limit,annual_holiday_min)');
+  if(patId) q = q.eq('work_pattern_id',patId);
+  q.order('work_date').then(function(r){
+    var data = r.data||[];
+    var pMap = {};
+    data.forEach(function(d){
+      var pid = d.work_pattern_id;
+      if(!pMap[pid]) pMap[pid]={name:(d.work_patterns&&d.work_patterns.pattern_name)||'不明',days:[],lim:d.work_patterns||{}};
+      pMap[pid].days.push(d);
+    });
+    var errors=[], yearData=[];
+    Object.keys(pMap).forEach(function(pid){
+      var info=pMap[pid], days=info.days, lim=info.lim;
+      var weekLimit  = lim.weekly_limit||40;
+      var annualDays = lim.annual_days_limit||280;
+      var annualHoli = lim.annual_holiday_min||118;
+      // 1日チェック
+      days.forEach(function(d){
+        if((d.day_type==='勤務'||d.day_type==='振替出勤') && parseFloat(d.scheduled_hours)>10)
+          errors.push({pat:info.name,target:d.work_date,type:'1日10時間超',msg:d.scheduled_hours+'h',ng:true});
+      });
+      // 週別
+      var wMap={};
+      days.forEach(function(d){
+        var dt=new Date(d.work_date), wk=getWeek(dt);
+        var key=dt.getFullYear()+'-W'+p2(wk);
+        if(!wMap[key]) wMap[key]={h:0,legal:0,label:key};
+        wMap[key].h += parseFloat(d.scheduled_hours)||0;
+        if(d.day_type==='法定休日') wMap[key].legal++;
+      });
+      var wKeys=Object.keys(wMap).sort();
+      var over48=[],over52=[];
+      wKeys.forEach(function(wk){
+        var wi=wMap[wk];
+        if(wi.h>52) { errors.push({pat:info.name,target:wk,type:'週52時間超',msg:wi.h.toFixed(1)+'h',ng:true}); over52.push(wk); }
+        if(wi.h>48) over48.push(wk);
+        if(wi.legal===0) errors.push({pat:info.name,target:wk,type:'法定休日なし',msg:'当週に法定休日なし',ng:true});
+      });
+      // 週48h連続3週/3ヶ月4週
+      var consec=1;
+      for(var i=1;i<over48.length;i++){
+        if(parseInt(over48[i].replace(/\D/g,''))-parseInt(over48[i-1].replace(/\D/g,''))===1){ consec++; if(consec>=3) errors.push({pat:info.name,target:over48[i-2]+'〜'+over48[i],type:'週48h超連続3週',msg:'連続'+consec+'週',ng:true}); }
+        else consec=1;
+      }
+      // 年間
+      var workD=days.filter(function(d){return d.day_type==='勤務'||d.day_type==='振替出勤';}).length;
+      var holiD=days.filter(function(d){return d.day_type!=='勤務'&&d.day_type!=='振替出勤';}).length;
+      var totalH=days.reduce(function(s,d){return s+(parseFloat(d.scheduled_hours)||0);},0);
+      yearData.push({name:info.name,workD:workD,holiD:holiD,totalH:totalH,annualDays:annualDays,annualHoli:annualHoli});
+      if(workD>annualDays) errors.push({pat:info.name,target:'年間',type:'年間労働日数超過',msg:workD+'日 > 上限'+annualDays+'日',ng:true});
+      if(holiD<annualHoli) errors.push({pat:info.name,target:'年間',type:'年間休日不足',msg:holiD+'日 < 最低'+annualHoli+'日',ng:true});
+    });
+
+    // カードサマリー
+    var ng=errors.filter(function(e){return e.ng;}).length;
+    var cards=document.getElementById('checkCards');
+    cards.innerHTML =
+      '<div class="check-card info"><div class="val">'+Object.keys(pMap).length+'</div><div class="lbl">対象パターン</div></div>' +
+      '<div class="check-card '+(ng>0?'ng':'ok')+'"><div class="val">'+ng+'</div><div class="lbl">NG件数</div></div>' +
+      '<div class="check-card '+(errors.length===0?'ok':'ng')+'"><div class="val">'+(errors.length===0?'OK':'要確認')+'</div><div class="lbl">総合判定</div></div>';
+
+    // テーブル
+    var tbody=document.getElementById('checkBody');
+    tbody.innerHTML = errors.length?errors.map(function(e){
+      return '<tr><td><span class="badge badge-blue">'+e.pat+'</span></td>' +
+        '<td style="font-size:12px">'+e.target+'</td>' +
+        '<td><span class="badge badge-amber">'+e.type+'</span></td>' +
+        '<td style="font-size:12px">'+e.msg+'</td>' +
+        '<td><span class="badge badge-red">NG</span></td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--green)">✅ NGなし</td></tr>';
+
+    // 年間サマリー
+    var ys=document.getElementById('yearSummary');
+    ys.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>パターン</th><th>年間労働日数</th><th>年間休日数</th><th>年間所定時間</th><th>労働日数判定</th><th>休日数判定</th></tr></thead><tbody>' +
+      yearData.map(function(y){
+        var dNg=y.workD>y.annualDays, hNg=y.holiD<y.annualHoli;
+        return '<tr><td>'+y.name+'</td>' +
+          '<td class="'+(dNg?'ng-cell':'ok-cell')+'">'+y.workD+'日</td>' +
+          '<td class="'+(hNg?'ng-cell':'ok-cell')+'">'+y.holiD+'日</td>' +
+          '<td>'+y.totalH.toFixed(2)+'h</td>' +
+          '<td>'+(dNg?'<span class="ng-badge">NG '+y.workD+'/'+y.annualDays+'</span>':'<span class="ok-badge">OK</span>')+'</td>' +
+          '<td>'+(hNg?'<span class="ng-badge">NG '+y.holiD+'/'+y.annualHoli+'</span>':'<span class="ok-badge">OK</span>')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  });
+}
+function getWeek(d){
+  var dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  var day=dt.getUTCDay()||7; dt.setUTCDate(dt.getUTCDate()+4-day);
+  var y1=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  return Math.ceil((((dt-y1)/86400000)+1)/7);
+}
+
+// ─── 職員マスター ────────────────────────────────────────────
+function renderEmpList(emps){
+  var tbody=document.getElementById('empBody');
+  if(!tbody) return;
+  tbody.innerHTML=emps.map(function(e){
+    var patName=e.work_patterns?e.work_patterns.pattern_name:'—';
+    var sBadge=e.employment_status==='退職'?'badge-gray':e.employment_status==='休職'?'badge-amber':'badge-green';
+    return '<tr>' +
+      '<td>'+(e.employee_no||'—')+'</td>' +
+      '<td><strong>'+e.name+'</strong></td>' +
+      '<td>'+(e.department||'—')+'</td>' +
+      '<td><span class="badge badge-blue" style="font-size:11px">'+patName+'</span></td>' +
+      '<td>'+(e.employment_type||'—')+'</td>' +
+      '<td><span class="badge '+sBadge+'">'+(e.employment_status||'在籍')+'</span></td>' +
+      '<td><button class="btn btn-outline btn-sm" data-id="'+e.id+'" onclick="_editEmp(this)">編集</button></td>' +
+    '</tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">職員がいません</td></tr>';
+}
+function filterEmps(){
+  var q=(document.getElementById('empSearch').value||'').toLowerCase();
+  var dept=document.getElementById('empDeptFilter').value;
+  var pat=document.getElementById('empPatFilter').value;
+  var filtered=_allEmps.filter(function(e){
+    return (!q||e.name.toLowerCase().includes(q)||(e.employee_no||'').toLowerCase().includes(q))&&
+           (!dept||e.department===dept)&&
+           (!pat||e.work_pattern_id===pat);
+  });
+  renderEmpList(filtered);
+}
+function openEmpModal(){
+  ['emId','emCode','emName','emDept','emNote'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('emEmpType').value='正職員';
+  document.getElementById('emStatus').value='在籍';
+  document.getElementById('emPattern').innerHTML='<option value="">選択してください</option>'+_patterns.map(function(p){return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
+  document.getElementById('emTitle').textContent='職員登録';
+  document.getElementById('emDelBtn').style.display='none';
+  openModal('empModal');
+}
+function _editEmp(btn){
+  var e=_allEmps.find(function(x){return x.id===btn.getAttribute('data-id');});
+  if(!e) return;
+  document.getElementById('emId').value=e.id;
+  document.getElementById('emCode').value=e.employee_no||'';
+  document.getElementById('emName').value=e.name||'';
+  document.getElementById('emDept').value=e.department||'';
+  document.getElementById('emEmpType').value=e.employment_type||'正職員';
+  document.getElementById('emStatus').value=e.employment_status||'在籍';
+  document.getElementById('emNote').value=e.notes||'';
+  document.getElementById('emPattern').innerHTML='<option value="">選択してください</option>'+_patterns.map(function(p){return '<option value="'+p.id+'"'+(p.id===e.work_pattern_id?' selected':'')+'>[ '+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
+  document.getElementById('emTitle').textContent='職員編集：'+e.name;
+  document.getElementById('emDelBtn').style.display='inline-flex';
+  openModal('empModal');
+}
+function saveEmp(){
+  var name=document.getElementById('emName').value.trim();
+  if(!name){toast('氏名は必須です','red');return;}
+  var id=document.getElementById('emId').value;
+  var data={
+    employee_no:document.getElementById('emCode').value||null,
+    name:name,
+    department:document.getElementById('emDept').value||null,
+    employment_type:document.getElementById('emEmpType').value,
+    employment_status:document.getElementById('emStatus').value,
+    work_pattern_id:document.getElementById('emPattern').value||null,
+    notes:document.getElementById('emNote').value||null,
+    updated_at:new Date().toISOString()
+  };
+  var pr=id?sb.from('employees').update(data).eq('id',id):sb.from('employees').insert(data);
+  pr.then(function(r){
+    if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
+    closeModal('empModal');
+    toast('✅ 保存しました','green');
+    loadEmployees();
+  });
+}
+function deleteEmp(){
+  var id=document.getElementById('emId').value;
+  if(!id||!confirm('この職員を削除しますか？')) return;
+  sb.from('employees').delete().eq('id',id).then(function(r){
+    if(r.error){toast('削除失敗','red');return;}
+    closeModal('empModal');
+    toast('削除しました','amber');
+    loadEmployees();
+  });
+}
+
+// ─── 出力 ────────────────────────────────────────────────────
+function outputPrintAll(){
+  var patId=document.getElementById('outPatSel').value;
+  if(!patId){toast('パターンを選択してください','red');return;}
+  var pat=_patterns.find(function(p){return p.id===patId;});
+  sb.from('work_calendar_days').select('*').eq('work_pattern_id',patId).order('work_date').then(function(r){
+    var data=r.data||[];
+    var win=window.open('','_blank');
+    win.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>変形労働時間カレンダー</title>');
+    win.document.write('<style>');
+    win.document.write('body{font-family:Meiryo,sans-serif;font-size:10px;margin:10px}');
+    win.document.write('h2{font-size:13px;margin-bottom:4px}');
+    win.document.write('.meta{color:#666;font-size:10px;margin-bottom:6px}');
+    win.document.write('.month-block{margin-bottom:12px;break-inside:avoid}');
+    win.document.write('table{width:100%;border-collapse:collapse;font-size:10px}');
+    win.document.write('th,td{border:1px solid #ccc;padding:3px 4px;text-align:center}');
+    win.document.write('th{background:#1a3a5c;color:#fff}');
+    win.document.write('.sun{color:red}.sat{color:blue}');
+    win.document.write('.legal{background:#fde8e8}.holiday{background:#f5f5f5}');
+    win.document.write('.week-sum{background:#f0f4ff;font-size:9px}');
+    win.document.write('@page{size:A4;margin:10mm}');
+    win.document.write('@media print{.no-print{display:none}}');
+    win.document.write('</style></head><body>');
+    win.document.write('<h2>変形労働時間カレンダー</h2>');
+    win.document.write('<div class="meta">パターン：'+(pat?pat.pattern_name:'')+'　対象期間：'+(pat?pat.start_date:'')+'〜'+(pat?pat.end_date:'')+'</div>');
+
+    // 月ごとに出力
+    var dataMap={};
+    data.forEach(function(d){
+      var ym=d.work_date.slice(0,7);
+      if(!dataMap[ym]) dataMap[ym]=[];
+      dataMap[ym].push(d);
+    });
+    Object.keys(dataMap).sort().forEach(function(ym){
+      var yNum=parseInt(ym.split('-')[0]),mNum=parseInt(ym.split('-')[1]);
+      var mData=dataMap[ym];
+      var days=lastDay(yNum,mNum);
+      var workD=0,holiD=0,legalD=0,totalH=0;
+      win.document.write('<div class="month-block">');
+      win.document.write('<table><thead><tr><th>日</th><th>曜</th><th>区分</th><th>所定</th><th>始業</th><th>終業</th><th>休憩</th><th>備考</th></tr></thead><tbody>');
+      var wh=0;
+      for(var d2=1;d2<=days;d2++){
+        var ds=yNum+'-'+p2(mNum)+'-'+p2(d2);
+        var wd2=new Date(yNum,mNum-1,d2).getDay();
+        var rec=mData.find(function(x){return x.work_date===ds;})||{};
+        var dt=rec.day_type||(wd2===0?'法定休日':wd2===6?'休日':'勤務');
+        var isW=dt==='勤務'||dt==='振替出勤';
+        var h=parseFloat(rec.scheduled_hours)||0;
+        if(isW){workD++;totalH+=h;wh+=h;}
+        else if(dt==='法定休日') legalD++;
+        else holiD++;
+        var cls=dt==='法定休日'?'legal':dt==='休日'||dt==='振替休日'?'holiday':'';
+        var wCls=wd2===0?'sun':wd2===6?'sat':'';
+        win.document.write('<tr class="'+cls+'"><td class="'+wCls+'">'+d2+'</td><td class="'+wCls+'">'+WDAYS[wd2]+'</td><td>'+dt+'</td><td>'+(h?h.toFixed(2):'')+'</td><td>'+(rec.start_time?rec.start_time.slice(0,5):'')+'</td><td>'+(rec.end_time?rec.end_time.slice(0,5):'')+'</td><td>'+(rec.break_minutes||'')+'</td><td>'+(rec.note||'')+'</td></tr>');
+        if(wd2===6||d2===days){
+          win.document.write('<tr class="week-sum"><td colspan="3">週計</td><td>'+wh.toFixed(1)+'h</td><td colspan="4" style="text-align:left">'+(wh>52?'NG 52h超':wh>48?'注意 48h超':'OK')+'</td></tr>');
+          wh=0;
+        }
+      }
+      win.document.write('</tbody><tfoot><tr style="font-weight:700;background:#eef4ff"><td colspan="2">'+yNum+'年'+mNum+'月</td><td>計</td><td>'+totalH.toFixed(2)+'h</td><td colspan="4" style="text-align:left">出勤'+workD+'日 / 休日'+holiD+'日 / 法休'+legalD+'日</td></tr></tfoot></table></div>');
+    });
+    win.document.write('</body></html>');
+    win.document.close();
+    setTimeout(function(){win.print();},500);
+  });
+}
+function outputCSVAll(){
+  var patId=document.getElementById('outPatSel').value;
+  if(!patId){toast('パターンを選択してください','red');return;}
+  var pat=_patterns.find(function(p){return p.id===patId;});
+  sb.from('work_calendar_days').select('*').eq('work_pattern_id',patId).order('work_date').then(function(r){
+    var rows=[['日付','曜日','勤務区分','所定時間','始業','終業','休憩(分)','備考']];
+    (r.data||[]).forEach(function(d){
+      var wd=new Date(d.work_date).getDay();
+      rows.push([d.work_date,WDAYS[wd],d.day_type||'',d.scheduled_hours||'',d.start_time?d.start_time.slice(0,5):'',d.end_time?d.end_time.slice(0,5):'',d.break_minutes||'',d.note||'']);
+    });
+    var csv='\uFEFF'+rows.map(function(r){return r.join(',');}).join('\n');
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download=(pat?pat.pattern_name:'')+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('✅ CSVをダウンロードしました','green');
+  });
+}
+function outputCheckReport(){
+  runCheck();
+  showPage('check');
+}
+
+// ─── CSV出力（月次）────────────────────────────────────────
+function exportCSV(){
+  var rows=[['日付','曜日','勤務区分','所定時間','始業','終業','休憩(分)','備考']];
+  document.querySelectorAll('#calBody tr[data-date]').forEach(function(row){
+    var ds=row.getAttribute('data-date');
+    var wd=new Date(ds).getDay();
+    var tEl=row.querySelector('.day-type');
+    var hEls=row.querySelectorAll('.hours-input');
+    var sEl=row.querySelector('[data-role="start"]');
+    var eEl=row.querySelector('[data-role="end"]');
+    var bEl=row.querySelector('[data-role="break"]');
+    var nEl=row.querySelector('.note-input');
+    rows.push([ds,WDAYS[wd],tEl?tEl.value:'',hEls[0]?hEls[0].value:'',sEl?sEl.value:'',eEl?eEl.value:'',bEl?bEl.value:'',nEl?nEl.value:'']);
+  });
+  var csv='\uFEFF'+rows.map(function(r){return r.join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=_calYear+'年'+_calMonth+'月_カレンダー.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('✅ CSVをダウンロードしました','green');
+}
+function printCal(){
+  var table=document.getElementById('calTable');
+  if(!table) return;
+  var pat=_patterns.find(function(p){return p.id===_currentPatId;})||{};
+  var win=window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>カレンダー</title>');
+  win.document.write('<style>body{font-family:Meiryo,sans-serif;font-size:10px;margin:10px}');
+  win.document.write('table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:3px 5px}');
+  win.document.write('th{background:#1a3a5c;color:#fff}.week-sum{background:#eef4ff}');
+  win.document.write('@media print{button,select,input{font-size:10px}}</style></head><body>');
+  win.document.write('<h3 style="font-size:12px;margin-bottom:4px">変形労働時間カレンダー '+_calYear+'年'+_calMonth+'月</h3>');
+  win.document.write('<p style="font-size:10px;color:#666;margin-bottom:6px">パターン：'+pat.pattern_name+'</p>');
+  win.document.write(table.outerHTML);
+  win.document.write('</body></html>');
+  win.document.close();
+  setTimeout(function(){win.print();},500);
+}
+
+// ─── モーダル・ユーティリティ ────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open');});
+
+function toast(msg, type){
+  var colors={green:['#E1F5EE','#0F6E56'],red:['#FCEBEB','#A32D2D'],amber:['#FAEEDA','#854F0B'],blue:['#E6F1FB','#185FA5']};
+  var c=colors[type]||colors.blue;
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;top:68px;right:20px;z-index:9999;background:'+c[0]+';color:'+c[1]+';border:1px solid '+c[1]+'40;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.12);max-width:360px';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(function(){t.remove();},300);},3000);
+}
+</script>
+</body>
+</html>
