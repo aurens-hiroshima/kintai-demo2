@@ -156,7 +156,13 @@ tr:hover td{background:#fafafa}
     <div class="form-group"><div class="form-label">パスワード</div><input class="form-control" id="loginPass" type="password" placeholder="••••••••"></div>
     <button class="btn btn-primary w-full" onclick="doLogin()" style="margin-top:8px">ログイン</button>
     <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:8px;text-align:center"></div>
-    <div style="margin-top:16px;text-align:center;font-size:12px;color:var(--muted)">
+    <div id="sbConfigSection" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">⚙️ Supabase設定</div>
+      <div class="form-group"><div class="form-label">Project URL</div><input class="form-control" id="cfgUrl" placeholder="https://xxxx.supabase.co" style="font-size:12px"></div>
+      <div class="form-group"><div class="form-label">Anon Key</div><input class="form-control" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs..." style="font-size:12px"></div>
+      <button class="btn btn-outline" style="width:100%;font-size:12px" onclick="saveSupabaseConfig()">設定を保存してログイン</button>
+    </div>
+    <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--muted)">
       <a href="staff.html" style="color:var(--blue)">職員ログインはこちら</a>
     </div>
   </div>
@@ -629,8 +635,9 @@ tr:hover td{background:#fafafa}
 (function(){
 'use strict';
 // ── CONFIG ──────────────────────────────────────────────────
-const SB_URL = 'YOUR_SUPABASE_URL';
-const SB_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// LocalStorageに保存された設定を優先、なければプレースホルダー
+let SB_URL = localStorage.getItem('sb_url') || '';
+let SB_KEY = localStorage.getItem('sb_key') || '';
 // ────────────────────────────────────────────────────────────
 
 let sb, me, myProfile;
@@ -652,7 +659,20 @@ window.addEventListener('DOMContentLoaded', function(){
 
 function initSupabase(){
   if(!window.supabase){showToast('SDK読み込みエラー','red');return;}
-  sb = window.supabase.createClient(SB_URL, SB_KEY);
+  // URLが未設定の場合は設定画面を表示
+  if(!SB_URL || SB_URL === 'YOUR_SUPABASE_URL'){
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('sbConfigSection').style.display = '';
+    return;
+  }
+  try {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+  } catch(e) {
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('sbConfigSection').style.display = '';
+    document.getElementById('loginErr').textContent = 'Supabase設定が無効です。下記から設定してください。';
+    return;
+  }
   sb.auth.getSession().then(function(r){
     if(r.data && r.data.session){
       me = r.data.session.user;
@@ -660,10 +680,33 @@ function initSupabase(){
     } else {
       document.getElementById('loginPage').style.display = 'flex';
     }
+  }).catch(function(){
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('sbConfigSection').style.display = '';
   });
 }
 
 // ── Auth ──
+window.saveSupabaseConfig = function(){
+  const url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  if(!url || !url.startsWith('https://')){
+    document.getElementById('loginErr').textContent='正しいProject URLを入力してください（https://から始まる）';return;
+  }
+  if(!key){document.getElementById('loginErr').textContent='Anon Keyを入力してください';return;}
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  SB_URL = url; SB_KEY = key;
+  document.getElementById('loginErr').textContent='';
+  document.getElementById('sbConfigSection').style.display='none';
+  try {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    showToast('Supabase設定を保存しました','green');
+  } catch(e) {
+    document.getElementById('loginErr').textContent='設定が無効です: '+e.message;
+  }
+};
+
 window.doLogin = function(){
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
