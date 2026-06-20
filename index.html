@@ -533,8 +533,11 @@ tr:hover td{background:#fafafa}
 <div class="modal-overlay" id="addUserModal">
   <div class="modal" style="width:600px">
     <div class="modal-title">👤 ユーザー追加<span class="modal-close" onclick="closeModal('addUserModal')">×</span></div>
-    <div style="background:var(--lblue);border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-bottom:14px">
-      ℹ️ ユーザー追加はSupabase Authenticationで行います。下記の情報を入力後、SupabaseでユーザーIDを取得してから従業員テーブルに追加します。
+    <div style="background:var(--lblue);border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-bottom:10px">
+      🔐 <strong>ログイン設定手順：</strong><br>
+      ① 下記を入力して「ユーザーを追加」→ employeesテーブルに保存されます<br>
+      ② <a href="https://supabase.com" target="_blank" style="color:var(--blue)">Supabase管理画面</a> → Authentication → Users → Add user でメール・パスワードを登録<br>
+      ③ SQL Editor で <code style="background:#fff;padding:1px 4px;border-radius:3px">UPDATE employees SET auth_id = '[SupabaseのUserID]' WHERE email = 'メールアドレス';</code> を実行
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">氏名 *</div><input class="form-control" id="newUserName" placeholder="山田 太郎"></div>
@@ -552,7 +555,7 @@ tr:hover td{background:#fafafa}
       <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="newUserJoin" type="date"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">初期パスワード</div><input class="form-control" id="newUserPass" type="password" placeholder="8文字以上"></div>
+      <div class="form-group"><div class="form-label">パスワード（メモ用）</div><input class="form-control" id="newUserPass" type="password" placeholder="Supabaseに設定するPW（メモ）"></div>
       <div class="form-group"><div class="form-label">有給付与日数</div><input class="form-control" id="newUserLeave" type="number" value="10"></div>
     </div>
     <div class="modal-footer">
