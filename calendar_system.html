@@ -132,6 +132,7 @@ tr:hover td{background:var(--lblue)}
     <div class="nav-item" onclick="showPage('calendar')"><span class="nav-icon">📅</span>カレンダー編集</div>
     <div class="nav-item" onclick="showPage('check')"><span class="nav-icon">⚠️</span>チェック結果</div>
     <div class="nav-item" onclick="showPage('employees')"><span class="nav-icon">👥</span>職員マスター</div>
+    <div class="nav-item" onclick="showPage('yearinit')"><span class="nav-icon">🗓️</span>年度初期設定</div>
     <div class="nav-item" onclick="showPage('output')"><span class="nav-icon">📄</span>出力</div>
     <div style="padding:16px;margin-top:auto">
       <div style="color:rgba(255,255,255,.6);font-size:11px;margin-bottom:8px" id="loginUserInfo"></div>
@@ -311,6 +312,123 @@ tr:hover td{background:var(--lblue)}
             </div>
             <div id="outputPreview" style="background:var(--gray);border-radius:8px;padding:16px;font-size:12px;color:var(--muted)">
               パターンを選択すると年間サマリーが表示されます
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ─── 年度初期設定 ─── -->
+      <div class="page" id="page-yearinit">
+        <!-- 説明バナー -->
+        <div class="card" style="background:linear-gradient(135deg,#0f2744,#185FA5);color:#fff;padding:18px 22px;margin-bottom:16px">
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px">🗓️ 年度初期設定 — 全職員一括スケジュール登録</div>
+          <div style="font-size:13px;opacity:.85">対象年度・勤務パターンを選び、全職員の年間カレンダーを一括で生成します。<br>個別調整はカレンダー編集画面で行えます。6つの法令ルールはリアルタイムで自動判定されます。</div>
+        </div>
+
+        <!-- 設定パネル -->
+        <div class="card">
+          <div class="card-title">⚙️ 一括設定パラメータ</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+            <div class="form-group">
+              <label class="form-label">対象年度</label>
+              <select id="yi_year" class="form-control">
+                <option value="2025">2025年度</option>
+                <option value="2026" selected>2026年度</option>
+                <option value="2027">2027年度</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">勤務パターン（一括適用）</label>
+              <select id="yi_pattern" class="form-control">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">年間所定労働時間（h）</label>
+              <input id="yi_annual_hours" type="number" class="form-control" value="1920" step="8">
+            </div>
+            <div class="form-group">
+              <label class="form-label">1日所定時間（h）</label>
+              <input id="yi_day_hours" type="number" class="form-control" value="8" step="0.25" min="4" max="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label">始業時刻</label>
+              <input id="yi_start" type="time" class="form-control" value="08:30">
+            </div>
+            <div class="form-group">
+              <label class="form-label">終業時刻</label>
+              <input id="yi_end" type="time" class="form-control" value="17:30">
+            </div>
+            <div class="form-group">
+              <label class="form-label">休憩時間（分）</label>
+              <input id="yi_break" type="number" class="form-control" value="60" step="5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">週上限時間（h）</label>
+              <input id="yi_week_limit" type="number" class="form-control" value="40" step="0.5">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-primary" onclick="generateYearInit()">🔄 年間カレンダーを生成・プレビュー</button>
+            <button class="btn btn-success" id="yiBulkSaveBtn" onclick="bulkSaveYearInit()" style="display:none">💾 全職員に一括保存</button>
+            <button class="btn btn-outline btn-sm" onclick="runYearInitCheck()">⚠️ 法令チェック実行</button>
+          </div>
+          <!-- 生成後の統計サマリー -->
+          <div id="yi_preview_summary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
+        </div>
+
+        <!-- 法令チェック結果 -->
+        <div class="card" id="yi_check_card" style="display:none">
+          <div class="card-title">⚠️ 法令自動判定結果</div>
+          <div style="margin-bottom:10px;font-size:12px;color:var(--muted)">変形労働時間制（1年単位）の適法性を自動判定します</div>
+          <!-- ルール説明表 -->
+          <div style="overflow-x:auto;margin-bottom:14px">
+            <table style="font-size:12px;min-width:600px">
+              <thead><tr><th style="width:30px">No</th><th>判定項目</th><th>条件</th><th>状態</th><th>詳細</th></tr></thead>
+              <tbody id="yi_rule_tbody"></tbody>
+            </table>
+          </div>
+          <!-- カードサマリー -->
+          <div class="check-grid" id="yi_check_cards"></div>
+        </div>
+
+        <!-- プレビューテーブル（月別） -->
+        <div id="yi_preview_area" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="card-title" style="margin-bottom:0">📅 年間カレンダープレビュー</div>
+              <div style="display:flex;gap:8px">
+                <select id="yi_preview_month" class="form-control" style="width:100px;font-size:12px" onchange="switchPreviewMonth()">
+                  <option value="0">1月</option><option value="1">2月</option><option value="2">3月</option>
+                  <option value="3">4月</option><option value="4">5月</option><option value="5">6月</option>
+                  <option value="6">7月</option><option value="7">8月</option><option value="8">9月</option>
+                  <option value="9">10月</option><option value="10">11月</option><option value="11">12月</option>
+                </select>
+              </div>
+            </div>
+            <!-- 月サマリー -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="yi_month_summary"></div>
+            <!-- カレンダーテーブル -->
+            <div class="cal-wrapper">
+              <table class="cal-table" id="yi_cal_table">
+                <thead>
+                  <tr>
+                    <th style="width:32px">日</th>
+                    <th style="width:24px">曜</th>
+                    <th style="width:90px">勤務区分</th>
+                    <th style="width:60px">所定時間</th>
+                    <th style="width:65px">始業</th>
+                    <th style="width:65px">終業</th>
+                    <th style="width:50px">休憩</th>
+                    <th>備考</th>
+                    <th style="width:50px">週計</th>
+                    <th style="width:50px">判定</th>
+                  </tr>
+                </thead>
+                <tbody id="yi_cal_body"></tbody>
+                <tfoot id="yi_cal_foot"></tfoot>
+              </table>
             </div>
           </div>
         </div>
@@ -1155,6 +1273,307 @@ function printCal(){
   setTimeout(function(){win.print();},500);
 }
 
+
+// ─── 年度初期設定 ─────────────────────────────────────────────
+var _yiData = []; // [{date, dayType, hours, start, end, breakMin}] for preview year
+var _yiYear = 2026;
+
+// 祝日リスト（日本）2025-2027
+var JP_HOLIDAYS = {
+  '2025-01-01':1,'2025-01-13':1,'2025-02-11':1,'2025-02-23':1,'2025-02-24':1,
+  '2025-03-20':1,'2025-04-29':1,'2025-05-03':1,'2025-05-04':1,'2025-05-05':1,'2025-05-06':1,
+  '2025-07-21':1,'2025-08-11':1,'2025-09-15':1,'2025-09-22':1,'2025-09-23':1,
+  '2025-10-13':1,'2025-11-03':1,'2025-11-23':1,'2025-11-24':1,
+  '2026-01-01':1,'2026-01-12':1,'2026-02-11':1,'2026-02-23':1,'2026-03-20':1,
+  '2026-04-29':1,'2026-05-03':1,'2026-05-04':1,'2026-05-05':1,'2026-05-06':1,
+  '2026-07-20':1,'2026-08-11':1,'2026-09-21':1,'2026-09-22':1,
+  '2026-10-12':1,'2026-11-03':1,'2026-11-23':1,
+  '2027-01-01':1,'2027-01-11':1,'2027-02-11':1,'2027-02-23':1,'2027-03-21':1,
+  '2027-04-29':1,'2027-05-03':1,'2027-05-04':1,'2027-05-05':1,
+  '2027-07-19':1,'2027-08-11':1,'2027-09-20':1,'2027-09-23':1,
+  '2027-10-11':1,'2027-11-03':1,'2027-11-23':1
+};
+
+function renderYearInitPage(){
+  // パターンセレクトを同期
+  var sel = document.getElementById('yi_pattern');
+  if(sel){
+    sel.innerHTML = '<option value="">選択してください</option>' +
+      _patterns.map(function(p){ return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>'; }).join('');
+  }
+}
+
+function p2yi(n){ return String(n).padStart(2,'0'); }
+
+function generateYearInit(){
+  var yr   = parseInt(document.getElementById('yi_year').value);
+  var patId= document.getElementById('yi_pattern').value;
+  var annH = parseFloat(document.getElementById('yi_annual_hours').value)||1920;
+  var dayH = parseFloat(document.getElementById('yi_day_hours').value)||8;
+  var st   = document.getElementById('yi_start').value||'08:30';
+  var en   = document.getElementById('yi_end').value||'17:30';
+  var brk  = parseInt(document.getElementById('yi_break').value)||60;
+
+  if(!patId){ toast('勤務パターンを選択してください','red'); return; }
+
+  _yiYear = yr;
+  _yiData = [];
+
+  // 1年分（1/1〜12/31）を生成
+  for(var m=1;m<=12;m++){
+    var daysInMonth = lastDay(yr,m);
+    for(var d=1;d<=daysInMonth;d++){
+      var ds  = yr+'-'+p2yi(m)+'-'+p2yi(d);
+      var wd  = new Date(yr,m-1,d).getDay();
+      var isHol = !!JP_HOLIDAYS[ds];
+      var dtype, schH, schSt, schEn, schBr;
+      if(wd===0){          // 日曜=法定休日
+        dtype='法定休日'; schH=0; schSt=''; schEn=''; schBr=0;
+      } else if(wd===6||isHol){ // 土曜・祝日=休日
+        dtype='休日';     schH=0; schSt=''; schEn=''; schBr=0;
+      } else {              // 平日=勤務
+        dtype='勤務'; schH=dayH; schSt=st; schEn=en; schBr=brk;
+      }
+      _yiData.push({date:ds,month:m,day:d,wd:wd,dayType:dtype,hours:schH,start:schSt,end:schEn,breakMin:schBr,isHol:isHol});
+    }
+  }
+
+  // プレビューサマリー計算
+  var workD=0, holiD=0, legalD=0, totalH=0;
+  _yiData.forEach(function(r){
+    if(r.dayType==='勤務'||r.dayType==='振替出勤'){workD++;totalH+=r.hours;}
+    else if(r.dayType==='法定休日') legalD++;
+    else holiD++;
+  });
+  var ps=document.getElementById('yi_preview_summary');
+  ps.innerHTML=
+    '<div style="background:var(--lblue);border-radius:8px;padding:8px 14px;font-size:12px">勤務日: <strong>'+workD+'</strong>日</div>'+
+    '<div style="background:var(--lgreen);border-radius:8px;padding:8px 14px;font-size:12px">休日: <strong>'+(holiD+legalD)+'</strong>日（法定:'+legalD+'日）</div>'+
+    '<div style="background:var(--lamber);border-radius:8px;padding:8px 14px;font-size:12px">年間所定時間: <strong>'+totalH.toFixed(1)+'</strong>h</div>'+
+    '<div style="background:'+(Math.abs(totalH-annH)<=8?'var(--lgreen)':'var(--lred)')+';border-radius:8px;padding:8px 14px;font-size:12px">目標との差: <strong>'+(totalH-annH>0?'+':'')+(totalH-annH).toFixed(1)+'</strong>h</div>';
+
+  // プレビュー表示
+  document.getElementById('yi_preview_area').style.display='';
+  document.getElementById('yiBulkSaveBtn').style.display='';
+  switchPreviewMonth();
+  runYearInitCheck();
+}
+
+function switchPreviewMonth(){
+  var mi = parseInt(document.getElementById('yi_preview_month').value); // 0-11
+  var m  = mi+1;
+  var rows = _yiData.filter(function(r){return r.month===m;});
+  if(!rows.length) return;
+
+  var weekH=0,weekWork=0,weekLegal=0,weekNg='';
+  var tableRows='';
+  var wMonthH=0,wMonthWork=0,wMonthLegal=0,wMonthHoli=0;
+
+  rows.forEach(function(r,idx){
+    var isWork = r.dayType==='勤務'||r.dayType==='振替出勤';
+    if(isWork){weekH+=r.hours;weekWork++;wMonthH+=r.hours;wMonthWork++;}
+    else if(r.dayType==='法定休日'){weekLegal++;wMonthLegal++;}
+    else wMonthHoli++;
+
+    // 1日NGチェック
+    var dayNg = (isWork && r.hours>10) ? '10h超' : '';
+    if(dayNg && !weekNg.includes('10h超')) weekNg+=(weekNg?',':'')+'10h超';
+
+    var rowBg = r.dayType==='法定休日'?'background:#fde8e8':r.dayType==='休日'||r.dayType==='振替休日'?'background:#f5f5f5':'';
+    var wdCol = r.wd===0?'color:var(--red)':r.wd===6?'color:var(--blue)':'';
+    var typeOpts=['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t){
+      return '<option value="'+t+'"'+(r.dayType===t?' selected':'')+'>'+t+'</option>';
+    }).join('');
+
+    var isLastOfWeek = (r.wd===6)||(idx===rows.length-1);
+    tableRows += '<tr style="'+rowBg+'" data-yi-date="'+r.date+'">'+
+      '<td class="day-num '+(dayNg?'ng-cell':'')+'" style="'+wdCol+'">'+r.day+'</td>'+
+      '<td style="'+wdCol+'">'+WDAYS[r.wd]+(r.isHol?'🎌':'')+'</td>'+
+      '<td><select class="day-type" onchange="onYiTypeChange(this,''+r.date+'')">'+typeOpts+'</select></td>'+
+      '<td><input class="hours-input" type="number" value="'+(r.hours||0).toFixed(2)+'" step="0.25" min="0" max="24" onchange="updateYiData(''+r.date+'','hours',this.value)"></td>'+
+      '<td><input class="time-input" type="time" value="'+r.start+'" onchange="updateYiData(''+r.date+'','start',this.value)"></td>'+
+      '<td><input class="time-input" type="time" value="'+r.end+'" onchange="updateYiData(''+r.date+'','end',this.value)"></td>'+
+      '<td><input class="hours-input" type="number" value="'+(r.breakMin||0)+'" step="5" min="0" style="width:50px" onchange="updateYiData(''+r.date+'','breakMin',this.value)"></td>'+
+      '<td><input class="note-input" type="text" value="'+(r.note||'')+'" placeholder="備考" onchange="updateYiData(''+r.date+'','note',this.value)"></td>'+
+      '<td class="week-sum" style="font-size:11px;font-weight:700;color:'+(weekH>52?'var(--red)':weekH>48?'var(--amber)':'inherit')+'">'+
+        (isLastOfWeek ? weekH.toFixed(1)+'h' : '')+'</td>'+
+      '<td style="text-align:center">'+
+        (isLastOfWeek ? (weekNg?'<span class="ng-badge">'+weekNg+'</span>':'<span class="ok-badge">OK</span>') :
+          (dayNg?'<span class="ng-badge">'+dayNg+'</span>':''))+'</td>'+
+    '</tr>';
+
+    if(isLastOfWeek){ weekH=0;weekWork=0;weekLegal=0;weekNg=''; }
+  });
+
+  document.getElementById('yi_cal_body').innerHTML = tableRows;
+  // 月サマリー
+  document.getElementById('yi_month_summary').innerHTML=
+    '<div style="background:var(--lblue);border-radius:8px;padding:6px 12px;font-size:12px">出勤: <strong>'+wMonthWork+'</strong>日</div>'+
+    '<div style="background:var(--lgreen);border-radius:8px;padding:6px 12px;font-size:12px">休日: <strong>'+wMonthHoli+'</strong>日</div>'+
+    '<div style="background:var(--lred);border-radius:8px;padding:6px 12px;font-size:12px">法定休日: <strong>'+wMonthLegal+'</strong>日</div>'+
+    '<div style="background:var(--lamber);border-radius:8px;padding:6px 12px;font-size:12px">所定時間: <strong>'+wMonthH.toFixed(1)+'</strong>h</div>';
+}
+
+function onYiTypeChange(sel, ds){
+  var r = _yiData.find(function(x){return x.date===ds;}); if(!r) return;
+  r.dayType = sel.value;
+  var isWork = sel.value==='勤務'||sel.value==='振替出勤';
+  var dayH = parseFloat(document.getElementById('yi_day_hours').value)||8;
+  r.hours  = isWork ? dayH : 0;
+  r.start  = isWork ? document.getElementById('yi_start').value : '';
+  r.end    = isWork ? document.getElementById('yi_end').value   : '';
+  r.breakMin=isWork ? parseInt(document.getElementById('yi_break').value)||60 : 0;
+  switchPreviewMonth();
+  runYearInitCheck();
+}
+function updateYiData(ds, field, val){
+  var r = _yiData.find(function(x){return x.date===ds;}); if(!r) return;
+  if(field==='hours') r.hours = parseFloat(val)||0;
+  else if(field==='start') r.start = val;
+  else if(field==='end') r.end = val;
+  else if(field==='breakMin') r.breakMin = parseInt(val)||0;
+  else if(field==='note') r.note = val;
+}
+
+// ─── 6ルール自動判定 ──────────────────────────────────────────
+function runYearInitCheck(){
+  if(!_yiData.length) return;
+  document.getElementById('yi_check_card').style.display='';
+  var weekLimit  = parseFloat(document.getElementById('yi_week_limit').value)||40;
+  var annualDays = 280; // rule 5
+  var annualHoli = 118; // rule 6
+
+  // 週集計
+  var wMap = {};
+  _yiData.forEach(function(r){
+    var dt  = new Date(r.date);
+    var wk  = getWeek(dt);
+    var key = dt.getFullYear()+'-W'+p2yi(wk);
+    if(!wMap[key]) wMap[key]={h:0,label:key,weekNum:wk};
+    wMap[key].h += r.hours;
+  });
+  var wKeys = Object.keys(wMap).sort();
+  var weekArr = wKeys.map(function(k){return {key:k,h:wMap[k].h};});
+
+  // ルール1: 1日10時間超
+  var r1ng = _yiData.filter(function(r){return (r.dayType==='勤務'||r.dayType==='振替出勤')&&r.hours>10;});
+  // ルール2: 週52時間超
+  var r2ng = weekArr.filter(function(w){return w.h>52;});
+  // ルール3: 週48時間超 3週連続
+  var r3ng = [];
+  var consec=0, consecStart='';
+  weekArr.forEach(function(w,i){
+    if(w.h>48){ if(consec===0) consecStart=w.key; consec++; if(consec>=3) r3ng.push(consecStart+'〜'+w.key); }
+    else consec=0;
+  });
+  // ルール4: 任意3ヶ月内 週48超 4週以上
+  var r4ng = [];
+  var over48weeks = weekArr.filter(function(w){return w.h>48;}).map(function(w){return w.key;});
+  // 連続3ヶ月（12週）窓でチェック
+  for(var i=0;i<weekArr.length;i++){
+    var window12=weekArr.slice(i,i+13);
+    var cnt=window12.filter(function(w){return w.h>48;}).length;
+    if(cnt>=4){
+      var label=window12[0].key+'〜'+window12[window12.length-1].key;
+      if(!r4ng.includes(label)) r4ng.push(label);
+      i+=12; // skip window
+    }
+  }
+  // ルール5: 年間労働日数
+  var workD=_yiData.filter(function(r){return r.dayType==='勤務'||r.dayType==='振替出勤';}).length;
+  var r5ng = workD > annualDays;
+  // ルール6: 年間休日
+  var holiD=_yiData.filter(function(r){return r.dayType!=='勤務'&&r.dayType!=='振替出勤';}).length;
+  var r6ng = holiD < annualHoli;
+
+  // テーブル描画
+  var rules = [
+    {no:1, label:'1日10時間超', cond:'日別所定時間 > 10h', ng:r1ng.length>0,
+     detail: r1ng.length ? r1ng.map(function(r){return r.date;}).slice(0,5).join(', ')+(r1ng.length>5?'…':'') : 'なし',
+     ngMsg: r1ng.length+'件', action:'対象日を赤表示'},
+    {no:2, label:'週52時間超', cond:'週所定時間 > 52h', ng:r2ng.length>0,
+     detail: r2ng.length ? r2ng.map(function(w){return w.key+'('+w.h.toFixed(1)+'h)';}).join(', ') : 'なし',
+     ngMsg: r2ng.length+'週', action:'対象週をNG表示'},
+    {no:3, label:'週48h超 3週連続', cond:'週48h超が3週以上連続', ng:r3ng.length>0,
+     detail: r3ng.length ? r3ng.join(' / ') : 'なし',
+     ngMsg: r3ng.length+'件', action:'対象期間をNG'},
+    {no:4, label:'週48h超 3ヶ月内4週以上', cond:'任意3ヶ月内に週48h超が4週以上', ng:r4ng.length>0,
+     detail: r4ng.length ? r4ng.join(' / ') : 'なし',
+     ngMsg: r4ng.length+'期間', action:'期間をNG'},
+    {no:5, label:'年間労働日数', cond:'年間勤務日数 ≦ '+annualDays+'日', ng:r5ng,
+     detail: workD+'日 / 上限'+annualDays+'日',
+     ngMsg: workD+'日（超過）', action:'超過時NG'},
+    {no:6, label:'年間休日日数', cond:'年間休日 ≧ '+annualHoli+'日', ng:r6ng,
+     detail: holiD+'日 / 最低'+annualHoli+'日',
+     ngMsg: holiD+'日（不足）', action:'不足時NG'},
+  ];
+
+  var tbody = document.getElementById('yi_rule_tbody');
+  tbody.innerHTML = rules.map(function(ru){
+    var status = ru.ng
+      ? '<span class="badge badge-red">NG　'+ru.ngMsg+'</span>'
+      : '<span class="badge badge-green">OK</span>';
+    return '<tr style="'+(ru.ng?'background:var(--lred)':'')+'">'+
+      '<td style="text-align:center;font-weight:700">'+ru.no+'</td>'+
+      '<td style="font-weight:700;color:'+(ru.ng?'var(--red)':'var(--green)')+'">'+ru.label+'</td>'+
+      '<td style="color:var(--muted)">'+ru.cond+'</td>'+
+      '<td>'+status+'</td>'+
+      '<td style="font-size:11px;color:'+(ru.ng?'var(--red)':'var(--muted)')+'">'+ru.detail+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // カードサマリー
+  var ngCount = rules.filter(function(r){return r.ng;}).length;
+  var cards = document.getElementById('yi_check_cards');
+  cards.innerHTML=
+    '<div class="check-card info"><div class="val">'+workD+'</div><div class="lbl">年間労働日数</div></div>'+
+    '<div class="check-card '+(r6ng?'ng':'ok')+'"><div class="val">'+holiD+'</div><div class="lbl">年間休日数</div></div>'+
+    '<div class="check-card info"><div class="val">'+weekArr.length+'</div><div class="lbl">週数</div></div>'+
+    '<div class="check-card '+(ngCount>0?'ng':'ok')+'"><div class="val">'+ngCount+'</div><div class="lbl">NGルール数</div></div>'+
+    '<div class="check-card '+(ngCount===0?'ok':'ng')+'"><div class="val">'+(ngCount===0?'✅適法':'⚠️要修正')+'</div><div class="lbl">総合判定</div></div>';
+}
+
+// ─── 一括保存 ────────────────────────────────────────────────
+function bulkSaveYearInit(){
+  var patId = document.getElementById('yi_pattern').value;
+  if(!patId || !_yiData.length){ toast('パターンを選択してカレンダーを生成してください','red'); return; }
+  if(!confirm('全職員の年間カレンダーをSupabaseに一括保存します。既存データは上書きされます。よろしいですか？')) return;
+
+  var upserts = _yiData.map(function(r){
+    return {
+      work_pattern_id: patId,
+      work_date: r.date,
+      day_of_week: WDAYS[r.wd],
+      day_type: r.dayType,
+      scheduled_hours: r.hours,
+      start_time: r.start||null,
+      end_time: r.end||null,
+      break_minutes: r.breakMin||0,
+      note: r.note||null,
+      updated_at: new Date().toISOString()
+    };
+  });
+
+  // 100件ずつチャンク保存
+  var chunks = [];
+  for(var i=0;i<upserts.length;i+=100) chunks.push(upserts.slice(i,i+100));
+  var done=0;
+  function saveChunk(idx){
+    if(idx>=chunks.length){
+      toast('✅ '+upserts.length+'日分を一括保存しました','green');
+      return;
+    }
+    sb.from('work_calendar_days').upsert(chunks[idx],{onConflict:'work_pattern_id,work_date'}).then(function(r){
+      if(r.error){ toast('保存失敗: '+r.error.message,'red'); return; }
+      done+=chunks[idx].length;
+      toast((done)+'/'+upserts.length+' 件保存中...','blue');
+      saveChunk(idx+1);
+    });
+  }
+  saveChunk(0);
+}
+
+// ─── モーダル・ユーティリティ ────────────────────────────────
 // ─── モーダル・ユーティリティ ────────────────────────────────
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
