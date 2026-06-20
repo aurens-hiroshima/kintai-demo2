@@ -1386,15 +1386,16 @@ function switchPreviewMonth(){
     }).join('');
 
     var isLastOfWeek = (r.wd===6)||(idx===rows.length-1);
-    tableRows += '<tr style="'+rowBg+'" data-yi-date="'+r.date+'">'+
+    var ds2=r.date;
+    tableRows += '<tr style="'+rowBg+'" data-yi-date="'+ds2+'">'+
       '<td class="day-num '+(dayNg?'ng-cell':'')+'" style="'+wdCol+'">'+r.day+'</td>'+
       '<td style="'+wdCol+'">'+WDAYS[r.wd]+(r.isHol?'🎌':'')+'</td>'+
-      '<td><select class="day-type" onchange="onYiTypeChange(this,''+r.date+'')">'+typeOpts+'</select></td>'+
-      '<td><input class="hours-input" type="number" value="'+(r.hours||0).toFixed(2)+'" step="0.25" min="0" max="24" onchange="updateYiData(''+r.date+'','hours',this.value)"></td>'+
-      '<td><input class="time-input" type="time" value="'+r.start+'" onchange="updateYiData(''+r.date+'','start',this.value)"></td>'+
-      '<td><input class="time-input" type="time" value="'+r.end+'" onchange="updateYiData(''+r.date+'','end',this.value)"></td>'+
-      '<td><input class="hours-input" type="number" value="'+(r.breakMin||0)+'" step="5" min="0" style="width:50px" onchange="updateYiData(''+r.date+'','breakMin',this.value)"></td>'+
-      '<td><input class="note-input" type="text" value="'+(r.note||'')+'" placeholder="備考" onchange="updateYiData(''+r.date+'','note',this.value)"></td>'+
+      '<td><select class="day-type" onchange="onYiTypeChange(this,&quot;'+ds2+'&quot;)">'+typeOpts+'</select></td>'+
+      '<td><input class="hours-input" type="number" value="'+(r.hours||0).toFixed(2)+'" step="0.25" min="0" max="24" onchange="updateYiData(&quot;'+ds2+'&quot;,&quot;hours&quot;,this.value)"></td>'+
+      '<td><input class="time-input" type="time" value="'+r.start+'" onchange="updateYiData(&quot;'+ds2+'&quot;,&quot;start&quot;,this.value)"></td>'+
+      '<td><input class="time-input" type="time" value="'+r.end+'" onchange="updateYiData(&quot;'+ds2+'&quot;,&quot;end&quot;,this.value)"></td>'+
+      '<td><input class="hours-input" type="number" value="'+(r.breakMin||0)+'" step="5" min="0" style="width:50px" onchange="updateYiData(&quot;'+ds2+'&quot;,&quot;breakMin&quot;,this.value)"></td>'+
+      '<td><input class="note-input" type="text" value="'+(r.note||'')+'" placeholder="備考" onchange="updateYiData(&quot;'+ds2+'&quot;,&quot;note&quot;,this.value)"></td>'+
       '<td class="week-sum" style="font-size:11px;font-weight:700;color:'+(weekH>52?'var(--red)':weekH>48?'var(--amber)':'inherit')+'">'+
         (isLastOfWeek ? weekH.toFixed(1)+'h' : '')+'</td>'+
       '<td style="text-align:center">'+
