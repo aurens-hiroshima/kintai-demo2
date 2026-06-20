@@ -104,29 +104,36 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
 
 /* ── Calendar (月カレンダー表示) ── */
 .cal-month-card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
-.cal-month-header{background:var(--navy);color:#fff;padding:8px 14px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
-.cal-month-stats{display:flex;gap:12px;font-size:11px;color:rgba(255,255,255,.7)}
+.cal-month-header{background:var(--navy);color:#fff;padding:9px 14px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.cal-month-stats{display:flex;gap:10px;font-size:11px;color:rgba(255,255,255,.75)}
 .cal-grid-header{display:grid;grid-template-columns:repeat(7,1fr);background:#f0f3f8;border-bottom:2px solid var(--border)}
-.cal-grid-header div{text-align:center;padding:5px 0;font-size:10px;font-weight:700;color:var(--muted)}
+.cal-grid-header div{text-align:center;padding:6px 0;font-size:12px;font-weight:700;color:var(--muted)}
 .cal-grid-header .sun{color:var(--red)}
 .cal-grid-header .sat{color:var(--blue)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.cal-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:76px;padding:4px;position:relative;background:#fff;transition:background .1s}
+.cal-cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:94px;padding:5px;position:relative;background:#fff;transition:background .1s}
 .cal-cell:nth-child(7n){border-right:none}
 .cal-cell.sun .cal-day-num{color:var(--red)}
 .cal-cell.sat .cal-day-num{color:var(--blue)}
-.cal-cell.other-month{background:#f8f9fb;opacity:.5}
-.cal-cell.today{background:#fffbea}
+.cal-cell.other-month{background:#f8f9fb;opacity:.4}
+.cal-cell.today{background:#fffbea !important}
 .cal-cell.legal-holiday{background:#fde8e8}
 .cal-cell.holiday{background:#f5f5f5}
 .cal-cell.work-day{background:#fff}
-.cal-day-num{font-size:12px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:3px}
-.cal-holiday-name{font-size:9px;color:var(--red);font-weight:600}
-.cal-type-sel{font-size:9px;padding:1px 3px;border:1px solid #ccc;border-radius:3px;width:100%;margin-bottom:2px;background:#fff}
-.cal-hours{font-size:10px;padding:1px 3px;border:1px solid #ccc;border-radius:3px;width:60px;text-align:center;background:#fff}
-.cal-times{font-size:9px;color:var(--muted);margin-top:1px}
-.cal-ng{font-size:9px;font-weight:700;color:var(--red)}
-.cal-week-row{background:#f0f4ff;padding:4px 8px;display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;border-bottom:1px solid var(--border)}
+.cal-day-num{font-size:15px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:3px;line-height:1}
+.cal-hol-name{font-size:9px;color:var(--red);font-weight:600;line-height:1.2;margin-bottom:2px;display:block}
+.cal-type-sel{font-size:11px;padding:2px 3px;border:1px solid #ccc;border-radius:3px;width:100%;margin-bottom:3px;background:#fff;cursor:pointer}
+.cal-hours{font-size:12px;font-weight:700;padding:2px 3px;border:1px solid #ccc;border-radius:3px;width:62px;text-align:center;background:#fff}
+.cal-times{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.4}
+.cal-ng{font-size:10px;font-weight:700;color:var(--red);margin-top:1px}
+/* 職員リストアイテム */
+.emp-list-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s;font-size:13px}
+.emp-list-item:last-child{border-bottom:none}
+.emp-list-item:hover{background:#f0f4ff}
+.emp-list-item.active{background:var(--lblue);font-weight:700;color:var(--blue)}
+.emp-list-item .emp-avatar{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.emp-list-item.active .emp-avatar{background:var(--blue)}
+.emp-list-dept{font-size:10px;color:var(--muted);margin-top:1px}
 
 /* ── Check table ── */
 .check-rule-tbl{font-size:12px}
@@ -224,72 +231,72 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
 
       <!-- ── カレンダー編集 ── -->
       <div class="page" id="page-calendar">
-        <!-- フィルターバー -->
-        <div class="card" style="padding:12px">
-          <div class="flex gap8 items-center flex-wrap">
-            <div>
-              <div class="form-label">部署</div>
-              <select id="calDeptSel" class="form-control" style="width:120px" onchange="filterCalEmp()">
-                <option value="">全部署</option>
-              </select>
-            </div>
-            <div>
-              <div class="form-label">勤務パターン</div>
-              <select id="calPatSel" class="form-control" style="width:160px" onchange="filterCalEmp()">
-                <option value="">全パターン</option>
-              </select>
-            </div>
-            <div>
-              <div class="form-label">職員名検索</div>
-              <input id="calEmpSearch" class="form-control" style="width:140px" placeholder="氏名で検索" oninput="filterCalEmp()">
-            </div>
-            <div>
-              <div class="form-label">職員選択</div>
-              <select id="calEmpSel" class="form-control" style="width:160px" onchange="loadCalendar()">
-                <option value="">選択してください</option>
-              </select>
-            </div>
-            <div>
-              <div class="form-label">表示月</div>
-              <div class="flex gap8 items-center">
-                <button class="btn btn-outline btn-sm" onclick="calChgMonth(-1)">◀</button>
-                <span id="calMonthLabel" style="font-weight:700;min-width:70px;text-align:center"></span>
-                <button class="btn btn-outline btn-sm" onclick="calChgMonth(1)">▶</button>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+
+          <!-- 左ペイン：職員選択 -->
+          <div style="width:220px;flex-shrink:0">
+            <div class="card" style="padding:12px;position:sticky;top:60px">
+              <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">👥 職員を選択</div>
+
+              <div class="form-group">
+                <label class="form-label">部署で絞り込み</label>
+                <select id="calDeptSel" class="form-control" onchange="filterCalEmp()">
+                  <option value="">全部署</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">勤務パターンで絞り込み</label>
+                <select id="calPatSel" class="form-control" onchange="filterCalEmp()">
+                  <option value="">全パターン</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">氏名検索</label>
+                <input id="calEmpSearch" class="form-control" placeholder="氏名で検索" oninput="filterCalEmp()">
+              </div>
+
+              <!-- 職員リスト -->
+              <div id="calEmpList" style="max-height:calc(100vh - 420px);overflow-y:auto;border:1px solid var(--border);border-radius:6px">
+                <div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">職員を読み込み中...</div>
               </div>
             </div>
-            <div style="margin-left:auto;display:flex;gap:6px">
-              <button class="btn btn-success btn-sm" onclick="saveCalendar()">💾 保存</button>
-              <button class="btn btn-outline btn-sm" onclick="exportCalCSV()">📊 CSV</button>
-              <button class="btn btn-outline btn-sm" onclick="printCal()">🖨️ 印刷</button>
+          </div>
+
+          <!-- 右ペイン：カレンダー -->
+          <div style="flex:1;min-width:0">
+            <!-- ツールバー -->
+            <div class="card" style="padding:10px;margin-bottom:10px">
+              <div class="flex gap8 items-center flex-wrap">
+                <div id="calSelectedEmpName" style="font-size:14px;font-weight:700;color:var(--navy);min-width:120px">職員未選択</div>
+                <div class="flex gap8 items-center" style="margin-left:auto">
+                  <button class="btn btn-success btn-sm" onclick="saveCalendar()">💾 保存</button>
+                  <button class="btn btn-outline btn-sm" onclick="exportCalCSV()">📊 CSV</button>
+                  <button class="btn btn-outline btn-sm" onclick="printCal()">🖨️ 印刷</button>
+                </div>
+              </div>
+              <!-- 一括設定 -->
+              <div class="flex gap8 items-center flex-wrap" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+                <span style="font-size:11px;font-weight:700;color:var(--muted)">一括：</span>
+                <select id="bulkType" class="form-control" style="width:90px;font-size:11px"><option>勤務</option><option>休日</option><option>法定休日</option></select>
+                <input id="bulkHours" type="number" class="form-control" style="width:60px;font-size:11px" value="8" step="0.25">h
+                <input id="bulkStart" type="time" class="form-control" style="width:82px;font-size:11px" value="08:30">
+                <input id="bulkEnd" type="time" class="form-control" style="width:82px;font-size:11px" value="17:30">
+                <button class="btn btn-outline btn-sm" onclick="bulkSetWeekdays()">平日一括</button>
+                <button class="btn btn-outline btn-sm" onclick="bulkSetSaturdays()">土曜一括</button>
+              </div>
+            </div>
+
+            <!-- 年間サマリーバー -->
+            <div class="flex gap8 flex-wrap mb8" id="calMonthSummary"></div>
+
+            <!-- 全月カレンダー（縦長・2列） -->
+            <div id="calAllMonths" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:10px;border:1px solid var(--border)">
+                左の一覧から職員を選択してください
+              </div>
             </div>
           </div>
-          <!-- 一括設定 -->
-          <div class="flex gap8 items-center flex-wrap mt8" style="border-top:1px solid var(--border);padding-top:8px">
-            <span style="font-size:11px;font-weight:700;color:var(--muted)">一括設定：</span>
-            <select id="bulkType" class="form-control" style="width:90px;font-size:11px"><option>勤務</option><option>休日</option><option>法定休日</option></select>
-            <input id="bulkHours" type="number" class="form-control" style="width:65px;font-size:11px" value="8" step="0.25">h
-            <input id="bulkStart" type="time" class="form-control" style="width:85px;font-size:11px" value="08:30">
-            <input id="bulkEnd" type="time" class="form-control" style="width:85px;font-size:11px" value="17:30">
-            <button class="btn btn-outline btn-sm" onclick="bulkSetWeekdays()">平日一括</button>
-            <button class="btn btn-outline btn-sm" onclick="bulkSetSaturdays()">土曜一括</button>
-          </div>
-        </div>
 
-        <!-- 月次サマリーバー -->
-        <div class="flex gap8 flex-wrap mb8" id="calMonthSummary"></div>
-
-        <!-- 月カレンダー表示 -->
-        <div class="cal-month-card" id="calMonthView">
-          <div class="cal-month-header">
-            <span id="calViewTitle">カレンダー</span>
-            <div class="cal-month-stats" id="calViewStats"></div>
-          </div>
-          <div class="cal-grid-header">
-            <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
-          </div>
-          <div class="cal-grid" id="calGrid">
-            <div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted)">職員を選択してください</div>
-          </div>
         </div>
       </div>
 
@@ -502,6 +509,20 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
         <select id="emStatus" class="form-control"><option>在籍</option><option>休職</option><option>退職</option></select></div>
     </div>
     <div class="form-group"><label class="form-label">備考</label><input id="emNote" class="form-control"></div>
+    <!-- ログイン情報 (新規登録時のみ) -->
+    <div id="emAuthSection" style="border:1px solid #b5d4f4;border-radius:8px;padding:12px;background:#e6f1fb;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:8px">🔐 ログイン情報（新規登録時のみ入力）</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">※ Supabase Authenticationのユーザー作成はSupabase管理画面で行ってください。<br>下記のメールアドレスは職員テーブルへの記録用です。</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">メールアドレス</label><input id="emEmail" type="email" class="form-control" placeholder="yamada@example.com"></div>
+        <div class="form-group"><label class="form-label">パスワード（メモ用）</label><input id="emPassword" type="password" class="form-control" placeholder="Supabaseで設定するPW"></div>
+      </div>
+      <div style="background:#fff3cd;border-radius:6px;padding:8px;font-size:10px;color:#854F0B;margin-top:4px">
+        ⚠️ Supabase Authentication → Users → Add user でメールとパスワードを登録後、<br>
+        employees テーブルの auth_id に auth.users の id を手動で紐付けてください。<br>
+        <strong>SQL例：</strong> UPDATE employees SET auth_id = '[auth.users.id]' WHERE email = 'メールアドレス';
+      </div>
+    </div>
     <div class="modal-foot">
       <button id="emDelBtn" class="btn btn-danger btn-sm" style="display:none;margin-right:auto" onclick="deleteEmp()">削除</button>
       <button class="btn btn-outline" onclick="closeModal('empModal')">キャンセル</button>
@@ -627,28 +648,37 @@ function onLogin(){
 
 // ─── データ読み込み ───────────────────────────────────────────
 function loadAll(){
-  loadHolidaysToCache().then(function(){
-    loadPatterns().then(function(){
-      loadDepartments().then(function(){
-        loadEmployees().then(function(){
-          populateSelects();
-          loadDashboard();
-        });
-      });
+  var p1 = loadPatterns().catch(function(){ _patterns=[]; toast('work_patternsテーブルを確認してください','amber'); });
+  var p2 = loadHolidaysToCache().catch(function(){ _holidays={}; });
+  var p3 = loadDepartments().catch(function(){ _departments=[]; });
+  Promise.all([p1,p2,p3]).then(function(){
+    loadEmployees().catch(function(e){ _employees=[]; toast('employeesテーブルエラー: '+(e&&e.message||e),'red'); }).then(function(){
+      populateSelects();
+      loadDashboard();
     });
   });
 }
 function loadPatterns(){
-  return sb.from('work_patterns').select('*').order('pattern_code').then(function(r){ _patterns=r.data||[]; renderPatterns(); return _patterns; });
+  return sb.from('work_patterns').select('*').order('pattern_code').then(function(r){
+    if(r.error) throw r.error;
+    _patterns=r.data||[]; renderPatterns(); return _patterns;
+  });
 }
 function loadEmployees(){
-  return sb.from('employees').select('*, work_patterns(pattern_name)').order('name').then(function(r){ _employees=r.data||[]; renderEmps(_employees); return _employees; });
+  return sb.from('employees').select('*, work_patterns(pattern_name)').order('name').then(function(r){
+    if(r.error) throw r.error;
+    _employees=r.data||[]; renderEmps(_employees); return _employees;
+  });
 }
 function loadDepartments(){
-  return sb.from('departments').select('*').order('dept_code').then(function(r){ _departments=r.data||[]; renderDepts(); return _departments; });
+  return sb.from('departments').select('*').order('dept_code').then(function(r){
+    if(r.error){ _departments=[]; renderDepts(); return []; }
+    _departments=r.data||[]; renderDepts(); return _departments;
+  });
 }
 function loadHolidaysToCache(){
   return sb.from('holidays').select('*').then(function(r){
+    if(r.error){ _holidays={}; return; }
     _holidays={};
     (r.data||[]).forEach(function(h){ _holidays[h.holiday_date]={name:h.holiday_name,type:h.holiday_type}; });
   });
@@ -733,13 +763,12 @@ function populateSelects(){
   filterCalEmp();
 }
 
-// ─── カレンダー編集（個別・月カレンダー表示） ─────────────────
+// ─── カレンダー編集（個別・縦長全月2列表示） ────────────────────
 function initCalendar(){
-  var now=new Date();
-  _calYear=now.getFullYear(); _calMonth=now.getMonth()+1;
-  document.getElementById('calMonthLabel').textContent=_calYear+'年'+_calMonth+'月';
+  _calYear=new Date().getFullYear();
   filterCalEmp();
 }
+
 function filterCalEmp(){
   var dept=document.getElementById('calDeptSel').value;
   var pat=document.getElementById('calPatSel').value;
@@ -750,146 +779,233 @@ function filterCalEmp(){
       (!pat||e.work_pattern_id===pat) &&
       (!q||e.name.toLowerCase().includes(q));
   });
-  var sel=document.getElementById('calEmpSel');
-  var cur=sel.value;
-  sel.innerHTML='<option value="">選択してください</option>'+filtered.map(function(e){return '<option value="'+e.id+'">'+e.name+(e.department?' ('+e.department+')':'')+'</option>';}).join('');
-  if(cur && filtered.find(function(e){return e.id===cur;})) sel.value=cur;
+  var listEl=document.getElementById('calEmpList');
+  if(!filtered.length){
+    listEl.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px">該当なし</div>';
+    return;
+  }
+  listEl.innerHTML=filtered.map(function(e){
+    var initials=e.name.replace(/\s/g,'').slice(0,2);
+    var deptLbl=e.department||'';
+    var patName=_patterns.find(function(p){return p.id===e.work_pattern_id;});
+    var patLbl=patName?patName.pattern_code:'';
+    var isActive=e.id===_calEmpId;
+    return '<div class="emp-list-item'+(isActive?' active':'')+'" onclick="selectCalEmp(''+e.id+'')" data-empid="'+e.id+'">'+
+      '<div class="emp-avatar">'+initials+'</div>'+
+      '<div style="min-width:0">'+
+        '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.name+(patLbl?' <span style="font-size:9px;background:#e6f1fb;color:#185FA5;padding:1px 4px;border-radius:3px">'+patLbl+'</span>':'')+'</div>'+
+        '<div class="emp-list-dept">'+deptLbl+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
 }
-function calChgMonth(d){
-  _calMonth+=d;
-  if(_calMonth>12){_calMonth=1;_calYear++;}
-  if(_calMonth<1){_calMonth=12;_calYear--;}
-  document.getElementById('calMonthLabel').textContent=_calYear+'年'+_calMonth+'月';
-  if(_calEmpId) loadCalendar();
+
+function selectCalEmp(empId){
+  _calEmpId=empId;
+  // リスト内のactive更新
+  document.querySelectorAll('.emp-list-item').forEach(function(el){
+    el.classList.toggle('active', el.getAttribute('data-empid')===empId);
+    var av=el.querySelector('.emp-avatar');
+    if(av) av.style.background=el.getAttribute('data-empid')===empId?'var(--blue)':'var(--navy)';
+  });
+  loadAllMonthsCalendar();
 }
-function loadCalendar(){
-  _calEmpId=document.getElementById('calEmpSel').value;
-  if(!_calEmpId){ renderCalGrid(null); return; }
+
+function loadAllMonthsCalendar(){
+  if(!_calEmpId){
+    document.getElementById('calAllMonths').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);background:#fff;border-radius:10px;border:1px solid var(--border)">職員を選択してください</div>';
+    return;
+  }
   var emp=_employees.find(function(e){return e.id===_calEmpId;});
-  var patId=emp&&emp.work_pattern_id;
-  if(!patId){ renderCalGrid({}); return; }
-  var y=_calYear, m=_calMonth;
-  var start=y+'-'+p2(m)+'-01';
-  var end=y+'-'+p2(m)+'-'+p2(lastDay(y,m));
-  sb.from('work_calendar_days').select('*').eq('work_pattern_id',patId).gte('work_date',start).lte('work_date',end).then(function(r){
+  if(!emp){return;}
+  document.getElementById('calSelectedEmpName').textContent=emp.name+' さん（'+_calYear+'年）';
+  var patId=emp.work_pattern_id;
+  if(!patId){
+    document.getElementById('calAllMonths').innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--amber);text-align:center">勤務パターンが設定されていません</div>';
+    return;
+  }
+  // 1年分まとめて取得
+  var start=_calYear+'-01-01';
+  var end=_calYear+'-12-31';
+  document.getElementById('calAllMonths').innerHTML='<div style="grid-column:1/-1;padding:30px;text-align:center;color:var(--muted)">読み込み中...</div>';
+  sb.from('work_calendar_days').select('*').eq('work_pattern_id',patId)
+    .gte('work_date',start).lte('work_date',end).then(function(r){
     _calData={};
     (r.data||[]).forEach(function(d){_calData[d.work_date]=d;});
-    renderCalGrid(emp);
+    renderAllMonths(emp);
   });
 }
-function renderCalGrid(emp){
-  var y=_calYear, m=_calMonth;
-  var title=document.getElementById('calViewTitle');
-  var grid=document.getElementById('calGrid');
-  if(!emp){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--muted)">職員を選択してください</div>'; title.textContent='カレンダー'; document.getElementById('calViewStats').innerHTML=''; return; }
-  title.textContent=y+'年'+m+'月 ─ '+emp.name;
+
+function renderAllMonths(emp){
   var pat=_patterns.find(function(p){return p.id===emp.work_pattern_id;})||{};
   var defSt=(pat.default_start||'08:30').slice(0,5);
   var defEn=(pat.default_end||'17:30').slice(0,5);
-  var defBr=pat.default_break||60;
-  var first=new Date(y,m-1,1).getDay();
-  var total=lastDay(y,m);
   var today=new Date().toISOString().slice(0,10);
-  var cells=[]; var workD=0,holiD=0,legalD=0,totalH=0;
-  // 空セル
+  var yearWork=0,yearHoli=0,yearLegal=0,yearH=0;
+  var monthCards=[];
+  for(var m=1;m<=12;m++){
+    var card=buildMonthCard(emp,m,defSt,defEn,today,pat);
+    yearWork+=card.workD; yearHoli+=card.holiD; yearLegal+=card.legalD; yearH+=card.totalH;
+    monthCards.push(card.html);
+  }
+  document.getElementById('calAllMonths').innerHTML=monthCards.join('');
+  document.getElementById('calMonthSummary').innerHTML=
+    '<div style="background:var(--lblue);border-radius:7px;padding:6px 14px;font-size:12px">年間出勤: <strong>'+yearWork+'</strong>日</div>'+
+    '<div style="background:var(--lgreen);border-radius:7px;padding:6px 14px;font-size:12px">年間休日: <strong>'+(yearHoli+yearLegal)+'</strong>日（法定:'+yearLegal+'）</div>'+
+    '<div style="background:var(--lamber);border-radius:7px;padding:6px 14px;font-size:12px">年間所定: <strong>'+yearH.toFixed(0)+'</strong>h</div>'+
+    '<div style="background:'+(yearWork>280?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">日数判定: <strong>'+(yearWork>280?'⚠️'+yearWork+'日(280超)':'✅'+yearWork+'日')+'</strong></div>'+
+    '<div style="background:'+((yearHoli+yearLegal)<118?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">休日判定: <strong>'+((yearHoli+yearLegal)<118?'⚠️'+(yearHoli+yearLegal)+'日(118未満)':'✅'+(yearHoli+yearLegal)+'日')+'</strong></div>';
+}
+
+function buildMonthCard(emp,m,defSt,defEn,today,pat){
+  var y=_calYear;
+  var total=lastDay(y,m);
+  var first=new Date(y,m-1,1).getDay();
+  var workD=0,holiD=0,legalD=0,totalH=0;
+  var cells=[];
+  // 空セル（前月末）
   for(var i=0;i<first;i++) cells.push('<div class="cal-cell other-month"></div>');
   for(var d=1;d<=total;d++){
     var ds=y+'-'+p2(m)+'-'+p2(d);
     var wd=new Date(y,m-1,d).getDay();
     var rec=_calData[ds]||{};
     var hol=_holidays[ds];
+    // デフォルト区分
     var defType=wd===0?'法定休日':wd===6?'休日':'勤務';
-    if(hol) defType=hol.type==='法定休日'?'法定休日':'休日';
+    if(hol) defType=(hol.type==='法定休日')?'法定休日':'休日';
     var dtype=rec.day_type||defType;
     var isWork=dtype==='勤務'||dtype==='振替出勤';
-    var schH=rec.scheduled_hours!==undefined?parseFloat(rec.scheduled_hours):(isWork?8:0);
+    var schH=rec.scheduled_hours!==undefined?parseFloat(rec.scheduled_hours):(isWork?(pat.default_hours||8):0);
     var st=rec.start_time?(rec.start_time.slice(0,5)):(isWork?defSt:'');
     var en=rec.end_time?(rec.end_time.slice(0,5)):(isWork?defEn:'');
     if(isWork){workD++;totalH+=schH;}
     else if(dtype==='法定休日') legalD++;
     else holiD++;
-    var dayNg=isWork&&schH>10?'⚠️10h超':'';
-    var cellCls='cal-cell '+(wd===0?'sun ':wd===6?'sat ':'')+( ds===today?'today ':'' )+(dtype==='法定休日'?'legal-holiday':dtype==='休日'||dtype==='振替休日'?'holiday':'work-day');
-    var typeOpts=['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t){return '<option value="'+t+'"'+(dtype===t?' selected':'')+'>'+t+'</option>';}).join('');
-    var holBadge=hol?'<span style="font-size:8px;color:var(--red);font-weight:600;display:block;line-height:1.2">'+hol.name+'</span>':'';
+    var dayNg=(isWork&&schH>10)?'<div class="cal-ng">⚠️10h超</div>':'';
+    var wdCls=(wd===0)?'sun ':(wd===6)?'sat ':'';
+    var todayCls=(ds===today)?'today ':'';
+    var typeCls=(dtype==='法定休日')?'legal-holiday':(dtype==='休日'||dtype==='振替休日')?'holiday':'work-day';
+    var cellCls='cal-cell '+wdCls+todayCls+typeCls;
+    var typeOpts=['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t){
+      return '<option value="'+t+'"'+(dtype===t?' selected':'')+'>'+t+'</option>';
+    }).join('');
+    var holBadge=hol?'<span class="cal-hol-name">'+hol.name+'</span>':'';
+    var hoursEl=isWork?'<input type="number" class="cal-hours" value="'+schH.toFixed(1)+'" step="0.25" min="0" max="24" data-date="'+ds+'">':'';
+    var timesEl=isWork?'<div class="cal-times">'+st+'〜'+en+'</div>':'';
     cells.push(
       '<div class="'+cellCls+'" data-date="'+ds+'">'+
         '<div class="cal-day-num">'+d+(hol?'🎌':'')+'</div>'+
         holBadge+
         '<select class="cal-type-sel" data-date="'+ds+'" onchange="onCalTypeChange(this)">'+typeOpts+'</select>'+
-        (isWork?'<input type="number" class="cal-hours" value="'+schH.toFixed(1)+'" step="0.25" min="0" max="24" data-date="'+ds+'" placeholder="h">':'')+ 
-        (isWork?'<div class="cal-times">'+st+' 〜 '+en+'</div>':'')+
-        (dayNg?'<div class="cal-ng">'+dayNg+'</div>':'')+
+        hoursEl+timesEl+dayNg+
       '</div>'
     );
   }
-  grid.innerHTML=cells.join('');
-  // stats
-  document.getElementById('calViewStats').innerHTML=
-    '<span>出勤:'+workD+'日</span><span>休日:'+holiD+'日</span><span>法休:'+legalD+'日</span><span>所定:'+totalH.toFixed(1)+'h</span>';
-  document.getElementById('calMonthSummary').innerHTML=
-    '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">出勤日: <strong>'+workD+'</strong>日</div>'+
-    '<div style="background:var(--lgreen);border-radius:7px;padding:6px 12px;font-size:11px">休日: <strong>'+(holiD+legalD)+'</strong>日（法定:'+legalD+'）</div>'+
-    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">所定時間: <strong>'+totalH.toFixed(1)+'</strong>h</div>';
+  // 後ろの空セル（6行目まで埋める）
+  var totalCells=cells.length;
+  var rows=Math.ceil(totalCells/7);
+  var padEnd=rows*7-totalCells;
+  for(var j=0;j<padEnd;j++) cells.push('<div class="cal-cell other-month"></div>');
+
+  var html=
+    '<div class="cal-month-card">'+
+      '<div class="cal-month-header">'+
+        '<span>'+y+'年'+m+'月</span>'+
+        '<div class="cal-month-stats">'+
+          '<span>出勤'+workD+'日</span>'+
+          '<span>休日'+(holiD+legalD)+'日</span>'+
+          '<span>'+totalH.toFixed(0)+'h</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="cal-grid-header"><div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div></div>'+
+      '<div class="cal-grid">'+cells.join('')+'</div>'+
+    '</div>';
+  return {html:html,workD:workD,holiD:holiD,legalD:legalD,totalH:totalH};
 }
+
 function onCalTypeChange(sel){
   var ds=sel.getAttribute('data-date');
-  var cell=document.querySelector('.cal-cell[data-date="'+ds+'"]');
+  var cell=document.querySelector('[data-date="'+ds+'"].cal-cell');
   if(!cell) return;
+  var wd=new Date(ds).getDay();
   var isWork=sel.value==='勤務'||sel.value==='振替出勤';
-  cell.className='cal-cell '+(new Date(ds).getDay()===0?'sun':new Date(ds).getDay()===6?'sat':'')+
-    (sel.value==='法定休日'?' legal-holiday':sel.value==='休日'||sel.value==='振替休日'?' holiday':' work-day');
+  var wdCls=wd===0?'sun ':wd===6?'sat ':'';
+  var typeCls=sel.value==='法定休日'?'legal-holiday':(sel.value==='休日'||sel.value==='振替休日')?'holiday':'work-day';
+  cell.className='cal-cell '+wdCls+typeCls;
   cell.setAttribute('data-date',ds);
   var hEl=cell.querySelector('.cal-hours');
+  var tEl=cell.querySelector('.cal-times');
   if(hEl) hEl.style.display=isWork?'':'none';
+  if(tEl) tEl.style.display=isWork?'':'none';
 }
+
+// calChgMonth は年単位に変更
+function calChgMonth(d){
+  _calYear+=d;
+  if(_calEmpId){
+    var emp=_employees.find(function(e){return e.id===_calEmpId;});
+    if(emp) document.getElementById('calSelectedEmpName').textContent=emp.name+' さん（'+_calYear+'年）';
+    loadAllMonthsCalendar();
+  }
+}
+// 旧loadCalendar は互換のため残す
+function loadCalendar(){ loadAllMonthsCalendar(); }
 function saveCalendar(){
-  var empId=document.getElementById('calEmpSel').value;
-  if(!empId){toast('職員を選択してください','red');return;}
-  var emp=_employees.find(function(e){return e.id===empId;});
+  if(!_calEmpId){toast('職員を選択してください','red');return;}
+  var emp=_employees.find(function(e){return e.id===_calEmpId;});
   if(!emp||!emp.work_pattern_id){toast('この職員にはパターンが設定されていません','red');return;}
   var cells=document.querySelectorAll('.cal-cell[data-date]');
   var upserts=[];
   cells.forEach(function(cell){
     var ds=cell.getAttribute('data-date');
+    if(cell.classList.contains('other-month')) return; // 前後の空セルは除外
     var tSel=cell.querySelector('.cal-type-sel');
     var hEl=cell.querySelector('.cal-hours');
-    var dtype=tSel?tSel.value:'勤務';
+    if(!tSel) return;
+    var dtype=tSel.value;
     var isWork=dtype==='勤務'||dtype==='振替出勤';
     upserts.push({work_pattern_id:emp.work_pattern_id,work_date:ds,day_of_week:WDAYS[new Date(ds).getDay()],day_type:dtype,scheduled_hours:hEl?parseFloat(hEl.value)||0:0,updated_at:new Date().toISOString()});
   });
-  sb.from('work_calendar_days').upsert(upserts,{onConflict:'work_pattern_id,work_date'}).then(function(r){
-    if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
-    toast('✅ '+upserts.length+'日分を保存しました','green');
-    loadCalendar();
-  });
+  if(!upserts.length){toast('保存するデータがありません','amber');return;}
+  // 100件ずつ保存
+  var chunks=[]; for(var i=0;i<upserts.length;i+=100) chunks.push(upserts.slice(i,i+100));
+  var done=0;
+  function nextChunk(idx){
+    if(idx>=chunks.length){toast('✅ '+upserts.length+'日分を保存しました','green');return;}
+    sb.from('work_calendar_days').upsert(chunks[idx],{onConflict:'work_pattern_id,work_date'}).then(function(r){
+      if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
+      done+=chunks[idx].length; nextChunk(idx+1);
+    });
+  }
+  nextChunk(0);
 }
 function bulkSetWeekdays(){
-  var type=document.getElementById('bulkType').value, hours=document.getElementById('bulkHours').value, st=document.getElementById('bulkStart').value, en=document.getElementById('bulkEnd').value;
-  document.querySelectorAll('.cal-cell[data-date]').forEach(function(cell){
+  if(!_calEmpId){toast('職員を選択してください','red');return;}
+  var type=document.getElementById('bulkType').value, hours=document.getElementById('bulkHours').value;
+  document.querySelectorAll('.cal-cell[data-date]:not(.other-month)').forEach(function(cell){
     var wd=new Date(cell.getAttribute('data-date')).getDay();
     if(wd>=1&&wd<=5){
-      var tSel=cell.querySelector('.cal-type-sel'); if(tSel) tSel.value=type;
+      var tSel=cell.querySelector('.cal-type-sel'); if(tSel){tSel.value=type;onCalTypeChange(tSel);}
       var hEl=cell.querySelector('.cal-hours'); if(hEl) hEl.value=parseFloat(hours).toFixed(1);
-      onCalTypeChange(tSel);
     }
   });
-  toast('平日を一括設定しました','green');
+  toast('全月の平日を一括設定しました','green');
 }
 function bulkSetSaturdays(){
+  if(!_calEmpId){toast('職員を選択してください','red');return;}
   var type=document.getElementById('bulkType').value, hours=document.getElementById('bulkHours').value;
-  document.querySelectorAll('.cal-cell[data-date]').forEach(function(cell){
+  document.querySelectorAll('.cal-cell[data-date]:not(.other-month)').forEach(function(cell){
     var wd=new Date(cell.getAttribute('data-date')).getDay();
     if(wd===6){
-      var tSel=cell.querySelector('.cal-type-sel'); if(tSel) tSel.value=type;
+      var tSel=cell.querySelector('.cal-type-sel'); if(tSel){tSel.value=type;onCalTypeChange(tSel);}
       var hEl=cell.querySelector('.cal-hours'); if(hEl) hEl.value=parseFloat(hours).toFixed(1);
-      onCalTypeChange(tSel);
     }
   });
-  toast('土曜日を一括設定しました','green');
+  toast('全月の土曜日を一括設定しました','green');
 }
 function exportCalCSV(){
-  var cells=document.querySelectorAll('.cal-cell[data-date]');
+  var emp=_employees.find(function(e){return e.id===_calEmpId;});
+  var cells=document.querySelectorAll('.cal-cell[data-date]:not(.other-month)');
   if(!cells.length){toast('カレンダーが空です','red');return;}
   var rows=[['日付','曜日','勤務区分','所定時間']];
   cells.forEach(function(cell){
@@ -898,30 +1014,39 @@ function exportCalCSV(){
     var tSel=cell.querySelector('.cal-type-sel'), hEl=cell.querySelector('.cal-hours');
     rows.push([ds,WDAYS[wd],tSel?tSel.value:'',hEl?hEl.value:'']);
   });
-  dlCSV(rows, _calYear+'年'+_calMonth+'月カレンダー.csv');
+  dlCSV(rows, _calYear+'年_'+(emp?emp.name:'')+'_カレンダー.csv');
 }
 function printCal(){
   var emp=_employees.find(function(e){return e.id===_calEmpId;})||{};
-  var cells=document.querySelectorAll('.cal-cell[data-date]');
+  var cells=document.querySelectorAll('.cal-cell[data-date]:not(.other-month)');
   if(!cells.length){toast('カレンダーを表示してから印刷してください','red');return;}
-  var rows=[];
+  // 月別にグループ化
+  var byMonth={};
   cells.forEach(function(cell){
     var ds=cell.getAttribute('data-date');
-    var wd=new Date(ds).getDay();
+    var ym=ds.slice(0,7);
+    if(!byMonth[ym]) byMonth[ym]=[];
     var tSel=cell.querySelector('.cal-type-sel'), hEl=cell.querySelector('.cal-hours');
-    rows.push({ds:ds,wd:wd,type:tSel?tSel.value:'',h:hEl?hEl.value:''});
+    byMonth[ym].push({ds:ds,wd:new Date(ds).getDay(),type:tSel?tSel.value:'',h:hEl?hEl.value:''});
   });
   var win=window.open('','_blank');
   win.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>カレンダー</title>');
-  win.document.write('<style>body{font-family:Meiryo,sans-serif;font-size:9px;margin:8px}.t{font-size:11px;font-weight:700;margin-bottom:4px}table{border-collapse:collapse;width:100%}th{background:#0f2744;color:#fff;padding:4px 6px;font-size:8px}td{border:1px solid #ccc;padding:3px 5px;text-align:center}.l{background:#fde8e8}.h{background:#f5f5f5}.s{color:red}.b{color:blue}@media print{@page{size:A4;margin:10mm}}</style></head><body>');
-  win.document.write('<div class="t">変形労働時間カレンダー　'+_calYear+'年'+_calMonth+'月　'+emp.name+'</div>');
-  win.document.write('<table><thead><tr><th>日</th><th>曜</th><th>区分</th><th>所定時間</th></tr></thead><tbody>');
-  rows.forEach(function(r){
-    var cls=r.type==='法定休日'?' class="l"':r.type==='休日'||r.type==='振替休日'?' class="h"':'';
-    var wcls=r.wd===0?' class="s"':r.wd===6?' class="b"':'';
-    win.document.write('<tr'+cls+'><td'+wcls+'>'+r.ds.slice(8)+'</td><td'+wcls+'>'+WDAYS[r.wd]+'</td><td>'+r.type+'</td><td>'+(r.h||'')+'</td></tr>');
+  win.document.write('<style>body{font-family:Meiryo,sans-serif;font-size:9px;margin:8px}h2{font-size:12px;margin:8px 0 3px}.mb{margin-bottom:14px;break-inside:avoid}table{border-collapse:collapse;width:100%;margin-bottom:4px}th{background:#0f2744;color:#fff;padding:3px 5px;font-size:8px}td{border:1px solid #ccc;padding:2px 4px;text-align:center}.l{background:#fde8e8}.h{background:#f5f5f5}.s{color:red}.b{color:blue}@media print{@page{size:A4;margin:10mm}}</style></head><body>');
+  win.document.write('<h2>変形労働時間カレンダー '+_calYear+'年　'+emp.name+'</h2>');
+  Object.keys(byMonth).sort().forEach(function(ym){
+    var rows=byMonth[ym];
+    var mn=parseInt(ym.split('-')[1]);
+    var wD=rows.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
+    var tH=rows.reduce(function(s,r){return s+(parseFloat(r.h)||0);},0);
+    win.document.write('<div class="mb"><table><thead><tr><th colspan="4">'+_calYear+'年'+mn+'月（出勤'+wD+'日 / '+tH.toFixed(1)+'h）</th></tr><tr><th>日</th><th>曜</th><th>区分</th><th>所定h</th></tr></thead><tbody>');
+    rows.forEach(function(r){
+      var cls=r.type==='法定休日'?' class="l"':r.type==='休日'||r.type==='振替休日'?' class="h"':'';
+      var wc=r.wd===0?' class="s"':r.wd===6?' class="b"':'';
+      win.document.write('<tr'+cls+'><td'+wc+'>'+r.ds.slice(8)+'</td><td'+wc+'>'+WDAYS[r.wd]+'</td><td>'+r.type+'</td><td>'+(r.h||'')+'</td></tr>');
+    });
+    win.document.write('</tbody></table></div>');
   });
-  win.document.write('</tbody></table></body></html>');
+  win.document.write('</body></html>');
   win.document.close(); setTimeout(function(){win.print();},400);
 }
 
@@ -1144,9 +1269,10 @@ function filterEmps(){
   renderEmps(_employees.filter(function(e){return (!q||e.name.toLowerCase().includes(q))&&(!dept||e.department===dept)&&(!pat||e.work_pattern_id===pat);}));
 }
 function openEmpModal(){
-  ['emId','emCode','emName','emNote'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['emId','emCode','emName','emNote','emEmail','emPassword'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('emEmpType').value='正職員';
   document.getElementById('emStatus').value='在籍';
+  document.getElementById('emAuthSection').style.display='';
   // refresh dept and pattern options
   var emDept=document.getElementById('emDept');
   emDept.innerHTML='<option value="">選択してください</option>'+_departments.map(function(d){return '<option>'+d.dept_name+'</option>';}).join('');
@@ -1168,6 +1294,9 @@ function editEmp(id){
   emDept.innerHTML='<option value="">選択してください</option>'+_departments.map(function(d){return '<option'+(d.dept_name===e.department?' selected':'')+'>'+d.dept_name+'</option>';}).join('');
   var emPat=document.getElementById('emPattern');
   emPat.innerHTML='<option value="">選択してください</option>'+_patterns.map(function(p){return '<option value="'+p.id+'"'+(p.id===e.work_pattern_id?' selected':'')+'>[ '+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
+  document.getElementById('emEmail').value=e.email||'';
+  document.getElementById('emPassword').value='';
+  document.getElementById('emAuthSection').style.display=''; // 編集時もメモとして表示
   document.getElementById('empModalTitle').textContent='職員編集：'+e.name;
   document.getElementById('emDelBtn').style.display='';
   openModal('empModal');
@@ -1176,7 +1305,8 @@ function saveEmp(){
   var name=document.getElementById('emName').value.trim();
   if(!name){toast('氏名は必須です','red');return;}
   var id=document.getElementById('emId').value;
-  var data={employee_no:document.getElementById('emCode').value||null,name:name,department:document.getElementById('emDept').value||null,employment_type:document.getElementById('emEmpType').value,employment_status:document.getElementById('emStatus').value,work_pattern_id:document.getElementById('emPattern').value||null,notes:document.getElementById('emNote').value||null,updated_at:new Date().toISOString()};
+  var emailVal=document.getElementById('emEmail').value.trim()||null;
+  var data={employee_no:document.getElementById('emCode').value||null,name:name,email:emailVal,department:document.getElementById('emDept').value||null,employment_type:document.getElementById('emEmpType').value,employment_status:document.getElementById('emStatus').value,work_pattern_id:document.getElementById('emPattern').value||null,notes:document.getElementById('emNote').value||null,updated_at:new Date().toISOString()};
   (id?sb.from('employees').update(data).eq('id',id):sb.from('employees').insert(data)).then(function(r){
     if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
     closeModal('empModal'); toast('✅ 保存しました','green'); loadEmployees().then(populateSelects);
