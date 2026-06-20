@@ -823,7 +823,7 @@ function loadDashboard(){
   sb.from('punch_records').select('*, employees(name,department)').gte('punched_at', today+'T00:00:00').lte('punched_at', today+'T23:59:59').order('punched_at',{ascending:false}).then(function(r){
     const tbody = document.getElementById('dashAttendTbl');
     if(r.error || !r.data || !r.data.length){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">本日の打刻データはありません</td></tr>';
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">'+(r.error?'テーブル未作成（punch_records）':'本日の打刻データはありません')+'</td></tr>';
       document.getElementById('kpi-today').textContent='0';
       return;
     }
@@ -851,7 +851,7 @@ function loadDashboard(){
   ]).then(function(results){
     const total = (results[0].count||0) + (results[1].count||0);
     document.getElementById('kpi-pending').textContent = total;
-  });
+  }).catch(function(){ document.getElementById('kpi-pending').textContent='—'; });
   // This month OT
   const ym = new Date().toISOString().slice(0,7);
   sb.from('punch_records').select('punched_at,punch_type').gte('punched_at',ym+'-01T00:00:00').then(function(r){
@@ -862,7 +862,7 @@ function loadDashboard(){
   sb.from('leave_requests').select('*, employees(name)').eq('status','pending').limit(10).then(function(r){
     const tbody = document.getElementById('dashApprovalTbl');
     if(r.error || !r.data || !r.data.length){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">未承認申請はありません</td></tr>';return;}
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">'+(r.error?'テーブル未作成（leave_requests）':'未承認申請はありません')+'</td></tr>';return;}
     tbody.innerHTML = r.data.map(function(req){
       return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+(req.employees&&req.employees.name||'—')+'</td><td>'+req.leave_type+' '+req.start_date+'〜'+req.end_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(\''+req.id+'\')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(\''+req.id+'\')">否認</button></td></tr>';
     }).join('');
@@ -879,7 +879,7 @@ function loadTodayPunchLog(){
   sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59').order('punched_at',{ascending:true}).then(function(r){
     const tbody = document.getElementById('todayPunchLog');
     if(r.error || !r.data || !r.data.length){
-      tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">本日の打刻はありません</td></tr>';
+      tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">'+(r.error?'テーブル未作成（punch_records）':'本日の打刻はありません')+'</td></tr>';
       document.getElementById('punchStatus').textContent='';return;}
     tbody.innerHTML = r.data.map(function(p){
       return '<tr><td><span class="badge '+(p.punch_type==='出勤'?'badge-green':p.punch_type==='退勤'?'badge-red':'badge-amber')+'">'+p.punch_type+'</span></td><td>'+new Date(p.punched_at).toLocaleTimeString('ja-JP')+'</td><td>'+(p.note||'')+'</td></tr>';
@@ -891,7 +891,7 @@ function loadTodayPunchLog(){
 window.doPunch = function(type){
   if(!me){showToast('ログインが必要です','red');return;}
   sb.from('punch_records').insert({user_id:me.id, punch_type:type, punched_at:new Date().toISOString()}).then(function(r){
-    if(r.error){showToast('打刻失敗: '+r.error.message,'red');return;}
+    if(r.error){showToast('打刻失敗（punch_recordsテーブルを作成してください）','red');return;}
     showToast(type+'しました','green');
     loadTodayPunchLog();
   });
@@ -906,7 +906,7 @@ window.loadTimecard = function(){
   const end = new Date(y,m,0).toISOString().slice(0,10)+'T23:59:59';
   sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',start).lte('punched_at',end).order('punched_at',{ascending:true}).then(function(r){
     const tbody = document.getElementById('timecardTbl');
-    if(r.error){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">エラーが発生しました</td></tr>';return;}
+    if(r.error){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">テーブル未作成（punch_records）</td></tr>';return;}
     const days = {};
     (r.data||[]).forEach(function(p){
       const d = p.punched_at.slice(0,10);
@@ -949,7 +949,7 @@ window.loadAttendance = function(){
   let q = sb.from('punch_records').select('user_id, punch_type, punched_at, employees!inner(name,department)').gte('punched_at',start).lte('punched_at',end);
   q.then(function(r){
     const tbody = document.getElementById('attendTbl');
-    if(r.error||!r.data){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">データなし</td></tr>';return;}
+    if(r.error||!r.data){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">'+(r.error?'テーブル未作成（punch_records）':'データなし')+'</td></tr>';return;}
     const users={};
     r.data.forEach(function(p){
       const uid=p.user_id;
@@ -959,7 +959,7 @@ window.loadAttendance = function(){
       // simplified
     });
     // Show all employees instead
-    sb.from('employees').select('*').eq('is_active',true).then(function(er){
+    sb.from('employees').select('*').eq('employment_status','在籍').then(function(er){
       const emps = er.data||[];
       if(!emps.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">従業員データなし</td></tr>';return;}
       tbody.innerHTML = emps.filter(e=>!dept||e.department===dept).map(function(e){
