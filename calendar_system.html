@@ -809,7 +809,7 @@ function renderCalGrid(emp){
     else if(dtype==='法定休日') legalD++;
     else holiD++;
     var dayNg=isWork&&schH>10?'⚠️10h超':'';
-    var cellCls='cal-cell '+(wd===0?'sun':wd===6?'sat')+(ds===today?' today':'')+(dtype==='法定休日'?' legal-holiday':dtype==='休日'||dtype==='振替休日'?' holiday':' work-day');
+    var cellCls='cal-cell '+(wd===0?'sun ':wd===6?'sat ':'')+( ds===today?'today ':'' )+(dtype==='法定休日'?'legal-holiday':dtype==='休日'||dtype==='振替休日'?'holiday':'work-day');
     var typeOpts=['勤務','休日','法定休日','振替出勤','振替休日'].map(function(t){return '<option value="'+t+'"'+(dtype===t?' selected':'')+'>'+t+'</option>';}).join('');
     var holBadge=hol?'<span style="font-size:8px;color:var(--red);font-weight:600;display:block;line-height:1.2">'+hol.name+'</span>':'';
     cells.push(
