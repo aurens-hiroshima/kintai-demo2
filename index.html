@@ -754,9 +754,8 @@ window.doLogout = function(){
 };
 
 function loadProfile(){
-  sb.from('employees').select('*').eq('auth_id', me.id).single().then(function(r){
+  sb.from('employees').select('*').eq('auth_id', me.id).maybeSingle().then(function(r){
     if(r.error || !r.data){
-      // 管理者でもemployeesに登録がない場合はそのまま表示
       myProfile = {name: me.email, department:'', role:'管理者', paid_leave_remaining:0};
     } else {
       myProfile = r.data;
@@ -819,54 +818,77 @@ function updateTopbarDate(){
 // ── Dashboard ──
 function loadDashboard(){
   const today = new Date().toISOString().slice(0,10);
-  // Today's attendance
-  sb.from('punch_records').select('*, employees(name,department)').gte('punched_at', today+'T00:00:00').lte('punched_at', today+'T23:59:59').order('punched_at',{ascending:false}).then(function(r){
-    const tbody = document.getElementById('dashAttendTbl');
-    if(r.error || !r.data || !r.data.length){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">'+(r.error?'テーブル未作成（punch_records）':'本日の打刻データはありません')+'</td></tr>';
-      document.getElementById('kpi-today').textContent='0';
-      return;
-    }
-    // Group by user
-    const users = {};
-    r.data.forEach(function(p){
-      const uid = p.user_id;
-      if(!users[uid]) users[uid] = {name:(p.employees&&p.employees.name)||'—', dept:(p.employees&&p.employees.department)||'—', in:null,out:null};
-      if(p.punch_type==='出勤' && !users[uid].in) users[uid].in = p.punched_at;
-      if(p.punch_type==='退勤') users[uid].out = p.punched_at;
+
+  // ── 出退勤状況（punch_records が存在する場合のみ）
+  sb.from('punch_records').select('*, employees(name,department)')
+    .gte('punched_at', today+'T00:00:00').lte('punched_at', today+'T23:59:59')
+    .order('punched_at',{ascending:false})
+    .then(function(r){
+      const tbody = document.getElementById('dashAttendTbl');
+      if(r.error){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">打刻テーブル未作成（SQLを実行してください）</td></tr>';
+        document.getElementById('kpi-today').textContent='—';
+        return;
+      }
+      if(!r.data||!r.data.length){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">本日の打刻データはありません</td></tr>';
+        document.getElementById('kpi-today').textContent='0';
+        return;
+      }
+      const users={};
+      r.data.forEach(function(p){
+        const uid=p.user_id;
+        if(!users[uid]) users[uid]={name:(p.employees&&p.employees.name)||'—',dept:(p.employees&&p.employees.department)||'—',in:null,out:null};
+        if(p.punch_type==='出勤'&&!users[uid].in) users[uid].in=p.punched_at;
+        if(p.punch_type==='退勤') users[uid].out=p.punched_at;
+      });
+      const rows=Object.values(users);
+      tbody.innerHTML=rows.map(function(u){
+        const inT=u.in?new Date(u.in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—';
+        const outT=u.out?new Date(u.out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'—';
+        const st=u.out?'<span class="badge badge-gray">退勤済</span>':u.in?'<span class="badge badge-green">出勤中</span>':'<span class="badge badge-amber">未打刻</span>';
+        return '<tr><td>'+u.name+'</td><td>'+u.dept+'</td><td>'+inT+'</td><td>'+outT+'</td><td>'+st+'</td></tr>';
+      }).join('');
+      document.getElementById('kpi-today').textContent=rows.filter(function(u){return u.in&&!u.out;}).length;
+    })
+    .catch(function(){
+      document.getElementById('dashAttendTbl').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">—</td></tr>';
+      document.getElementById('kpi-today').textContent='—';
     });
-    const rows = Object.values(users);
-    tbody.innerHTML = rows.map(function(u){
-      const inTime = u.in ? new Date(u.in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '—';
-      const outTime = u.out ? new Date(u.out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}) : '—';
-      const status = u.out ? '<span class="badge badge-gray">退勤済</span>' : u.in ? '<span class="badge badge-green">出勤中</span>' : '<span class="badge badge-amber">未打刻</span>';
-      return '<tr><td>'+u.name+'</td><td>'+u.dept+'</td><td>'+inTime+'</td><td>'+outTime+'</td><td>'+status+'</td></tr>';
-    }).join('');
-    document.getElementById('kpi-today').textContent = rows.filter(u=>u.in&&!u.out).length;
-  });
-  // Pending approvals
+
+  // ── 未承認申請数
+  const kpiPend = document.getElementById('kpi-pending');
   Promise.all([
-    sb.from('leave_requests').select('count',{count:'exact',head:true}).eq('status','pending'),
-    sb.from('overtime_requests').select('count',{count:'exact',head:true}).eq('status','pending')
-  ]).then(function(results){
-    const total = (results[0].count||0) + (results[1].count||0);
-    document.getElementById('kpi-pending').textContent = total;
-  }).catch(function(){ document.getElementById('kpi-pending').textContent='—'; });
-  // This month OT
-  const ym = new Date().toISOString().slice(0,7);
-  sb.from('punch_records').select('punched_at,punch_type').gte('punched_at',ym+'-01T00:00:00').then(function(r){
-    document.getElementById('kpi-ot').textContent = r.error ? '—' : Math.round(Math.random()*20+10)+'h'; // simplified
-  });
-  document.getElementById('kpi-leave').textContent = Math.round(Math.random()*40+30)+'%';
-  // Pending approvals list
-  sb.from('leave_requests').select('*, employees(name)').eq('status','pending').limit(10).then(function(r){
-    const tbody = document.getElementById('dashApprovalTbl');
-    if(r.error || !r.data || !r.data.length){
-      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">'+(r.error?'テーブル未作成（leave_requests）':'未承認申請はありません')+'</td></tr>';return;}
-    tbody.innerHTML = r.data.map(function(req){
-      return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+(req.employees&&req.employees.name||'—')+'</td><td>'+req.leave_type+' '+req.start_date+'〜'+req.end_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(\''+req.id+'\')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(\''+req.id+'\')">否認</button></td></tr>';
-    }).join('');
-  });
+    sb.from('leave_requests').select('count',{count:'exact',head:true}).eq('status','pending').then(function(r){return r.error?0:(r.count||0);}),
+    sb.from('overtime_requests').select('count',{count:'exact',head:true}).eq('status','pending').then(function(r){return r.error?0:(r.count||0);})
+  ]).then(function(counts){
+    kpiPend.textContent = counts[0]+counts[1];
+  }).catch(function(){ kpiPend.textContent='—'; });
+
+  // ── KPI（簡易）
+  document.getElementById('kpi-ot').textContent='—';
+  document.getElementById('kpi-leave').textContent='—';
+
+  // ── 未承認申請リスト
+  sb.from('leave_requests').select('*, employees(name)').eq('status','pending').limit(10)
+    .then(function(r){
+      const tbody=document.getElementById('dashApprovalTbl');
+      if(r.error){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">申請テーブル未作成（SQLを実行してください）</td></tr>';
+        return;
+      }
+      if(!r.data||!r.data.length){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">未承認申請はありません</td></tr>';
+        return;
+      }
+      tbody.innerHTML=r.data.map(function(req){
+        const name=(req.employees&&req.employees.name)||'—';
+        return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+name+'</td><td>'+req.leave_type+' '+req.start_date+'〜'+req.end_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(''+req.id+'')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(''+req.id+'')">否認</button></td></tr>';
+      }).join('');
+    })
+    .catch(function(){
+      document.getElementById('dashApprovalTbl').innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">—</td></tr>';
+    });
 }
 
 // ── Punch ──
@@ -1180,6 +1202,7 @@ window.saveShift = function(){
 // ── Users ──
 function loadAllUsers(){
   sb.from('employees').select('*').order('name').then(function(r){
+    if(r.error){showToast('employeesテーブルエラー: '+r.error.message,'red');return;}
     allUsers = r.data||[];
     const sel1 = document.getElementById('attDept');
     const sel2 = document.getElementById('calEmpSel');
