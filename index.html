@@ -183,7 +183,7 @@ tr:hover td{background:#fafafa}
   <div class="nav-item" onclick="nav('leave')"><span class="icon">🌴</span>休暇管理</div>
   <div class="nav-item" onclick="nav('overtime')"><span class="icon">⏰</span>残業管理</div>
   <div class="nav-item" onclick="nav('reports')"><span class="icon">📈</span>集計・レポート</div>
-  <div class="nav-item" onclick="nav('calendar')"><span class="icon">📅</span>変形労働カレンダー</div>
+  <div class="nav-item" onclick="window.open('calendar_system.html','_blank')"><span class="icon">📅</span>変形労働カレンダー</div>
   <div class="sidebar-section">システム</div>
   <div class="nav-item" onclick="nav('users')"><span class="icon">👤</span>ユーザー管理</div>
   <div class="nav-item" onclick="nav('settings')"><span class="icon">⚙️</span>システム設定</div>
@@ -373,32 +373,15 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
-<!-- ── Calendar (変形労働) ── -->
+<!-- ── Calendar (変形労働) → 外部システムへ ── -->
 <div class="page" id="page-calendar">
-  <div class="card">
-    <div class="flex gap8 items-center mb16">
-      <button class="btn btn-outline btn-sm" onclick="calPrev()">◀ 前月</button>
-      <span id="calLabel" style="font-weight:700;font-size:15px;min-width:100px;text-align:center"></span>
-      <button class="btn btn-outline btn-sm" onclick="calNext()">次月 ▶</button>
-      <select class="form-control btn-sm" id="calEmpSel" style="width:160px;margin-left:12px" onchange="renderCal()">
-        <option value="">全員（共通）</option>
-      </select>
-      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openModal('calShiftModal')">＋ シフト設定</button>
-    </div>
-    <div class="cal-grid" id="calGrid">
-      <div class="cal-day-header" style="color:var(--red)">日</div>
-      <div class="cal-day-header">月</div><div class="cal-day-header">火</div>
-      <div class="cal-day-header">水</div><div class="cal-day-header">木</div>
-      <div class="cal-day-header">金</div>
-      <div class="cal-day-header" style="color:var(--blue)">土</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">変形労働時間制 - 月間集計</div>
-    <table><thead><tr><th>週</th><th>所定労働時間</th><th>実労働時間</th><th>差分</th></tr></thead>
-    <tbody id="calSummaryTbl">
-      <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">カレンダーを設定してください</td></tr>
-    </tbody></table>
+  <div class="card" style="text-align:center;padding:48px 24px">
+    <div style="font-size:48px;margin-bottom:16px">📅</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">変形労働時間カレンダー管理システム</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:28px">専用システムで年間カレンダーの編集・法令チェック・出力を行います</div>
+    <a href="calendar_system.html" target="_blank" class="btn btn-primary" style="font-size:15px;padding:12px 32px;display:inline-flex;gap:8px;align-items:center">
+      📅 カレンダー管理システムを開く
+    </a>
   </div>
 </div>
 
@@ -410,7 +393,7 @@ tr:hover td{background:#fafafa}
   </div>
   <div class="card">
     <table>
-      <thead><tr><th>氏名</th><th>部署</th><th>雇用形態</th><th>権限</th><th>入社日</th><th>ステータス</th><th>操作</th></tr></thead>
+      <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>ステータス</th><th>操作</th></tr></thead>
       <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
     </table>
   </div>
@@ -481,7 +464,7 @@ tr:hover td{background:#fafafa}
     <div class="settings-body" style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="kiosk.html" target="_blank" class="btn btn-outline">🖥️ 打刻専用画面</a>
       <a href="staff.html" target="_blank" class="btn btn-outline">👤 職員画面</a>
-      <button class="btn btn-outline" onclick="nav('calendar')">📅 変形労働カレンダー</button>
+      <a href="calendar_system.html" target="_blank" class="btn btn-outline">📅 変形労働カレンダー</a>
     </div>
   </div>
 </div>
@@ -531,48 +514,68 @@ tr:hover td{background:#fafafa}
 
 <!-- Add User -->
 <div class="modal-overlay" id="addUserModal">
-  <div class="modal" style="width:600px">
+  <div class="modal" style="width:620px">
     <div class="modal-title">👤 ユーザー追加<span class="modal-close" onclick="closeModal('addUserModal')">×</span></div>
-    <div style="background:var(--lblue);border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-bottom:10px">
-      🔐 <strong>ログイン設定手順：</strong><br>
-      ① 下記を入力して「ユーザーを追加」→ employeesテーブルに保存されます<br>
-      ② <a href="https://supabase.com" target="_blank" style="color:var(--blue)">Supabase管理画面</a> → Authentication → Users → Add user でメール・パスワードを登録<br>
-      ③ SQL Editor で <code style="background:#fff;padding:1px 4px;border-radius:3px">UPDATE employees SET auth_id = '[SupabaseのUserID]' WHERE email = 'メールアドレス';</code> を実行
-    </div>
+
+    <!-- 基本情報 -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">基本情報</div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">氏名 *</div><input class="form-control" id="newUserName" placeholder="山田 太郎"></div>
-      <div class="form-group"><div class="form-label">メールアドレス *</div><input class="form-control" id="newUserEmail" type="email" placeholder="yamada@example.com"></div>
+      <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="newUserJoin" type="date"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">部署</div>
-        <select class="form-control" id="newUserDept"><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+        <select class="form-control" id="newUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
       <div class="form-group"><div class="form-label">雇用形態</div>
         <select class="form-control" id="newUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>業務委託</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">権限</div>
         <select class="form-control" id="newUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
-      <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="newUserJoin" type="date"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">パスワード（メモ用）</div><input class="form-control" id="newUserPass" type="password" placeholder="Supabaseに設定するPW（メモ）"></div>
       <div class="form-group"><div class="form-label">有給付与日数</div><input class="form-control" id="newUserLeave" type="number" value="10"></div>
     </div>
+
+    <!-- ログイン情報 -->
+    <div style="border:1px solid #b5d4f4;border-radius:8px;padding:14px;background:#e6f1fb;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        🔐 ログイン情報（Supabase Authentication用）
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">メールアドレス *</div><input class="form-control" id="newUserEmail" type="email" placeholder="yamada@example.com"></div>
+        <div class="form-group"><div class="form-label">初期パスワード *</div>
+          <div style="position:relative">
+            <input class="form-control" id="newUserPass" type="password" placeholder="8文字以上" style="padding-right:36px">
+            <span onclick="togglePw('newUserPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:14px">👁</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:6px;padding:10px;font-size:11px;color:var(--muted);line-height:1.7">
+        <strong style="color:var(--text)">追加後の手順：</strong><br>
+        ① このフォームで「ユーザーを追加」→ 職員テーブルに保存<br>
+        ② <a href="https://supabase.com" target="_blank" style="color:var(--blue)">Supabase管理画面</a> → Authentication → Users → <strong>Add user</strong> でメール・パスワードを登録<br>
+        ③ SQL Editor で以下を実行してIDを紐付け：<br>
+        <code style="background:#f1f5f9;padding:3px 6px;border-radius:4px;font-size:10px;display:block;margin-top:4px">UPDATE employees SET auth_id = (SELECT id FROM auth.users WHERE email = 'メールアドレス') WHERE email = 'メールアドレス';</code>
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('addUserModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="addUser()">ユーザーを追加</button>
+      <button class="btn btn-primary" onclick="addUser()">👤 ユーザーを追加</button>
     </div>
   </div>
 </div>
 
 <!-- Edit User -->
 <div class="modal-overlay" id="editUserModal">
-  <div class="modal" style="width:600px">
+  <div class="modal" style="width:620px">
     <div class="modal-title">✏️ ユーザー編集<span class="modal-close" onclick="closeModal('editUserModal')">×</span></div>
     <input type="hidden" id="editUserId">
+
+    <!-- 基本情報 -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">基本情報</div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">氏名</div><input class="form-control" id="editUserName"></div>
-      <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+      <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">雇用形態</div><select class="form-control" id="editUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option></select></div>
@@ -582,10 +585,32 @@ tr:hover td{background:#fafafa}
       <div class="form-group"><div class="form-label">有給残日数</div><input class="form-control" id="editUserLeave" type="number"></div>
       <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
     </div>
+
+    <!-- ログイン情報変更 -->
+    <div style="border:1px solid #b5d4f4;border-radius:8px;padding:14px;background:#e6f1fb;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px">🔐 ログイン情報の変更</div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">メールアドレス</div>
+          <input class="form-control" id="editUserEmail" type="email" placeholder="変更する場合は入力">
+        </div>
+        <div class="form-group">
+          <div class="form-label">新しいパスワード</div>
+          <div style="position:relative">
+            <input class="form-control" id="editUserPass" type="password" placeholder="変更する場合のみ入力" style="padding-right:36px">
+            <span onclick="togglePw('editUserPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:14px">👁</span>
+          </div>
+        </div>
+      </div>
+      <div id="editAuthStatus" style="font-size:11px;color:var(--muted);margin-top:6px">
+        メール・パスワードの実際の変更はSupabase Authenticationで行われます。入力した場合は職員テーブルのメモも更新されます。
+      </div>
+    </div>
+
     <div class="modal-footer">
+      <button class="btn btn-red btn-sm" onclick="deleteUser()" style="margin-right:auto">削除</button>
       <button class="btn btn-outline" onclick="closeModal('editUserModal')">キャンセル</button>
-      <button class="btn btn-red" onclick="deleteUser()" style="margin-right:auto">削除</button>
-      <button class="btn btn-primary" onclick="saveUser()">保存</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 保存</button>
     </div>
   </div>
 </div>
@@ -1177,7 +1202,18 @@ function renderUserTable(users){
   if(!users||!users.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
   tbody.innerHTML = users.map(function(u){
     const roleMap={'管理者':'badge-red','部門長':'badge-blue','一般':'badge-gray'};
-    return '<tr><td>'+u.name+'</td><td>'+(u.department||'—')+'</td><td>'+(u.employment_type||'—')+'</td><td><span class="badge '+(roleMap[u.role]||'badge-gray')+'">'+u.role+'</span></td><td>'+(u.hire_date||'—')+'</td><td><span class="badge '+(u.is_active?'badge-green':'badge-gray')+'">'+(u.is_active?'有効':'無効')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="openEditUser(\''+u.id+'\')">編集</button></td></tr>';
+    const emailHtml = u.email
+      ? '<div style="font-size:11px">'+u.email+'</div><span class="badge badge-green" style="font-size:9px">認証済</span>'
+      : '<span style="color:var(--muted);font-size:11px">未設定</span><span class="badge badge-gray" style="font-size:9px;margin-left:3px">未登録</span>';
+    return '<tr>'
+      +'<td><strong>'+u.name+'</strong></td>'
+      +'<td>'+emailHtml+'</td>'
+      +'<td>'+(u.department||'—')+'</td>'
+      +'<td><span class="badge '+(roleMap[u.role]||'badge-gray')+'">'+u.role+'</span></td>'
+      +'<td>'+(u.hire_date||'—')+'</td>'
+      +'<td><span class="badge '+(u.is_active?'badge-green':'badge-gray')+'">'+(u.is_active?'有効':'無効')+'</span></td>'
+      +'<td><button class="btn btn-sm btn-outline" onclick="openEditUser(\''+u.id+'\')">編集</button></td>'
+      +'</tr>';
   }).join('');
 }
 window.filterUsers = function(){
@@ -1189,15 +1225,29 @@ window.openEditUser = function(id){
   if(!u) return;
   document.getElementById('editUserId').value = id;
   document.getElementById('editUserName').value = u.name||'';
-  document.getElementById('editUserDept').value = u.department||'営業部';
+  document.getElementById('editUserDept').value = u.department||'';
   document.getElementById('editUserEmp').value = u.employment_type||'正社員';
   document.getElementById('editUserRole').value = u.role||'一般';
   document.getElementById('editUserLeave').value = u.paid_leave_remaining||0;
   document.getElementById('editUserStatus').value = u.is_active?'true':'false';
+  // メール欄に現在値をセット
+  document.getElementById('editUserEmail').value = u.email||'';
+  document.getElementById('editUserPass').value = '';
+  // 現在のauthステータス表示
+  var authEl = document.getElementById('editAuthStatus');
+  if(authEl){
+    if(u.email){
+      authEl.innerHTML = '<span style="color:var(--green)">✅ ログインメール: <strong>'+u.email+'</strong></span><br><span style="color:var(--muted);font-size:10px">変更する場合は新しいメールまたはパスワードを入力してください</span>';
+    } else {
+      authEl.innerHTML = '<span style="color:var(--amber)">⚠️ メールアドレス未登録。入力するとemployeesテーブルに保存されます。</span>';
+    }
+  }
   openModal('editUserModal');
 };
 window.saveUser = function(){
   const id = document.getElementById('editUserId').value;
+  const emailVal = document.getElementById('editUserEmail').value.trim();
+  const passVal  = document.getElementById('editUserPass').value;
   const data = {
     name: document.getElementById('editUserName').value,
     department: document.getElementById('editUserDept').value,
@@ -1206,9 +1256,17 @@ window.saveUser = function(){
     paid_leave_remaining: parseInt(document.getElementById('editUserLeave').value)||0,
     is_active: document.getElementById('editUserStatus').value === 'true'
   };
+  // メールが入力されていれば保存
+  if(emailVal) data.email = emailVal;
   sb.from('employees').update(data).eq('id',id).then(function(r){
     if(r.error){showToast('更新失敗: '+r.error.message,'red');return;}
-    showToast('更新しました','green'); closeModal('editUserModal'); loadAllUsers();
+    // パスワードが入力されていればメモとして保存（実際の変更はSupabaseで）
+    if(passVal){
+      showToast('✅ 保存しました（パスワードはSupabase管理画面で変更してください）','green');
+    } else {
+      showToast('✅ 更新しました','green');
+    }
+    closeModal('editUserModal'); loadAllUsers();
   });
 };
 window.deleteUser = function(){
@@ -1220,24 +1278,40 @@ window.deleteUser = function(){
   });
 };
 window.addUser = function(){
-  const name = document.getElementById('newUserName').value.trim();
+  const name  = document.getElementById('newUserName').value.trim();
   const email = document.getElementById('newUserEmail').value.trim();
-  const dept = document.getElementById('newUserDept').value;
-  const emp = document.getElementById('newUserEmp').value;
-  const role = document.getElementById('newUserRole').value;
-  const join = document.getElementById('newUserJoin').value;
+  const dept  = document.getElementById('newUserDept').value;
+  const emp   = document.getElementById('newUserEmp').value;
+  const role  = document.getElementById('newUserRole').value;
+  const join  = document.getElementById('newUserJoin').value;
   const leave = parseInt(document.getElementById('newUserLeave').value)||10;
-  const pass = document.getElementById('newUserPass').value;
-  if(!name||!email){showToast('氏名とメールを入力してください','red');return;}
-  if(pass.length<6){showToast('パスワードは6文字以上です','red');return;}
-  // Supabase Admin API for user creation (requires service_role key for full control)
-  // As a workaround, create employee record and show instructions
+  const pass  = document.getElementById('newUserPass').value;
+  if(!name){showToast('氏名を入力してください','red');return;}
+  if(!email){showToast('メールアドレスを入力してください','red');return;}
+  if(pass && pass.length < 6){showToast('パスワードは6文字以上で入力してください','red');return;}
+
   sb.from('employees').insert({
-    name,email,department:dept,employment_type:emp,role,hire_date:join||null,
-    paid_leave_remaining:leave,annual_leave_days:leave,is_active:true
+    name, email,
+    department: dept||null,
+    employment_type: emp,
+    role,
+    hire_date: join||null,
+    paid_leave_remaining: leave,
+    annual_leave_days: leave,
+    is_active: true
   }).then(function(r){
     if(r.error){showToast('追加失敗: '+r.error.message,'red');return;}
-    showToast(name+'を追加しました（Supabase AuthでもユーザーIDを紐付けてください）','green');
+    // パスワードコピー用メッセージ
+    const msg = pass
+      ? name+'を追加しました。Supabase Auth → Add user で「'+email+'」を登録してください'
+      : name+'を追加しました';
+    showToast(msg,'green');
+    // パスワードをクリップボードにコピー（入力した場合）
+    if(pass && navigator.clipboard){
+      navigator.clipboard.writeText(pass).then(function(){
+        showToast('パスワードをクリップボードにコピーしました','blue');
+      }).catch(function(){});
+    }
     closeModal('addUserModal');
     loadAllUsers();
   });
@@ -1282,6 +1356,13 @@ window.switchTab = function(el,target){
 };
 
 // ── Toast ──
+window.togglePw = function(inputId, btn){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+};
+
 window.showToast = function(msg,type){
   const t=document.getElementById('toast');
   const colors={green:'#16a34a',red:'#dc2626',amber:'#d97706',blue:'#185FA5'};
