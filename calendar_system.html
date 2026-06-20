@@ -790,7 +790,7 @@ function filterCalEmp(){
     var patName=_patterns.find(function(p){return p.id===e.work_pattern_id;});
     var patLbl=patName?patName.pattern_code:'';
     var isActive=e.id===_calEmpId;
-    return '<div class="emp-list-item'+(isActive?' active':'')+'" onclick="selectCalEmp(''+e.id+'')" data-empid="'+e.id+'">'+
+    return '<div class="emp-list-item'+(isActive?' active':'')+'" onclick="selectCalEmp(&quot;'+e.id+'&quot;)" data-empid="'+e.id+'">'+
       '<div class="emp-avatar">'+initials+'</div>'+
       '<div style="min-width:0">'+
         '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e.name+(patLbl?' <span style="font-size:9px;background:#e6f1fb;color:#185FA5;padding:1px 4px;border-radius:3px">'+patLbl+'</span>':'')+'</div>'+
