@@ -152,18 +152,45 @@ tr:hover td{background:#fafafa}
       <h1>🕐 勤怠管理システム</h1>
       <p>管理者ポータル</p>
     </div>
-    <div class="form-group"><div class="form-label">メールアドレス</div><input class="form-control" id="loginEmail" type="email" placeholder="admin@example.com"></div>
-    <div class="form-group"><div class="form-label">パスワード</div><input class="form-control" id="loginPass" type="password" placeholder="••••••••"></div>
-    <button class="btn btn-primary w-full" onclick="doLogin()" style="margin-top:8px">ログイン</button>
-    <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:8px;text-align:center"></div>
-    <div id="sbConfigSection" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">⚙️ Supabase設定</div>
+
+    <div class="form-group">
+      <div class="form-label">メールアドレス</div>
+      <input class="form-control" id="loginEmail" type="email" placeholder="admin@example.com" oninput="clearLoginErr()">
+    </div>
+    <div class="form-group">
+      <div class="form-label">パスワード</div>
+      <div style="position:relative">
+        <input class="form-control" id="loginPass" type="password" placeholder="••••••••" style="padding-right:38px" oninput="clearLoginErr()" onkeydown="if(event.key==='Enter')doLogin()">
+        <span onclick="toggleLoginPw()" id="loginPwEye" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:15px;color:#888">👁</span>
+      </div>
+    </div>
+
+    <!-- エラーメッセージ（詳細表示） -->
+    <div id="loginErrBox" style="display:none;margin-bottom:10px;border-radius:8px;padding:10px 13px;background:#fef2f2;border:1px solid #fecaca">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:16px;flex-shrink:0">⚠️</span>
+        <div>
+          <div id="loginErr" style="color:#991b1b;font-size:12px;font-weight:700;margin-bottom:3px"></div>
+          <div id="loginErrSub" style="color:#b91c1c;font-size:11px;line-height:1.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary w-full" id="loginBtn" onclick="doLogin()" style="margin-top:4px;padding:10px;font-size:14px">ログイン</button>
+
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px">ログインできない場合</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button onclick="document.getElementById('sbConfigSection').style.display=document.getElementById('sbConfigSection').style.display==='none'?'':'none'" style="width:100%;padding:7px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--muted)">⚙️ Supabase接続設定を変更</button>
+        <a href="staff.html" style="display:block;text-align:center;font-size:11px;color:var(--blue);padding:4px">職員ログインはこちら →</a>
+      </div>
+    </div>
+
+    <div id="sbConfigSection" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:8px;padding:12px;background:#f8fafc">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">⚙️ Supabase設定</div>
       <div class="form-group"><div class="form-label">Project URL</div><input class="form-control" id="cfgUrl" placeholder="https://xxxx.supabase.co" style="font-size:12px"></div>
       <div class="form-group"><div class="form-label">Anon Key</div><input class="form-control" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs..." style="font-size:12px"></div>
-      <button class="btn btn-outline" style="width:100%;font-size:12px" onclick="saveSupabaseConfig()">設定を保存してログイン</button>
-    </div>
-    <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--muted)">
-      <a href="staff.html" style="color:var(--blue)">職員ログインはこちら</a>
+      <button class="btn btn-outline" style="width:100%;font-size:12px" onclick="saveSupabaseConfig()">設定を保存</button>
     </div>
   </div>
 </div>
@@ -738,13 +765,85 @@ window.saveSupabaseConfig = function(){
 window.doLogin = function(){
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
-  if(!email||!pass){document.getElementById('loginErr').textContent='メールとパスワードを入力してください';return;}
-  if(!sb){showToast('初期化中です、少々お待ちください','amber');return;}
-  sb.auth.signInWithPassword({email,password:pass}).then(function(r){
-    if(r.error){document.getElementById('loginErr').textContent='ログインに失敗しました: '+r.error.message;return;}
+  const btn   = document.getElementById('loginBtn');
+
+  if(!email && !pass){ showLoginErr('メールアドレスとパスワードを入力してください','両方の入力が必要です'); return; }
+  if(!email){ showLoginErr('メールアドレスが入力されていません','登録済みのメールアドレスを入力してください'); return; }
+  if(!pass){ showLoginErr('パスワードが入力されていません','パスワードを入力してください'); return; }
+  if(!sb){
+    try{ sb = window.supabase.createClient(SB_URL, SB_KEY); }
+    catch(e){ showLoginErr('Supabase接続エラー','下記の「Supabase接続設定を変更」から設定を確認してください'); return; }
+  }
+
+  btn.textContent = '確認中...'; btn.disabled = true;
+
+  sb.auth.signInWithPassword({email: email, password: pass}).then(function(r){
+    btn.textContent = 'ログイン'; btn.disabled = false;
+    if(r.error){
+      // エラーコードで原因を判別
+      const msg = r.error.message || '';
+      const code = r.error.code || r.error.status || '';
+      if(msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')){
+        // メールとパスワードどちらが間違いか判別するためメールのみ確認
+        showLoginErr(
+          'メールアドレスまたはパスワードが違います',
+          '• メールアドレスのスペルを確認してください
+• パスワードの大文字・小文字を確認してください
+• 登録したメール: ' + email
+        );
+      } else if(msg.includes('Email not confirmed')){
+        showLoginErr(
+          'メールアドレスが未確認です',
+          'Supabase管理画面 → Authentication → Users で「' + email + '」の確認状態を確認してください'
+        );
+      } else if(msg.includes('User not found') || code === 'user_not_found'){
+        showLoginErr(
+          'このメールアドレスは登録されていません',
+          '• メールアドレスのスペルを確認してください
+• Supabase Authentication にユーザーが登録されているか確認してください'
+        );
+      } else if(msg.includes('Too many requests') || code === 'over_request_rate_limit'){
+        showLoginErr(
+          'ログイン試行が多すぎます',
+          'しばらく待ってから再度お試しください（通常1〜5分）'
+        );
+      } else {
+        showLoginErr(
+          'ログインに失敗しました',
+          'エラー: ' + msg + (code ? ' ('+code+')' : '')
+        );
+      }
+      return;
+    }
+    clearLoginErr();
     me = r.data.user;
     loadProfile();
+  }).catch(function(e){
+    btn.textContent = 'ログイン'; btn.disabled = false;
+    showLoginErr('接続エラーが発生しました', e.message || 'ネットワーク接続を確認してください');
   });
+};
+
+function showLoginErr(main, sub){
+  document.getElementById('loginErrBox').style.display = '';
+  document.getElementById('loginErr').textContent = main;
+  const subEl = document.getElementById('loginErrSub');
+  subEl.innerHTML = (sub||'').replace(/
+/g,'<br>');
+  // 入力欄を赤くする
+  document.getElementById('loginEmail').style.borderColor = '#fca5a5';
+  document.getElementById('loginPass').style.borderColor = '#fca5a5';
+}
+function clearLoginErr(){
+  document.getElementById('loginErrBox').style.display = 'none';
+  document.getElementById('loginEmail').style.borderColor = '';
+  document.getElementById('loginPass').style.borderColor = '';
+}
+window.toggleLoginPw = function(){
+  const inp = document.getElementById('loginPass');
+  const eye = document.getElementById('loginPwEye');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.textContent = inp.type === 'password' ? '👁' : '🙈';
 };
 
 window.doLogout = function(){
@@ -794,7 +893,7 @@ window.nav = function(id){
   if(id==='leave') loadLeave();
   if(id==='overtime') loadOvertimePage();
   if(id==='reports') loadReports();
-  if(id==='calendar') renderCal();
+  if(id==='calendar') {} // calendar_system.htmlにリンク
   if(id==='users') loadAllUsers();
 };
 
@@ -883,7 +982,7 @@ function loadDashboard(){
       }
       tbody.innerHTML=r.data.map(function(req){
         const name=(req.employees&&req.employees.name)||'—';
-        return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+name+'</td><td>'+req.leave_type+' '+req.start_date+'〜'+req.end_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(''+req.id+'')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(''+req.id+'')">否認</button></td></tr>';
+        return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+name+'</td><td>'+req.leave_type+' '+req.start_date+'〜'+req.end_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(&quot;+req.id+&quot;)">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(&quot;+req.id+&quot;)">否認</button></td></tr>';
       }).join('');
     })
     .catch(function(){
@@ -1001,7 +1100,7 @@ function loadLeaveApprovals(){
     if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">未承認申請なし</td></tr>';return;}
     tbody.innerHTML = r.data.map(function(req){
       const name=(req.employees&&req.employees.name)||'—';
-      return '<tr><td>'+name+'</td><td>'+req.leave_type+'</td><td>'+req.start_date+' 〜 '+req.end_date+'</td><td>'+(req.reason||'')+'</td><td>'+(req.created_at||'').slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(\''+req.id+'\')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(\''+req.id+'\')">否認</button></td></tr>';
+      return '<tr><td>'+name+'</td><td>'+req.leave_type+'</td><td>'+req.start_date+' 〜 '+req.end_date+'</td><td>'+(req.reason||'')+'</td><td>'+(req.created_at||'').slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveLeave(&quot;'+req.id+'&quot;)">承認</button> <button class="btn btn-sm btn-red" onclick="rejectLeave(&quot;'+req.id+'&quot;)">否認</button></td></tr>';
     }).join('');
   });
 }
@@ -1010,7 +1109,7 @@ function loadOtApprovals(){
     const tbody = document.getElementById('otAppTbl');
     if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">未承認申請なし</td></tr>';return;}
     tbody.innerHTML = r.data.map(function(req){
-      return '<tr><td>'+(req.employees&&req.employees.name||'—')+'</td><td>'+req.overtime_date+'</td><td>'+req.hours+'h</td><td>'+(req.reason||'')+'</td><td>'+(req.created_at||'').slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveOt(\''+req.id+'\')">承認</button> <button class="btn btn-sm btn-red" onclick="rejectOt(\''+req.id+'\')">否認</button></td></tr>';
+      return '<tr><td>'+(req.employees&&req.employees.name||'—')+'</td><td>'+req.overtime_date+'</td><td>'+req.hours+'h</td><td>'+(req.reason||'')+'</td><td>'+(req.created_at||'').slice(0,10)+'</td><td><button class="btn btn-sm btn-green" onclick="approveOt(&quot;'+req.id+'&quot;)">承認</button> <button class="btn btn-sm btn-red" onclick="rejectOt(&quot;'+req.id+'&quot;)">否認</button></td></tr>';
     }).join('');
   });
 }
@@ -1235,7 +1334,7 @@ function renderUserTable(users){
       +'<td><span class="badge '+(roleMap[u.role]||'badge-gray')+'">'+u.role+'</span></td>'
       +'<td>'+(u.hire_date||'—')+'</td>'
       +'<td><span class="badge '+(u.is_active?'badge-green':'badge-gray')+'">'+(u.is_active?'有効':'無効')+'</span></td>'
-      +'<td><button class="btn btn-sm btn-outline" onclick="openEditUser(\''+u.id+'\')">編集</button></td>'
+      +'<td><button class="btn btn-sm btn-outline" onclick="openEditUser(&quot;'+u.id+'&quot;)">編集</button></td>'
       +'</tr>';
   }).join('');
 }
