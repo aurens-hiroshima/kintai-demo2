@@ -210,7 +210,7 @@ tr:hover td{background:#fafafa}
   <div class="nav-item" onclick="nav('leave')"><span class="icon">🌴</span>休暇管理</div>
   <div class="nav-item" onclick="nav('overtime')"><span class="icon">⏰</span>残業管理</div>
   <div class="nav-item" onclick="nav('reports')"><span class="icon">📈</span>集計・レポート</div>
-  <div class="nav-item" onclick="window.open('calendar_system.html','_blank')"><span class="icon">📅</span>変形労働カレンダー</div>
+  <div class="nav-item" onclick="window.open('calendar_system.html','_blank');return false;"><span class="icon">📅</span>変形労働カレンダー</div>
   <div class="sidebar-section">システム</div>
   <div class="nav-item" onclick="nav('users')"><span class="icon">👤</span>ユーザー管理</div>
   <div class="nav-item" onclick="nav('settings')"><span class="icon">⚙️</span>システム設定</div>
@@ -877,6 +877,9 @@ const PAGE_TITLES = {
 };
 
 window.nav = function(id){
+  // 変形労働カレンダーは外部ページを開く
+  if(id==='calendar'){ window.open('calendar_system.html','_blank'); return; }
+
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const page = document.getElementById('page-'+id);
@@ -893,7 +896,6 @@ window.nav = function(id){
   if(id==='leave') loadLeave();
   if(id==='overtime') loadOvertimePage();
   if(id==='reports') loadReports();
-  if(id==='calendar') {} // calendar_system.htmlにリンク
   if(id==='users') loadAllUsers();
 };
 
