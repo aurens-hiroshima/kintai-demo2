@@ -825,7 +825,7 @@ window.doLogin = function(){
   });
 };
 
-function showLoginErr(main, sub){
+window.showLoginErr = function showLoginErr(main, sub){
   document.getElementById('loginErrBox').style.display = '';
   document.getElementById('loginErr').textContent = main;
   const subEl = document.getElementById('loginErrSub');
@@ -835,7 +835,7 @@ function showLoginErr(main, sub){
   document.getElementById('loginEmail').style.borderColor = '#fca5a5';
   document.getElementById('loginPass').style.borderColor = '#fca5a5';
 }
-function clearLoginErr(){
+window.clearLoginErr = function clearLoginErr(){
   document.getElementById('loginErrBox').style.display = 'none';
   document.getElementById('loginEmail').style.borderColor = '';
   document.getElementById('loginPass').style.borderColor = '';
