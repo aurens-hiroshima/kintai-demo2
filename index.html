@@ -780,6 +780,10 @@ window.doLogin = function(){
   const pass  = document.getElementById('loginPass').value;
   const btn   = document.getElementById('loginBtn');
 
+  if(!email || !pass){
+    showLoginErr('メールアドレスとパスワードを入力してください', '');
+    return;
+  }
   if(!sb){
     try{ sb = window.supabase.createClient(SB_URL, SB_KEY); }
     catch(e){ showLoginErr('Supabase接続エラー','下記の「Supabase接続設定を変更」から設定を確認してください'); return; }
@@ -787,7 +791,7 @@ window.doLogin = function(){
 
   btn.textContent = '確認中...'; btn.disabled = true;
 
-  sb.auth.signInWithPassword({email: email||'', password: pass||''}).then(function(r){
+  sb.auth.signInWithPassword({email: email, password: pass}).then(function(r){
     btn.textContent = 'ログイン'; btn.disabled = false;
     if(r.error){
       // エラーコードで原因を判別
@@ -835,8 +839,7 @@ window.showLoginErr = function showLoginErr(main, sub){
   document.getElementById('loginErrBox').style.display = '';
   document.getElementById('loginErr').textContent = main;
   const subEl = document.getElementById('loginErrSub');
-  subEl.innerHTML = (sub||'').replace(/
-/g,'<br>');
+  subEl.innerHTML = (sub||'').replace(/\n/g,'<br>');
   // 入力欄を赤くする
   document.getElementById('loginEmail').style.borderColor = '#fca5a5';
   document.getElementById('loginPass').style.borderColor = '#fca5a5';
