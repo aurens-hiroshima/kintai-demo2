@@ -800,9 +800,7 @@ window.doLogin = function(){
         // メールとパスワードどちらが間違いか判別するためメールのみ確認
         showLoginErr(
           'メールアドレスまたはパスワードが違います',
-          '• メールアドレスのスペルを確認してください
-• パスワードの大文字・小文字を確認してください
-• 登録したメール: ' + email
+          '• メールアドレスのスペルを確認してください\n• パスワードの大文字・小文字を確認してください\n• 登録したメール: ' + email
         );
       } else if(msg.includes('Email not confirmed')){
         showLoginErr(
@@ -812,8 +810,7 @@ window.doLogin = function(){
       } else if(msg.includes('User not found') || code === 'user_not_found'){
         showLoginErr(
           'このメールアドレスは登録されていません',
-          '• メールアドレスのスペルを確認してください
-• Supabase Authentication にユーザーが登録されているか確認してください'
+          '• メールアドレスのスペルを確認してください\n• Supabase Authentication にユーザーが登録されているか確認してください'
         );
       } else if(msg.includes('Too many requests') || code === 'over_request_rate_limit'){
         showLoginErr(
