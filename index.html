@@ -155,13 +155,13 @@ tr:hover td{background:#fafafa}
 
     <div class="form-group">
       <div class="form-label">メールアドレス</div>
-      <input class="form-control" id="loginEmail" type="email" placeholder="admin@example.com" oninput="clearLoginErr()">
+      <input class="form-control" id="loginEmail" type="email" placeholder="admin@example.com">
     </div>
     <div class="form-group">
       <div class="form-label">パスワード</div>
       <div style="position:relative">
-        <input class="form-control" id="loginPass" type="password" placeholder="••••••••" style="padding-right:38px" oninput="clearLoginErr()" onkeydown="if(event.key==='Enter')doLogin()">
-        <span onclick="toggleLoginPw()" id="loginPwEye" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:15px;color:#888">👁</span>
+        <input class="form-control" id="loginPass" type="password" placeholder="••••••••" style="padding-right:38px" id="loginPass">
+        <span id="loginPwEye" style="cursor:pointer" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:15px;color:#888">👁</span>
       </div>
     </div>
 
@@ -176,7 +176,7 @@ tr:hover td{background:#fafafa}
       </div>
     </div>
 
-    <button class="btn btn-primary w-full" id="loginBtn" onclick="doLogin()" style="margin-top:4px;padding:10px;font-size:14px">ログイン</button>
+    <button class="btn btn-primary w-full" id="loginBtn" style="margin-top:4px;padding:10px;font-size:14px">ログイン</button>
 
     <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px">ログインできない場合</div>
@@ -703,6 +703,18 @@ let shifts = {}; // {YYYY-MM-DD:{empId||'all': type}}
 
 // ── Init ──
 window.addEventListener('DOMContentLoaded', function(){
+  // ログインフォームのイベント設定（HTMLのoninputより確実）
+  var emailEl = document.getElementById('loginEmail');
+  var passEl  = document.getElementById('loginPass');
+  var eyeEl = document.getElementById('loginPwEye');
+  if(eyeEl) eyeEl.addEventListener('click', function(){ window.toggleLoginPw && window.toggleLoginPw(); });
+  if(emailEl) emailEl.addEventListener('input', function(){ window.clearLoginErr && window.clearLoginErr(); });
+  var loginBtnEl = document.getElementById('loginBtn');
+  if(loginBtnEl) loginBtnEl.addEventListener('click', function(){ window.doLogin && window.doLogin(); });
+  if(passEl){
+    passEl.addEventListener('input', function(){ window.clearLoginErr && window.clearLoginErr(); });
+    passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') window.doLogin && window.doLogin(); });
+  }
   const now = new Date();
   calYear = now.getFullYear(); calMonth = now.getMonth();
   document.getElementById('tcMonth').value = now.toISOString().slice(0,7);
