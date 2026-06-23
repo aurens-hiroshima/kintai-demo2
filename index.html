@@ -366,9 +366,8 @@ tr:hover td{background:#fafafa}
         <input type="text" class="form-control" id="leaveSearch" placeholder="氏名検索..." style="width:150px" oninput="filterLeaveTable()">
         <span style="font-size:13px;color:var(--muted);margin-left:auto">年間付与:</span>
         <input type="number" class="form-control" id="leaveDefaultDays" value="6" min="1" max="40" style="width:52px" onchange="loadLeaveAdmin()">
-        <span style="font-size:13px;color:var(--muted)">日　法定最低:</span>
-        <input type="number" class="form-control" id="leaveLegalMin" value="5" min="1" max="40" style="width:52px" onchange="loadLeaveAdmin()">
-        <span style="font-size:13px;color:var(--muted)">日</span>
+        <span style="font-size:13px;color:var(--muted)">日　法定最低: <strong id="legalMinDisplay">5</strong> 日</span>
+        <a href="#" onclick="nav('settings');return false;" style="font-size:11px;color:var(--blue);text-decoration:none">⚙️ 設定で変更</a>
         <button class="btn btn-outline btn-sm" onclick="exportLeaveCSV()">📊 CSV</button>
       </div>
       <div class="kpi-grid" style="margin-bottom:16px">
@@ -982,6 +981,7 @@ function loadProfile(){
     document.getElementById('sidebarDept').textContent = myProfile.department || '';
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('app').style.display = '';
+    loadLeaveSettings();
     loadDashboard();
     loadAllUsers();
   });
@@ -1609,7 +1609,29 @@ window.addUser = function(){
 
 // ── Settings ──
 window.saveCompanyInfo = function(){showToast('会社情報を保存しました','green');};
-window.saveLeaveSettings = function(){showToast('有給設定を保存しました','green');};
+function loadLeaveSettings(){
+  var base  = parseInt(localStorage.getItem('leave_base_days'))||6;
+  var minL  = parseInt(localStorage.getItem('leave_legal_min'))||5;
+  var carry = parseInt(localStorage.getItem('leave_max_carry'))||20;
+  var el;
+  el = document.getElementById('baseLeave');  if(el) el.value = base;
+  el = document.getElementById('minLeave');   if(el) el.value = minL;
+  el = document.getElementById('maxCarry');   if(el) el.value = carry;
+  // 休暇管理タブのデフォルト年間付与日数も同期
+  el = document.getElementById('leaveDefaultDays'); if(el) el.value = base;
+}
+window.saveLeaveSettings = function(){
+  var base = parseInt(document.getElementById('baseLeave').value)||6;
+  var minL = parseInt(document.getElementById('minLeave').value)||5;
+  var carry= parseInt(document.getElementById('maxCarry').value)||20;
+  localStorage.setItem('leave_base_days', base);
+  localStorage.setItem('leave_legal_min', minL);
+  localStorage.setItem('leave_max_carry', carry);
+  // 休暇管理タブの年間付与デフォルトも同期
+  var ddEl = document.getElementById('leaveDefaultDays');
+  if(ddEl) ddEl.value = base;
+  showToast('✅ 有給設定を保存しました','green');
+};
 window.saveNotifySettings = function(){showToast('通知設定を保存しました','green');};
 window.saveWorkRule = function(){
   const name=document.getElementById('ruleName').value;
@@ -1693,8 +1715,9 @@ window.loadLeaveAdmin = function(){
       var remain   = emp.paid_leave_remaining != null ? emp.paid_leave_remaining : (annual - usedDB);
       var usedShow = annual - remain;
       var rate     = annual > 0 ? Math.round(usedShow/annual*100) : 0;
-      var legalMinEl = document.getElementById('leaveLegalMin');
-      var legalMin = legalMinEl ? parseInt(legalMinEl.value)||5 : 5;
+      var legalMinEl = document.getElementById('legalMinDisplay');
+      var legalMin = parseInt(localStorage.getItem('leave_legal_min'))||5;
+      if(legalMinEl) legalMinEl.textContent = legalMin;
       var status   = usedShow >= legalMin ? 'ok' : usedShow > 0 ? 'partial' : 'ng';
       var dept     = emp.department || '未設定';
       if(!depts[dept]) depts[dept]={count:0,annual:0,used:0,remain:0,ng:0};
@@ -1852,7 +1875,7 @@ window.loadLeaveAlerts = function(){
         consumed[r.user_id]=(consumed[r.user_id]||0)+d;
       });
     }
-    var legalMin = 5; // 法定最低取得日数（デフォルト5日）
+    var legalMin = parseInt(localStorage.getItem('leave_legal_min'))||5; // システム設定から取得
     var allEmps = (rs[0].data||[]).map(function(emp){
       var annual = emp.annual_leave_days!=null?emp.annual_leave_days:defaultDays;
       var remain = emp.paid_leave_remaining!=null?emp.paid_leave_remaining:(annual-(consumed[emp.auth_id]||0));
