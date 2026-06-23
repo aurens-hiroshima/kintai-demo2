@@ -1905,8 +1905,7 @@ window.exportLeaveCSV = function(){
   var rows = _leaveAdminData.map(function(r){
     return [r.name,r.dept,r.annual,r.used,r.remain,r.rate,r.status==='ok'?'全消化':r.status==='partial'?'一部消化':'未消化'];
   });
-  var csv = '﻿'+[header].concat(rows).map(function(r){return r.join(',');}).join('
-');
+  var csv = '﻿'+[header].concat(rows).map(function(r){return r.join(',');}).join('\n');
   var blob = new Blob([csv],{type:'text/csv'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
