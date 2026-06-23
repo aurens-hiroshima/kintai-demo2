@@ -236,7 +236,7 @@ tr:hover td{background:#fafafa}
     <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">在籍者数</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
     <div class="kpi"><div class="kpi-label">今月の残業</div><div class="kpi-val" id="kpi-ot" style="color:var(--red)">—</div><div class="kpi-sub">時間</div></div>
-    <div class="kpi"><div class="kpi-label">有休未消化</div><div class="kpi-val" id="kpi-leave" style="color:var(--red)">—</div><div class="kpi-sub">名（未消化あり）</div></div>
+    <div class="kpi"><div class="kpi-label">法定取得済</div><div class="kpi-val" id="kpi-leave" style="color:var(--green)">—</div><div class="kpi-sub">名（法定達成）</div></div>
   </div>
   <div class="card">
     <div class="card-title">📋 本日の出退勤状況</div>
@@ -254,8 +254,8 @@ tr:hover td{background:#fafafa}
   </div>
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      🌴 有休未消化アラート
-      <span style="font-size:11px;font-weight:400;color:var(--muted)">付与日数を全消化していない職員</span>
+      ⚠️ 法定取得未達アラート
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">法定最低取得日数に達していない職員</span>
     </div>
     <table>
       <thead><tr><th>氏名</th><th>部署</th><th>付与</th><th>消化済</th><th>残日数</th><th>状態</th></tr></thead>
@@ -361,17 +361,19 @@ tr:hover td{background:#fafafa}
           <option value="">全状態</option>
           <option value="ng">❌ 未消化（0日）</option>
           <option value="partial">⚠️ 一部消化</option>
-          <option value="ok">✅ 全消化</option>
+          <option value="ok">✅ 取得済（法定達成）</option>
         </select>
         <input type="text" class="form-control" id="leaveSearch" placeholder="氏名検索..." style="width:150px" oninput="filterLeaveTable()">
-        <span style="font-size:13px;color:var(--muted);margin-left:auto">年間付与日数デフォルト:</span>
-        <input type="number" class="form-control" id="leaveDefaultDays" value="6" min="1" max="40" style="width:56px" onchange="loadLeaveAdmin()">
+        <span style="font-size:13px;color:var(--muted);margin-left:auto">年間付与:</span>
+        <input type="number" class="form-control" id="leaveDefaultDays" value="6" min="1" max="40" style="width:52px" onchange="loadLeaveAdmin()">
+        <span style="font-size:13px;color:var(--muted)">日　法定最低:</span>
+        <input type="number" class="form-control" id="leaveLegalMin" value="5" min="1" max="40" style="width:52px" onchange="loadLeaveAdmin()">
         <span style="font-size:13px;color:var(--muted)">日</span>
         <button class="btn btn-outline btn-sm" onclick="exportLeaveCSV()">📊 CSV</button>
       </div>
       <div class="kpi-grid" style="margin-bottom:16px">
         <div class="kpi"><div class="kpi-label">在籍職員数</div><div class="kpi-val" id="leaveKpiTotal" style="color:var(--blue)">—</div><div class="kpi-sub">名</div></div>
-        <div class="kpi"><div class="kpi-label">全消化済</div><div class="kpi-val" id="leaveKpiOk" style="color:var(--green)">—</div><div class="kpi-sub">名</div></div>
+        <div class="kpi"><div class="kpi-label">法定取得済</div><div class="kpi-val" id="leaveKpiOk" style="color:var(--green)">—</div><div class="kpi-sub">名</div></div>
         <div class="kpi"><div class="kpi-label">未消化あり</div><div class="kpi-val" id="leaveKpiNg" style="color:var(--red)">—</div><div class="kpi-sub">名</div></div>
         <div class="kpi"><div class="kpi-label">全体消化率</div><div class="kpi-val" id="leaveKpiRate" style="color:var(--amber)">—</div><div class="kpi-sub">%</div></div>
       </div>
@@ -1691,7 +1693,9 @@ window.loadLeaveAdmin = function(){
       var remain   = emp.paid_leave_remaining != null ? emp.paid_leave_remaining : (annual - usedDB);
       var usedShow = annual - remain;
       var rate     = annual > 0 ? Math.round(usedShow/annual*100) : 0;
-      var status   = usedShow >= annual ? 'ok' : usedShow > 0 ? 'partial' : 'ng';
+      var legalMinEl = document.getElementById('leaveLegalMin');
+      var legalMin = legalMinEl ? parseInt(legalMinEl.value)||5 : 5;
+      var status   = usedShow >= legalMin ? 'ok' : usedShow > 0 ? 'partial' : 'ng';
       var dept     = emp.department || '未設定';
       if(!depts[dept]) depts[dept]={count:0,annual:0,used:0,remain:0,ng:0};
       depts[dept].count++;
@@ -1751,7 +1755,7 @@ function renderLeaveAdminTable(rows){
     var barColor = pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
     var bar = '<div style="background:#e2e8f0;border-radius:4px;height:8px;width:100%;margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:8px;background:'+barColor+';border-radius:4px"></div></div>';
     var statusBadge = r.status==='ok'
-      ? '<span class="badge badge-green">✅ 全消化</span>'
+      ? '<span class="badge badge-green">✅ 取得済</span>'
       : r.status==='partial'
         ? '<span class="badge badge-amber">⚠️ 一部</span>'
         : '<span class="badge badge-red">❌ 未消化</span>';
@@ -1843,29 +1847,32 @@ window.loadLeaveAlerts = function(){
         consumed[r.user_id]=(consumed[r.user_id]||0)+d;
       });
     }
-    var alerts = (rs[0].data||[]).map(function(emp){
+    var legalMin = 5; // 法定最低取得日数（デフォルト5日）
+    var allEmps = (rs[0].data||[]).map(function(emp){
       var annual = emp.annual_leave_days!=null?emp.annual_leave_days:defaultDays;
       var remain = emp.paid_leave_remaining!=null?emp.paid_leave_remaining:(annual-(consumed[emp.auth_id]||0));
       var used   = annual - remain;
       return {name:emp.name,dept:emp.department||'—',annual:annual,used:used,remain:remain};
-    }).filter(function(e){return e.remain>0;})
-      .sort(function(a,b){return b.remain-a.remain;});
+    });
+    var alerts = allEmps.filter(function(e){return e.used<legalMin;})
+      .sort(function(a,b){return a.used-b.used;});
+    var achievedCnt = allEmps.length - alerts.length;
 
-    document.getElementById('kpi-leave').textContent = alerts.length;
+    document.getElementById('kpi-leave').textContent = achievedCnt;
 
     if(!alerts.length){
-      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--green);padding:14px">✅ 全職員が有給を消化しています</td></tr>';
+      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--green);padding:14px">✅ 全職員が法定日数（'+legalMin+'日以上）を取得済です</td></tr>';
       return;
     }
     tbody.innerHTML = alerts.slice(0,10).map(function(e){
-      var col = e.remain>=e.annual?'var(--red)':e.remain>=3?'var(--amber)':'var(--blue)';
-      var badge = e.used===0?'<span class="badge badge-red">❌ 未消化</span>':'<span class="badge badge-amber">⚠️ 残'+e.remain+'日</span>';
+      var col = e.used===0?'var(--red)':'var(--amber)';
+      var badge = e.used===0?'<span class="badge badge-red">❌ 未消化</span>':'<span class="badge badge-amber">⚠️ '+e.used+'日取得</span>';
       return '<tr>'
         +'<td><strong>'+e.name+'</strong></td>'
         +'<td>'+e.dept+'</td>'
         +'<td style="text-align:center">'+e.annual+'日</td>'
-        +'<td style="text-align:center;color:var(--blue)">'+e.used+'日</td>'
-        +'<td style="text-align:center;font-weight:700;color:'+col+'">'+e.remain+'日</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+col+'">'+e.used+'日</td>'
+        +'<td style="text-align:center;color:var(--muted)">'+e.remain+'日</td>'
         +'<td>'+badge+'</td>'
         +'</tr>';
     }).join('');
@@ -1903,7 +1910,7 @@ window.exportLeaveCSV = function(){
   if(!_leaveAdminData||!_leaveAdminData.length){showToast('データを先に読み込んでください','amber');return;}
   var header = ['氏名','部署','付与日数','消化済','残日数','消化率(%)','状態'];
   var rows = _leaveAdminData.map(function(r){
-    return [r.name,r.dept,r.annual,r.used,r.remain,r.rate,r.status==='ok'?'全消化':r.status==='partial'?'一部消化':'未消化'];
+    return [r.name,r.dept,r.annual,r.used,r.remain,r.rate,r.status==='ok'?'取得済':r.status==='partial'?'一部取得':'未消化'];
   });
   var csv = '﻿'+[header].concat(rows).map(function(r){return r.join(',');}).join('\n');
   var blob = new Blob([csv],{type:'text/csv'});
