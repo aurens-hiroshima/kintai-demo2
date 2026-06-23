@@ -566,7 +566,8 @@ tr:hover td{background:#fafafa}
     <!-- ログイン情報 -->
     <div style="border:1px solid #b5d4f4;border-radius:8px;padding:14px;background:#e6f1fb;margin-top:12px">
       <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;display:flex;align-items:center;gap:6px">
-        🔐 ログイン情報（Supabase Authentication用）
+        🔐 ログイン情報
+        <span style="font-weight:400;color:var(--green);background:var(--lgreen);padding:1px 7px;border-radius:99px;font-size:10px">✅ 自動作成</span>
       </div>
       <div class="form-row">
         <div class="form-group"><div class="form-label">メールアドレス *</div><input class="form-control" id="newUserEmail" type="email" placeholder="yamada@example.com"></div>
@@ -577,18 +578,15 @@ tr:hover td{background:#fafafa}
           </div>
         </div>
       </div>
-      <div style="background:#fff;border-radius:6px;padding:10px;font-size:11px;color:var(--muted);line-height:1.7">
-        <strong style="color:var(--text)">追加後の手順：</strong><br>
-        ① このフォームで「ユーザーを追加」→ 職員テーブルに保存<br>
-        ② <a href="https://supabase.com" target="_blank" style="color:var(--blue)">Supabase管理画面</a> → Authentication → Users → <strong>Add user</strong> でメール・パスワードを登録<br>
-        ③ SQL Editor で以下を実行してIDを紐付け：<br>
-        <code style="background:#f1f5f9;padding:3px 6px;border-radius:4px;font-size:10px;display:block;margin-top:4px">UPDATE employees SET auth_id = (SELECT id FROM auth.users WHERE email = 'メールアドレス') WHERE email = 'メールアドレス';</code>
+      <div style="background:#fff;border-radius:6px;padding:8px 10px;font-size:11px;color:var(--green)">
+        ✅ ボタンを押すと Authentication ユーザー作成 → 職員テーブル保存 → auth_id紐付けまで自動で完了します
       </div>
+      <div id="addUserMsg" style="display:none;margin-top:8px;border-radius:6px;padding:8px 10px;font-size:12px"></div>
     </div>
 
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('addUserModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="addUser()">👤 ユーザーを追加</button>
+      <button class="btn btn-primary" id="addUserBtn" onclick="addUser()">👤 ユーザーを追加</button>
     </div>
   </div>
 </div>
@@ -1414,40 +1412,75 @@ window.deleteUser = function(){
 window.addUser = function(){
   const name  = document.getElementById('newUserName').value.trim();
   const email = document.getElementById('newUserEmail').value.trim();
+  const pass  = document.getElementById('newUserPass').value;
   const dept  = document.getElementById('newUserDept').value;
   const emp   = document.getElementById('newUserEmp').value;
   const role  = document.getElementById('newUserRole').value;
   const join  = document.getElementById('newUserJoin').value;
   const leave = parseInt(document.getElementById('newUserLeave').value)||10;
-  const pass  = document.getElementById('newUserPass').value;
+
+  // バリデーション
   if(!name){showToast('氏名を入力してください','red');return;}
   if(!email){showToast('メールアドレスを入力してください','red');return;}
-  if(pass && pass.length < 6){showToast('パスワードは6文字以上で入力してください','red');return;}
+  if(!pass||pass.length < 8){showToast('パスワードは8文字以上で入力してください','red');return;}
 
-  sb.from('employees').insert({
-    name, email,
-    department: dept||null,
-    employment_type: emp,
-    role,
-    hire_date: join||null,
-    paid_leave_remaining: leave,
-    annual_leave_days: leave,
-    is_active: true
-  }).then(function(r){
-    if(r.error){showToast('追加失敗: '+r.error.message,'red');return;}
-    // パスワードコピー用メッセージ
-    const msg = pass
-      ? name+'を追加しました。Supabase Auth → Add user で「'+email+'」を登録してください'
-      : name+'を追加しました';
-    showToast(msg,'green');
-    // パスワードをクリップボードにコピー（入力した場合）
-    if(pass && navigator.clipboard){
-      navigator.clipboard.writeText(pass).then(function(){
-        showToast('パスワードをクリップボードにコピーしました','blue');
-      }).catch(function(){});
+  // UI: 処理中状態
+  const btn = document.getElementById('addUserBtn');
+  const msgEl = document.getElementById('addUserMsg');
+  btn.disabled = true;
+  btn.textContent = '⏳ 作成中...';
+  msgEl.style.display = '';
+  msgEl.style.background = '#e6f1fb';
+  msgEl.style.color = 'var(--blue)';
+  msgEl.textContent = 'Authユーザーを作成しています...';
+
+  // Edge Function 呼び出し
+  sb.functions.invoke('create-user', {
+    body: {
+      email, password: pass, name,
+      department:           dept||null,
+      employment_type:      emp,
+      role,
+      hire_date:            join||null,
+      paid_leave_remaining: leave,
     }
+  }).then(function(r){
+    btn.disabled = false;
+    btn.textContent = '👤 ユーザーを追加';
+
+    if(r.error){
+      // functions.invoke のネットワークエラー
+      msgEl.style.background = 'var(--lred)';
+      msgEl.style.color = 'var(--red)';
+      msgEl.textContent = 'エラー: ' + (r.error.message || r.error);
+      return;
+    }
+
+    // レスポンスボディのエラーチェック
+    const data = r.data;
+    if(data && data.error){
+      msgEl.style.background = 'var(--lred)';
+      msgEl.style.color = 'var(--red)';
+      msgEl.textContent = '❌ ' + data.error;
+      return;
+    }
+
+    // 成功
+    msgEl.style.display = 'none';
+    showToast('✅ ' + name + 'を追加しました（ログイン可能）','green');
     closeModal('addUserModal');
+    // フォームリセット
+    ['newUserName','newUserEmail','newUserPass','newUserJoin'].forEach(function(id){
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('newUserLeave').value = '10';
     loadAllUsers();
+  }).catch(function(e){
+    btn.disabled = false;
+    btn.textContent = '👤 ユーザーを追加';
+    msgEl.style.background = 'var(--lred)';
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = '接続エラー: Edge Functionが未デプロイの可能性があります';
   });
 };
 
