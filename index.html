@@ -236,7 +236,7 @@ tr:hover td{background:#fafafa}
     <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">在籍者数</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
     <div class="kpi"><div class="kpi-label">今月の残業</div><div class="kpi-val" id="kpi-ot" style="color:var(--red)">—</div><div class="kpi-sub">時間</div></div>
-    <div class="kpi"><div class="kpi-label">有休消化率</div><div class="kpi-val" id="kpi-leave" style="color:var(--green)">—</div><div class="kpi-sub">今月</div></div>
+    <div class="kpi"><div class="kpi-label">有休未消化</div><div class="kpi-val" id="kpi-leave" style="color:var(--red)">—</div><div class="kpi-sub">名（未消化あり）</div></div>
   </div>
   <div class="card">
     <div class="card-title">📋 本日の出退勤状況</div>
@@ -250,6 +250,16 @@ tr:hover td{background:#fafafa}
     <table>
       <thead><tr><th>種類</th><th>申請者</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
       <tbody id="dashApprovalTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      🌴 有休未消化アラート
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">付与日数を全消化していない職員</span>
+    </div>
+    <table>
+      <thead><tr><th>氏名</th><th>部署</th><th>付与</th><th>消化済</th><th>残日数</th><th>状態</th></tr></thead>
+      <tbody id="dashLeaveAlertTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -334,21 +344,90 @@ tr:hover td{background:#fafafa}
 
 <!-- ── Leave ── -->
 <div class="page" id="page-leave">
-  <div class="flex gap8 mb16">
-    <button class="btn btn-primary" onclick="openModal('leaveApplyModal')">＋ 休暇申請</button>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-leave-all');loadLeaveAdmin()">👥 全職員の有休状況</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-dept');loadLeaveDeptSummary()">🏢 部署別集計</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-apps');loadLeave()">📋 申請（自分）</div>
   </div>
-  <div class="card">
-    <div class="card-title">有給残日数</div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">有給残日数</div><div class="kpi-val" id="leaveRemain" style="color:var(--green)">—</div><div class="kpi-sub">日</div></div>
-      <div class="kpi"><div class="kpi-label">今年度取得</div><div class="kpi-val" id="leaveUsed" style="color:var(--blue)">—</div><div class="kpi-sub">日</div></div>
-      <div class="kpi"><div class="kpi-label">付与日数</div><div class="kpi-val" id="leaveTotal" style="color:var(--muted)">—</div><div class="kpi-sub">日</div></div>
+
+  <!-- ── タブ1: 全職員一覧 ── -->
+  <div class="tab-content active" id="tab-leave-all">
+    <div class="card">
+      <div class="flex gap8 mb12" style="flex-wrap:wrap;align-items:center">
+        <select class="form-control" id="leaveFilterDept" style="width:130px" onchange="filterLeaveTable()">
+          <option value="">全部署</option>
+        </select>
+        <select class="form-control" id="leaveFilterStatus" style="width:160px" onchange="filterLeaveTable()">
+          <option value="">全状態</option>
+          <option value="ng">❌ 未消化（0日）</option>
+          <option value="partial">⚠️ 一部消化</option>
+          <option value="ok">✅ 全消化</option>
+        </select>
+        <input type="text" class="form-control" id="leaveSearch" placeholder="氏名検索..." style="width:150px" oninput="filterLeaveTable()">
+        <span style="font-size:13px;color:var(--muted);margin-left:auto">年間付与日数デフォルト:</span>
+        <input type="number" class="form-control" id="leaveDefaultDays" value="6" min="1" max="40" style="width:56px" onchange="loadLeaveAdmin()">
+        <span style="font-size:13px;color:var(--muted)">日</span>
+        <button class="btn btn-outline btn-sm" onclick="exportLeaveCSV()">📊 CSV</button>
+      </div>
+      <div class="kpi-grid" style="margin-bottom:16px">
+        <div class="kpi"><div class="kpi-label">在籍職員数</div><div class="kpi-val" id="leaveKpiTotal" style="color:var(--blue)">—</div><div class="kpi-sub">名</div></div>
+        <div class="kpi"><div class="kpi-label">全消化済</div><div class="kpi-val" id="leaveKpiOk" style="color:var(--green)">—</div><div class="kpi-sub">名</div></div>
+        <div class="kpi"><div class="kpi-label">未消化あり</div><div class="kpi-val" id="leaveKpiNg" style="color:var(--red)">—</div><div class="kpi-sub">名</div></div>
+        <div class="kpi"><div class="kpi-label">全体消化率</div><div class="kpi-val" id="leaveKpiRate" style="color:var(--amber)">—</div><div class="kpi-sub">%</div></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>氏名</th><th>部署</th><th>付与日数</th><th>消化済</th>
+            <th>残日数</th><th style="min-width:110px">消化率</th><th>状態</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="leaveAdminTbl">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">申請履歴</div>
-    <table><thead><tr><th>種類</th><th>開始日</th><th>終了日</th><th>日数</th><th>理由</th><th>状態</th></tr></thead>
-    <tbody id="leaveTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody></table>
+
+  <!-- ── タブ2: 部署別集計 ── -->
+  <div class="tab-content" id="tab-leave-dept">
+    <div class="card">
+      <div class="card-title">📊 部署別 有休消化サマリー</div>
+      <table>
+        <thead>
+          <tr><th>部署</th><th>人数</th><th>平均付与</th><th>平均消化</th><th>平均残</th><th>消化率</th><th>未消化人数</th></tr>
+        </thead>
+        <tbody id="leaveDeptTbl">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">「全職員の有休状況」タブを先に読み込んでください</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" id="leaveDeptBars">
+      <div class="card-title">📊 部署別消化率バー</div>
+      <div id="leaveDeptChart" style="display:flex;flex-direction:column;gap:14px;padding:8px 0"></div>
+    </div>
+  </div>
+
+  <!-- ── タブ3: 自分の申請 ── -->
+  <div class="tab-content" id="tab-leave-apps">
+    <div class="flex gap8 mb16">
+      <button class="btn btn-primary" onclick="openModal('leaveApplyModal')">＋ 休暇申請</button>
+    </div>
+    <div class="card">
+      <div class="card-title">有給残日数（自分）</div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">有給残日数</div><div class="kpi-val" id="leaveRemain" style="color:var(--green)">—</div><div class="kpi-sub">日</div></div>
+        <div class="kpi"><div class="kpi-label">今年度取得</div><div class="kpi-val" id="leaveUsed" style="color:var(--blue)">—</div><div class="kpi-sub">日</div></div>
+        <div class="kpi"><div class="kpi-label">付与日数</div><div class="kpi-val" id="leaveTotal" style="color:var(--muted)">—</div><div class="kpi-sub">日</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">申請履歴</div>
+      <table>
+        <thead><tr><th>種類</th><th>開始日</th><th>終了日</th><th>日数</th><th>理由</th><th>状態</th></tr></thead>
+        <tbody id="leaveTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -421,7 +500,7 @@ tr:hover td{background:#fafafa}
   </div>
   <div class="card">
     <table>
-      <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>ステータス</th><th>操作</th></tr></thead>
+      <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
       <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
     </table>
   </div>
@@ -608,8 +687,12 @@ tr:hover td{background:#fafafa}
       <div class="form-group"><div class="form-label">権限</div><select class="form-control" id="editUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">有給残日数</div><input class="form-control" id="editUserLeave" type="number"></div>
+      <div class="form-group"><div class="form-label">年間付与日数</div><input class="form-control" id="editUserAnnualLeave" type="number" min="0" max="40" value="6"></div>
+      <div class="form-group"><div class="form-label">有給残日数</div><input class="form-control" id="editUserLeave" type="number" min="0"></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
+      <div class="form-group"></div>
     </div>
 
     <!-- ログイン情報変更 -->
@@ -637,6 +720,32 @@ tr:hover td{background:#fafafa}
       <button class="btn btn-red btn-sm" onclick="deleteUser()" style="margin-right:auto">削除</button>
       <button class="btn btn-outline" onclick="closeModal('editUserModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveUser()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Grant Modal -->
+<div class="modal-overlay" id="leaveGrantModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-title">🌴 有休付与日数調整<span class="modal-close" onclick="closeModal('leaveGrantModal')">×</span></div>
+    <input type="hidden" id="leaveGrantUserId">
+    <div id="leaveGrantUserName" style="font-weight:700;font-size:15px;margin-bottom:16px"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">年間付与日数</div>
+        <input class="form-control" id="leaveGrantAnnual" type="number" min="0" max="40">
+      </div>
+      <div class="form-group">
+        <div class="form-label">有給残日数（現在）</div>
+        <input class="form-control" id="leaveGrantRemain" type="number" min="0" max="40">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+      ※ 付与日数は年間の総付与数。残日数は現在の取得可能残日数です。
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('leaveGrantModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveLeaveGrant()">💾 保存</button>
     </div>
   </div>
 </div>
@@ -901,7 +1010,7 @@ window.nav = function(id){
   if(id==='timecard') loadTimecard();
   if(id==='attendance') loadAttendance();
   if(id==='approval') loadApprovals();
-  if(id==='leave') loadLeave();
+  if(id==='leave'){ loadLeaveAdmin(); }
   if(id==='overtime') loadOvertimePage();
   if(id==='reports') loadReports();
   if(id==='users') loadAllUsers();
@@ -977,6 +1086,7 @@ function loadDashboard(){
   // ── KPI（簡易）
   document.getElementById('kpi-ot').textContent='—';
   document.getElementById('kpi-leave').textContent='—';
+  loadLeaveAlerts();
 
   // ── 未承認申請リスト
   sb.from('leave_requests').select('*, employees(name)').eq('status','pending').limit(10)
@@ -1331,18 +1441,27 @@ function loadAllUsers(){
 }
 function renderUserTable(users){
   const tbody = document.getElementById('usersTbl');
-  if(!users||!users.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
+  if(!users||!users.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
   tbody.innerHTML = users.map(function(u){
     const roleMap={'管理者':'badge-red','部門長':'badge-blue','一般':'badge-gray'};
     const emailHtml = u.email
       ? '<div style="font-size:11px">'+u.email+'</div><span class="badge badge-green" style="font-size:9px">認証済</span>'
       : '<span style="color:var(--muted);font-size:11px">未設定</span><span class="badge badge-gray" style="font-size:9px;margin-left:3px">未登録</span>';
+    const annual = u.annual_leave_days != null ? u.annual_leave_days : 6;
+    const remain = u.paid_leave_remaining != null ? u.paid_leave_remaining : annual;
+    const consumed = annual - remain;
+    const leaveCol = remain<=0
+      ? '<span style="font-weight:700;color:var(--green)">'+consumed+'</span><span style="color:var(--muted);font-size:11px">/'+annual+'日</span>'
+      : remain<=2
+        ? '<span style="font-weight:700;color:var(--amber)">'+consumed+'</span><span style="color:var(--muted);font-size:11px">/'+annual+'日</span><span style="font-size:10px;color:var(--amber)"> (残'+remain+'日)</span>'
+        : '<span style="font-weight:700;color:var(--red)">'+consumed+'</span><span style="color:var(--muted);font-size:11px">/'+annual+'日</span><span style="font-size:10px;color:var(--muted)"> (残'+remain+'日)</span>';
     return '<tr>'
       +'<td><strong>'+u.name+'</strong></td>'
       +'<td>'+emailHtml+'</td>'
       +'<td>'+(u.department||'—')+'</td>'
       +'<td><span class="badge '+(roleMap[u.role]||'badge-gray')+'">'+u.role+'</span></td>'
       +'<td>'+(u.hire_date||'—')+'</td>'
+      +'<td style="text-align:center">'+leaveCol+'</td>'
       +'<td><span class="badge '+(u.is_active?'badge-green':'badge-gray')+'">'+(u.is_active?'有効':'無効')+'</span></td>'
       +'<td><button class="btn btn-sm btn-outline" onclick="openEditUser(&quot;'+u.id+'&quot;)">編集</button></td>'
       +'</tr>';
@@ -1360,6 +1479,7 @@ window.openEditUser = function(id){
   document.getElementById('editUserDept').value = u.department||'';
   document.getElementById('editUserEmp').value = u.employment_type||'正社員';
   document.getElementById('editUserRole').value = u.role||'一般';
+  document.getElementById('editUserAnnualLeave').value = u.annual_leave_days != null ? u.annual_leave_days : 6;
   document.getElementById('editUserLeave').value = u.paid_leave_remaining||0;
   document.getElementById('editUserStatus').value = u.is_active?'true':'false';
   // メール欄に現在値をセット
@@ -1385,6 +1505,7 @@ window.saveUser = function(){
     department: document.getElementById('editUserDept').value,
     employment_type: document.getElementById('editUserEmp').value,
     role: document.getElementById('editUserRole').value,
+    annual_leave_days: parseInt(document.getElementById('editUserAnnualLeave').value)||6,
     paid_leave_remaining: parseInt(document.getElementById('editUserLeave').value)||0,
     is_active: document.getElementById('editUserStatus').value === 'true'
   };
@@ -1528,6 +1649,269 @@ window.togglePw = function(inputId, btn){
   if(!inp) return;
   inp.type = inp.type === 'password' ? 'text' : 'password';
   btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+};
+
+// ══════════════════════════════════════════════
+// 有休管理 - 全職員一覧 (loadLeaveAdmin)
+// ══════════════════════════════════════════════
+var _leaveAdminData = []; // フィルタ用キャッシュ
+
+window.loadLeaveAdmin = function(){
+  var defaultDaysEl = document.getElementById('leaveDefaultDays');
+  var defaultDays = defaultDaysEl ? parseInt(defaultDaysEl.value)||6 : 6;
+  var tbody = document.getElementById('leaveAdminTbl');
+  if(tbody) tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>';
+
+  var year = new Date().getFullYear();
+  var yearStart = year+'-01-01T00:00:00';
+  var yearEnd   = year+'-12-31T23:59:59';
+
+  Promise.all([
+    sb.from('employees').select('id,auth_id,name,department,annual_leave_days,paid_leave_remaining,is_active').eq('is_active',true).order('department').order('name'),
+    sb.from('leave_requests').select('user_id,start_date,end_date,days_count,status').gte('start_date',year+'-01-01').lte('end_date',year+'-12-31')
+  ]).then(function(rs){
+    var empRes = rs[0], leaveRes = rs[1];
+    if(empRes.error){ if(tbody) tbody.innerHTML='<tr><td colspan="8" style="color:var(--red);padding:16px">エラー: '+empRes.error.message+'</td></tr>'; return; }
+
+    // 承認済み消化日数集計 (auth_id で紐付け)
+    var consumed = {};
+    if(!leaveRes.error && leaveRes.data){
+      leaveRes.data.forEach(function(r){
+        if(r.status==='approved'){
+          var days = r.days_count || calcDays(r.start_date, r.end_date);
+          consumed[r.user_id] = (consumed[r.user_id]||0) + days;
+        }
+      });
+    }
+
+    var depts = {};
+    var rows = (empRes.data||[]).map(function(emp){
+      var annual   = emp.annual_leave_days != null ? emp.annual_leave_days : defaultDays;
+      var usedDB   = consumed[emp.auth_id] || 0;
+      var remain   = emp.paid_leave_remaining != null ? emp.paid_leave_remaining : (annual - usedDB);
+      var usedShow = annual - remain;
+      var rate     = annual > 0 ? Math.round(usedShow/annual*100) : 0;
+      var status   = usedShow >= annual ? 'ok' : usedShow > 0 ? 'partial' : 'ng';
+      var dept     = emp.department || '未設定';
+      if(!depts[dept]) depts[dept]={count:0,annual:0,used:0,remain:0,ng:0};
+      depts[dept].count++;
+      depts[dept].annual+=annual;
+      depts[dept].used+=usedShow;
+      depts[dept].remain+=remain;
+      if(status!=='ok') depts[dept].ng++;
+      // 部署フィルタ populate
+      return {id:emp.id, auth_id:emp.auth_id, name:emp.name, dept:dept, annual:annual, used:usedShow, remain:remain, rate:rate, status:status};
+    });
+    _leaveAdminData = rows;
+
+    // KPIs
+    var total = rows.length;
+    var okCnt = rows.filter(function(r){return r.status==='ok';}).length;
+    var ngCnt = total - okCnt;
+    var avgRate = total>0 ? Math.round(rows.reduce(function(s,r){return s+r.rate;},0)/total) : 0;
+    var el = document.getElementById('leaveKpiTotal'); if(el) el.textContent=total;
+    el = document.getElementById('leaveKpiOk'); if(el) el.textContent=okCnt;
+    el = document.getElementById('leaveKpiNg'); if(el) el.textContent=ngCnt;
+    el = document.getElementById('leaveKpiRate'); if(el) el.textContent=avgRate;
+
+    // 部署フィルタ選択肢
+    var sel = document.getElementById('leaveFilterDept');
+    if(sel){
+      var cur = sel.value;
+      sel.innerHTML='<option value="">全部署</option>'+Object.keys(depts).map(function(d){return '<option>'+d+'</option>';}).join('');
+      sel.value = cur;
+    }
+
+    // 部署別データを保存
+    window._leaveDeptData = depts;
+
+    renderLeaveAdminTable(rows);
+  }).catch(function(e){
+    if(tbody) tbody.innerHTML='<tr><td colspan="8" style="color:var(--red);padding:16px">読み込みエラー</td></tr>';
+    console.error(e);
+  });
+};
+
+function calcDays(start, end){
+  try{
+    var d1 = new Date(start), d2 = new Date(end);
+    return Math.round((d2-d1)/(86400000))+1;
+  }catch(e){return 1;}
+}
+
+function renderLeaveAdminTable(rows){
+  var tbody = document.getElementById('leaveAdminTbl');
+  if(!tbody) return;
+  if(!rows||!rows.length){
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">データなし</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(r){
+    var pct = r.rate;
+    var barColor = pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+    var bar = '<div style="background:#e2e8f0;border-radius:4px;height:8px;width:100%;margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:8px;background:'+barColor+';border-radius:4px"></div></div>';
+    var statusBadge = r.status==='ok'
+      ? '<span class="badge badge-green">✅ 全消化</span>'
+      : r.status==='partial'
+        ? '<span class="badge badge-amber">⚠️ 一部</span>'
+        : '<span class="badge badge-red">❌ 未消化</span>';
+    return '<tr>'
+      +'<td><strong>'+r.name+'</strong></td>'
+      +'<td>'+r.dept+'</td>'
+      +'<td style="text-align:center">'+r.annual+'日</td>'
+      +'<td style="text-align:center;font-weight:700;color:var(--blue)">'+r.used+'日</td>'
+      +'<td style="text-align:center;color:'+(r.remain<=0?'var(--green)':r.remain<=2?'var(--amber)':'var(--red)')+'">'+r.remain+'日</td>'
+      +'<td><div style="font-size:11px;color:'+barColor+'">'+pct+'%</div>'+bar+'</td>'
+      +'<td>'+statusBadge+'</td>'
+      +'<td><button class="btn btn-sm btn-outline" onclick="openLeaveGrantModal(&quot;'+r.id+'&quot;)">付与調整</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+window.filterLeaveTable = function(){
+  var dept  = (document.getElementById('leaveFilterDept')||{}).value||'';
+  var stat  = (document.getElementById('leaveFilterStatus')||{}).value||'';
+  var srch  = ((document.getElementById('leaveSearch')||{}).value||'').toLowerCase();
+  var rows  = _leaveAdminData.filter(function(r){
+    if(dept && r.dept!==dept) return false;
+    if(stat && r.status!==stat) return false;
+    if(srch && !r.name.toLowerCase().includes(srch)) return false;
+    return true;
+  });
+  renderLeaveAdminTable(rows);
+};
+
+// ── 部署別集計 ──
+window.loadLeaveDeptSummary = function(){
+  var depts = window._leaveDeptData;
+  var tbody = document.getElementById('leaveDeptTbl');
+  var chart  = document.getElementById('leaveDeptChart');
+  if(!depts || !Object.keys(depts).length){
+    if(tbody) tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">先に「全職員の有休状況」タブを読み込んでください</td></tr>';
+    return;
+  }
+  var entries = Object.entries(depts).sort(function(a,b){return b[1].count-a[1].count;});
+  if(tbody){
+    tbody.innerHTML = entries.map(function(e){
+      var d=e[0], v=e[1];
+      var avgAnnual = v.count>0?Math.round(v.annual/v.count*10)/10:0;
+      var avgUsed   = v.count>0?Math.round(v.used/v.count*10)/10:0;
+      var avgRemain = v.count>0?Math.round(v.remain/v.count*10)/10:0;
+      var rate      = v.annual>0?Math.round(v.used/v.annual*100):0;
+      return '<tr>'
+        +'<td><strong>'+d+'</strong></td>'
+        +'<td style="text-align:center">'+v.count+'名</td>'
+        +'<td style="text-align:center">'+avgAnnual+'日</td>'
+        +'<td style="text-align:center;color:var(--blue)">'+avgUsed+'日</td>'
+        +'<td style="text-align:center">'+avgRemain+'日</td>'
+        +'<td style="text-align:center"><span style="font-weight:700;color:'+(rate>=80?'var(--green)':rate>=50?'var(--amber)':'var(--red)')+'">'+rate+'%</span></td>'
+        +'<td style="text-align:center;color:var(--red)">'+v.ng+'名</td>'
+        +'</tr>';
+    }).join('');
+  }
+  if(chart){
+    chart.innerHTML = entries.map(function(e){
+      var d=e[0], v=e[1];
+      var rate = v.annual>0?Math.round(v.used/v.annual*100):0;
+      var col  = rate>=80?'var(--green)':rate>=50?'var(--amber)':'var(--red)';
+      return '<div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'
+        +'<span>'+d+'（'+v.count+'名）</span><span style="font-weight:700;color:'+col+'">'+rate+'%</span></div>'
+        +'<div style="background:#e2e8f0;border-radius:6px;height:14px"><div style="width:'+Math.min(rate,100)+'%;height:14px;background:'+col+';border-radius:6px"></div></div>'
+        +'</div>';
+    }).join('');
+  }
+};
+
+// ── ダッシュボード用アラート ──
+window.loadLeaveAlerts = function(){
+  var defaultDays = 6;
+  var tbody = document.getElementById('dashLeaveAlertTbl');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr>';
+
+  var year = new Date().getFullYear();
+  Promise.all([
+    sb.from('employees').select('id,auth_id,name,department,annual_leave_days,paid_leave_remaining,is_active').eq('is_active',true),
+    sb.from('leave_requests').select('user_id,start_date,end_date,days_count,status').gte('start_date',year+'-01-01').lte('end_date',year+'-12-31').eq('status','approved')
+  ]).then(function(rs){
+    if(rs[0].error){tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);padding:14px">取得エラー</td></tr>';return;}
+    var consumed={};
+    if(!rs[1].error && rs[1].data){
+      rs[1].data.forEach(function(r){
+        var d=r.days_count||calcDays(r.start_date,r.end_date);
+        consumed[r.user_id]=(consumed[r.user_id]||0)+d;
+      });
+    }
+    var alerts = (rs[0].data||[]).map(function(emp){
+      var annual = emp.annual_leave_days!=null?emp.annual_leave_days:defaultDays;
+      var remain = emp.paid_leave_remaining!=null?emp.paid_leave_remaining:(annual-(consumed[emp.auth_id]||0));
+      var used   = annual - remain;
+      return {name:emp.name,dept:emp.department||'—',annual:annual,used:used,remain:remain};
+    }).filter(function(e){return e.remain>0;})
+      .sort(function(a,b){return b.remain-a.remain;});
+
+    document.getElementById('kpi-leave').textContent = alerts.length;
+
+    if(!alerts.length){
+      tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--green);padding:14px">✅ 全職員が有給を消化しています</td></tr>';
+      return;
+    }
+    tbody.innerHTML = alerts.slice(0,10).map(function(e){
+      var col = e.remain>=e.annual?'var(--red)':e.remain>=3?'var(--amber)':'var(--blue)';
+      var badge = e.used===0?'<span class="badge badge-red">❌ 未消化</span>':'<span class="badge badge-amber">⚠️ 残'+e.remain+'日</span>';
+      return '<tr>'
+        +'<td><strong>'+e.name+'</strong></td>'
+        +'<td>'+e.dept+'</td>'
+        +'<td style="text-align:center">'+e.annual+'日</td>'
+        +'<td style="text-align:center;color:var(--blue)">'+e.used+'日</td>'
+        +'<td style="text-align:center;font-weight:700;color:'+col+'">'+e.remain+'日</td>'
+        +'<td>'+badge+'</td>'
+        +'</tr>';
+    }).join('');
+  }).catch(function(){
+    tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);padding:14px">—</td></tr>';
+  });
+};
+
+// ── 付与日数調整モーダル ──
+window.openLeaveGrantModal = function(empId){
+  var u = allUsers.find(function(x){return x.id===empId;});
+  if(!u) return;
+  document.getElementById('leaveGrantUserId').value = empId;
+  document.getElementById('leaveGrantUserName').textContent = '👤 '+u.name+(u.department?' ('+u.department+')':'');
+  document.getElementById('leaveGrantAnnual').value = u.annual_leave_days!=null?u.annual_leave_days:6;
+  document.getElementById('leaveGrantRemain').value = u.paid_leave_remaining!=null?u.paid_leave_remaining:6;
+  openModal('leaveGrantModal');
+};
+
+window.saveLeaveGrant = function(){
+  var id = document.getElementById('leaveGrantUserId').value;
+  var annual = parseInt(document.getElementById('leaveGrantAnnual').value)||6;
+  var remain = parseInt(document.getElementById('leaveGrantRemain').value)||0;
+  sb.from('employees').update({annual_leave_days:annual, paid_leave_remaining:remain}).eq('id',id).then(function(r){
+    if(r.error){showToast('保存失敗: '+r.error.message,'red');return;}
+    showToast('✅ 付与日数を更新しました','green');
+    closeModal('leaveGrantModal');
+    loadAllUsers();
+    loadLeaveAdmin();
+  });
+};
+
+// ── CSV エクスポート ──
+window.exportLeaveCSV = function(){
+  if(!_leaveAdminData||!_leaveAdminData.length){showToast('データを先に読み込んでください','amber');return;}
+  var header = ['氏名','部署','付与日数','消化済','残日数','消化率(%)','状態'];
+  var rows = _leaveAdminData.map(function(r){
+    return [r.name,r.dept,r.annual,r.used,r.remain,r.rate,r.status==='ok'?'全消化':r.status==='partial'?'一部消化':'未消化'];
+  });
+  var csv = '﻿'+[header].concat(rows).map(function(r){return r.join(',');}).join('
+');
+  var blob = new Blob([csv],{type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '有休消化状況_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 };
 
 window.showToast = function(msg,type){
