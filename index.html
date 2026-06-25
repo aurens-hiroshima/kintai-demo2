@@ -262,6 +262,28 @@ tr:hover td{background:#fafafa}
       <tbody id="dashLeaveAlertTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody>
     </table>
   </div>
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      🚨 勤務アラート
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">打刻忘れ・残業超過の職員</span>
+    </div>
+    <div class="tabs" style="margin-bottom:8px">
+      <div class="tab active" id="alertTab1" onclick="switchAlertTab('punch')">⏰ 打刻忘れ</div>
+      <div class="tab" id="alertTab2" onclick="switchAlertTab('ot')">📊 残業超過</div>
+    </div>
+    <div id="alertPunchPanel">
+      <table>
+        <thead><tr><th>氏名</th><th>部署</th><th>状況</th></tr></thead>
+        <tbody id="dashPunchAlertTbl"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+    <div id="alertOtPanel" style="display:none">
+      <table>
+        <thead><tr><th>氏名</th><th>部署</th><th>当月残業</th><th>アラートレベル</th></tr></thead>
+        <tbody id="dashOtAlertTbl"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ── Punch ── -->
@@ -348,6 +370,7 @@ tr:hover td{background:#fafafa}
     <div class="tab active" onclick="switchTab(this,'tab-leave-all');loadLeaveAdmin()">👥 全職員の有休状況</div>
     <div class="tab" onclick="switchTab(this,'tab-leave-dept');loadLeaveDeptSummary()">🏢 部署別集計</div>
     <div class="tab" onclick="switchTab(this,'tab-leave-apps');loadLeave()">📋 申請（自分）</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-kanri');loadLeaveKanriBO()">📒 年次有給休暇管理簿</div>
   </div>
 
   <!-- ── タブ1: 全職員一覧 ── -->
@@ -406,6 +429,35 @@ tr:hover td{background:#fafafa}
     <div class="card" id="leaveDeptBars">
       <div class="card-title">📊 部署別消化率バー</div>
       <div id="leaveDeptChart" style="display:flex;flex-direction:column;gap:14px;padding:8px 0"></div>
+    </div>
+  </div>
+
+  <!-- ── タブ4: 年次有給休暇管理簿 ── -->
+  <div class="tab-content" id="tab-leave-kanri">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        📒 年次有給休暇管理簿
+        <div class="flex gap8">
+          <select class="form-control btn-sm" id="kanriBoYear" style="width:90px" onchange="loadLeaveKanriBO()">
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="exportKanriBoCSV()">📊 CSV出力</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        ※ 労働基準法第39条に基づく管理簿（3年間保存義務）。時季・日数・基準日を職員ごとに記録します。
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>氏名</th><th>部署</th><th>基準日（入社日）</th>
+            <th>付与日数</th><th>取得日数</th><th>残日数</th>
+            <th>取得日一覧</th><th>法定5日</th>
+          </tr>
+        </thead>
+        <tbody id="kanriBoTbl">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -568,6 +620,37 @@ tr:hover td{background:#fafafa}
     </div>
   </div>
   <div class="settings-section">
+    <div class="settings-header">
+      <span>🚨 勤務アラート設定</span>
+      <button class="btn btn-sm btn-primary" onclick="saveAlertSettings()">保存</button>
+    </div>
+    <div class="settings-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">月次残業のアラート閾値を設定します（36協定管理）</div>
+      <div class="form-row3">
+        <div class="form-group">
+          <div class="form-label">⚠️ 警告（時間）</div>
+          <input class="form-control" id="alertOtWarn" type="number" value="30" min="1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">🔴 危険（時間）</div>
+          <input class="form-control" id="alertOtDanger" type="number" value="45" min="1">
+        </div>
+        <div class="form-group">
+          <div class="form-label">🚫 上限（時間）</div>
+          <input class="form-control" id="alertOtLimit" type="number" value="80" min="1">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:13px">
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="alertPunchMiss" checked> 打刻忘れアラートを表示
+        </label>
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="alertOtEnable" checked> 残業超過アラートを表示
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
     <div class="settings-header"><span>🖥️ 外部リンク</span></div>
     <div class="settings-body" style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="kiosk.html" target="_blank" class="btn btn-outline">🖥️ 打刻専用画面</a>
@@ -590,12 +673,30 @@ tr:hover td{background:#fafafa}
   <div class="modal">
     <div class="modal-title">🌴 休暇申請<span class="modal-close" onclick="closeModal('leaveApplyModal')">×</span></div>
     <div class="form-group"><div class="form-label">休暇種類</div>
-      <select class="form-control" id="leaveType"><option>年次有給休暇</option><option>特別休暇</option><option>育児休暇</option><option>介護休暇</option><option>慶弔休暇</option></select></div>
+      <select class="form-control" id="leaveType">
+          <optgroup label="📅 有給休暇"><option>年次有給休暇</option></optgroup>
+          <optgroup label="⚖️ 法定休暇"><option>育児休暇</option><option>看護休暇</option><option>介護休暇</option><option>産前産後休暇</option></optgroup>
+          <optgroup label="🏢 会社独自休暇"><option>特別休暇</option><option>夏季休暇</option><option>慶弔休暇</option><option>リフレッシュ休暇</option><option>その他</option></optgroup>
+        </select></div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">開始日</div><input class="form-control" id="leaveStart" type="date"></div>
-      <div class="form-group"><div class="form-label">終了日</div><input class="form-control" id="leaveEnd" type="date"></div>
+      <div class="form-group"><div class="form-label">終了日 <span style="font-size:10px;color:var(--muted)">（半日の場合は開始日と同日）</span></div><input class="form-control" id="leaveEnd" type="date"></div>
     </div>
-    <div class="form-group"><div class="form-label">理由</div><textarea class="form-control" id="leaveReason" rows="3" placeholder="申請理由を入力"></textarea></div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">取得単位</div>
+        <select class="form-control" id="leaveUnit">
+          <option value="full">全日</option>
+          <option value="half_am">午前半日（0.5日）</option>
+          <option value="half_pm">午後半日（0.5日）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">日数</div>
+        <div id="leaveDaysPreview" style="height:38px;line-height:38px;font-size:15px;font-weight:700;color:var(--blue)">—</div>
+      </div>
+    </div>
+    <div class="form-group"><div class="form-label">理由</div><textarea class="form-control" id="leaveReason" rows="2" placeholder="申請理由を入力"></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('leaveApplyModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="submitLeave()">申請する</button>
@@ -1089,6 +1190,7 @@ function loadDashboard(){
   document.getElementById('kpi-ot').textContent='—';
   document.getElementById('kpi-leave').textContent='—';
   loadLeaveAlerts();
+  loadWorkAlerts();
 
   // ── 未承認申請リスト
   sb.from('leave_requests').select('*, employees(name)').eq('status','pending').limit(10)
@@ -1290,18 +1392,45 @@ function loadLeave(){
   }
 }
 window.submitLeave = function(){
-  const type = document.getElementById('leaveType').value;
-  const start = document.getElementById('leaveStart').value;
-  const end = document.getElementById('leaveEnd').value;
-  const reason = document.getElementById('leaveReason').value;
+  var type   = document.getElementById('leaveType').value;
+  var start  = document.getElementById('leaveStart').value;
+  var end    = document.getElementById('leaveEnd').value;
+  var reason = document.getElementById('leaveReason').value;
+  var unit   = document.getElementById('leaveUnit').value;
   if(!start){showToast('開始日を入力してください','red');return;}
-  sb.from('leave_requests').insert({user_id:me.id,leave_type:type,start_date:start,end_date:end||start,reason,status:'pending'}).then(function(r){
+  var daysCount, typeLabel = type;
+  if(unit==='half_am'){ daysCount=0.5; typeLabel=type+'（午前半日）'; end=start; }
+  else if(unit==='half_pm'){ daysCount=0.5; typeLabel=type+'（午後半日）'; end=start; }
+  else {
+    var d1=new Date(start), d2=new Date(end||start);
+    daysCount = Math.round((d2-d1)/86400000)+1;
+  }
+  sb.from('leave_requests').insert({
+    user_id:me.id, leave_type:typeLabel,
+    start_date:start, end_date:end||start,
+    days_count:daysCount, reason:reason, status:'pending'
+  }).then(function(r){
     if(r.error){showToast('申請失敗: '+r.error.message,'red');return;}
-    showToast('休暇申請を提出しました','green');
+    showToast('休暇申請を提出しました（'+daysCount+'日）','green');
     closeModal('leaveApplyModal');
     loadLeave();
   });
 };
+// 日数プレビュー更新
+function updateLeaveDaysPreview(){
+  var start  = (document.getElementById('leaveStart')||{}).value;
+  var end    = (document.getElementById('leaveEnd')||{}).value;
+  var unit   = (document.getElementById('leaveUnit')||{value:'full'}).value;
+  var el     = document.getElementById('leaveDaysPreview');
+  if(!el) return;
+  if(unit==='half_am'||unit==='half_pm'){ el.textContent='0.5日'; return; }
+  if(!start){ el.textContent='—'; return; }
+  var d1=new Date(start), d2=new Date(end||start);
+  el.textContent = (Math.round((d2-d1)/86400000)+1)+'日';
+}
+document.addEventListener('change', function(e){
+  if(['leaveStart','leaveEnd','leaveUnit'].includes(e.target.id)) updateLeaveDaysPreview();
+});
 
 // ── Overtime ──
 function loadOvertimePage(){
@@ -1617,8 +1746,13 @@ function loadLeaveSettings(){
   el = document.getElementById('baseLeave');  if(el) el.value = base;
   el = document.getElementById('minLeave');   if(el) el.value = minL;
   el = document.getElementById('maxCarry');   if(el) el.value = carry;
-  // 休暇管理タブのデフォルト年間付与日数も同期
   el = document.getElementById('leaveDefaultDays'); if(el) el.value = base;
+  // アラート設定
+  el = document.getElementById('alertOtWarn');   if(el) el.value = parseInt(localStorage.getItem('alert_ot_warn'))||30;
+  el = document.getElementById('alertOtDanger'); if(el) el.value = parseInt(localStorage.getItem('alert_ot_danger'))||45;
+  el = document.getElementById('alertOtLimit');  if(el) el.value = parseInt(localStorage.getItem('alert_ot_limit'))||80;
+  el = document.getElementById('alertPunchMiss'); if(el) el.checked = localStorage.getItem('alert_punch_miss')!=='false';
+  el = document.getElementById('alertOtEnable');  if(el) el.checked = localStorage.getItem('alert_ot_enable')!=='false';
 }
 window.saveLeaveSettings = function(){
   var base = parseInt(document.getElementById('baseLeave').value)||6;
@@ -1945,6 +2079,180 @@ window.exportLeaveCSV = function(){
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = '有休消化状況_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+};
+
+// ══════════════════════════════════════════════
+// 勤務アラート
+// ══════════════════════════════════════════════
+window.saveAlertSettings = function(){
+  localStorage.setItem('alert_ot_warn',   (document.getElementById('alertOtWarn')||{value:30}).value);
+  localStorage.setItem('alert_ot_danger', (document.getElementById('alertOtDanger')||{value:45}).value);
+  localStorage.setItem('alert_ot_limit',  (document.getElementById('alertOtLimit')||{value:80}).value);
+  localStorage.setItem('alert_punch_miss',(document.getElementById('alertPunchMiss')||{checked:true}).checked);
+  localStorage.setItem('alert_ot_enable', (document.getElementById('alertOtEnable')||{checked:true}).checked);
+  showToast('✅ アラート設定を保存しました','green');
+};
+
+window.switchAlertTab = function(type){
+  var t1=document.getElementById('alertTab1'),t2=document.getElementById('alertTab2');
+  var p1=document.getElementById('alertPunchPanel'),p2=document.getElementById('alertOtPanel');
+  if(type==='punch'){
+    if(t1)t1.classList.add('active'); if(t2)t2.classList.remove('active');
+    if(p1)p1.style.display=''; if(p2)p2.style.display='none';
+  } else {
+    if(t2)t2.classList.add('active'); if(t1)t1.classList.remove('active');
+    if(p2)p2.style.display=''; if(p1)p1.style.display='none';
+  }
+};
+
+window.loadWorkAlerts = function(){
+  var showPunch = localStorage.getItem('alert_punch_miss')!=='false';
+  var showOt    = localStorage.getItem('alert_ot_enable')!=='false';
+  var warnH     = parseInt(localStorage.getItem('alert_ot_warn'))||30;
+  var dangerH   = parseInt(localStorage.getItem('alert_ot_danger'))||45;
+  var limitH    = parseInt(localStorage.getItem('alert_ot_limit'))||80;
+
+  var today = new Date().toISOString().slice(0,10);
+  var pTbl  = document.getElementById('dashPunchAlertTbl');
+  var otTbl = document.getElementById('dashOtAlertTbl');
+
+  // ── 打刻忘れアラート
+  if(showPunch && pTbl){
+    Promise.all([
+      sb.from('employees').select('id,auth_id,name,department').eq('is_active',true),
+      sb.from('punch_records').select('user_id').gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59')
+    ]).then(function(rs){
+      if(rs[0].error){pTbl.innerHTML='<tr><td colspan="3" style="color:var(--muted);padding:14px">取得エラー</td></tr>';return;}
+      var punchedToday = new Set((rs[1].data||[]).map(function(p){return p.user_id;}));
+      var missing = (rs[0].data||[]).filter(function(e){return !punchedToday.has(e.auth_id);});
+      if(!missing.length){
+        pTbl.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--green);padding:14px">✅ 本日打刻忘れなし</td></tr>';
+        return;
+      }
+      pTbl.innerHTML = missing.slice(0,10).map(function(e){
+        return '<tr><td><strong>'+e.name+'</strong></td><td>'+(e.department||'—')+'</td>'
+          +'<td><span class="badge badge-amber">⚠️ 未打刻</span></td></tr>';
+      }).join('');
+    }).catch(function(){
+      pTbl.innerHTML='<tr><td colspan="3" style="color:var(--muted);padding:14px">—</td></tr>';
+    });
+  } else if(pTbl){
+    pTbl.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">アラート無効（設定で有効化）</td></tr>';
+  }
+
+  // ── 残業超過アラート
+  if(showOt && otTbl){
+    var monthStart = today.slice(0,7)+'-01';
+    Promise.all([
+      sb.from('employees').select('id,auth_id,name,department').eq('is_active',true),
+      sb.from('overtime_requests').select('user_id,hours').eq('status','approved').gte('date',monthStart).lte('date',today)
+    ]).then(function(rs){
+      if(rs[0].error){otTbl.innerHTML='<tr><td colspan="4" style="color:var(--muted);padding:14px">取得エラー</td></tr>';return;}
+      var otMap={};
+      (rs[1].data||[]).forEach(function(r){ otMap[r.user_id]=(otMap[r.user_id]||0)+(r.hours||0); });
+      var empMap={};
+      (rs[0].data||[]).forEach(function(e){empMap[e.auth_id]=e;});
+      var alerts = Object.entries(otMap)
+        .filter(function(e){return e[1]>=warnH;})
+        .map(function(e){
+          var emp=empMap[e[0]]||{};
+          return {name:emp.name||'—',dept:emp.department||'—',hours:e[1]};
+        })
+        .sort(function(a,b){return b.hours-a.hours;});
+      if(!alerts.length){
+        otTbl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--green);padding:14px">✅ 残業超過者なし（閾値'+warnH+'h）</td></tr>';
+        return;
+      }
+      otTbl.innerHTML = alerts.slice(0,10).map(function(e){
+        var col=e.hours>=limitH?'var(--red)':e.hours>=dangerH?'var(--red)':'var(--amber)';
+        var lv=e.hours>=limitH?'<span class="badge badge-red">🚫 上限超過</span>':e.hours>=dangerH?'<span class="badge badge-red">🔴 危険</span>':'<span class="badge badge-amber">⚠️ 警告</span>';
+        return '<tr><td><strong>'+e.name+'</strong></td><td>'+e.dept+'</td>'
+          +'<td style="font-weight:700;color:'+col+'">'+e.hours+'h</td><td>'+lv+'</td></tr>';
+      }).join('');
+    }).catch(function(){
+      otTbl.innerHTML='<tr><td colspan="4" style="color:var(--muted);padding:14px">—</td></tr>';
+    });
+  } else if(otTbl){
+    otTbl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">アラート無効（設定で有効化）</td></tr>';
+  }
+};
+
+// ══════════════════════════════════════════════
+// 年次有給休暇管理簿
+// ══════════════════════════════════════════════
+window.loadLeaveKanriBO = function(){
+  var yearEl = document.getElementById('kanriBoYear');
+  // 年度選択肢を生成（過去3年）
+  if(yearEl && !yearEl.options.length){
+    var cy = new Date().getFullYear();
+    for(var y=cy;y>=cy-2;y--){
+      var opt=document.createElement('option'); opt.value=y; opt.textContent=y+'年';
+      yearEl.appendChild(opt);
+    }
+  }
+  var year = yearEl ? parseInt(yearEl.value)||new Date().getFullYear() : new Date().getFullYear();
+  var tbody = document.getElementById('kanriBoTbl');
+  if(tbody) tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>';
+
+  var legalMin = parseInt(localStorage.getItem('leave_legal_min'))||5;
+
+  Promise.all([
+    sb.from('employees').select('id,auth_id,name,department,hire_date,annual_leave_days,paid_leave_remaining').eq('is_active',true).order('department').order('name'),
+    sb.from('leave_requests')
+      .select('user_id,leave_type,start_date,end_date,days_count,status')
+      .gte('start_date',year+'-01-01').lte('end_date',year+'-12-31')
+      .eq('status','approved')
+  ]).then(function(rs){
+    if(rs[0].error){
+      if(tbody) tbody.innerHTML='<tr><td colspan="8" style="color:var(--red);padding:16px">'+rs[0].error.message+'</td></tr>';
+      return;
+    }
+    var leaveByUser={};
+    (rs[1].data||[]).forEach(function(r){
+      if(!leaveByUser[r.user_id]) leaveByUser[r.user_id]=[];
+      if(r.leave_type.includes('有給')||r.leave_type.includes('年次')){
+        leaveByUser[r.user_id].push(r);
+      }
+    });
+    window._kanriBoData = (rs[0].data||[]).map(function(emp){
+      var recs = leaveByUser[emp.auth_id]||[];
+      var totalDays = recs.reduce(function(s,r){return s+(r.days_count||calcDays(r.start_date,r.end_date));},0);
+      var annual = emp.annual_leave_days||6;
+      var remain = emp.paid_leave_remaining!=null?emp.paid_leave_remaining:(annual-totalDays);
+      var dates  = recs.map(function(r){return r.start_date+(r.start_date!==r.end_date?'〜'+r.end_date:'')+(r.days_count===0.5?'(半)':'');}).join('、');
+      return {name:emp.name,dept:emp.department||'—',hire:emp.hire_date||'—',annual:annual,used:Math.round(totalDays*10)/10,remain:remain,dates:dates||'（なし）',legal:totalDays>=legalMin};
+    });
+    if(tbody){
+      tbody.innerHTML = window._kanriBoData.map(function(r){
+        return '<tr>'
+          +'<td><strong>'+r.name+'</strong></td>'
+          +'<td>'+r.dept+'</td>'
+          +'<td style="font-size:11px">'+r.hire+'</td>'
+          +'<td style="text-align:center">'+r.annual+'日</td>'
+          +'<td style="text-align:center;font-weight:700;color:var(--blue)">'+r.used+'日</td>'
+          +'<td style="text-align:center">'+r.remain+'日</td>'
+          +'<td style="font-size:11px;color:var(--muted);max-width:220px">'+r.dates+'</td>'
+          +'<td style="text-align:center">'+(r.legal?'<span class="badge badge-green">✅ 達成</span>':'<span class="badge badge-red">❌ 未達</span>')+'</td>'
+          +'</tr>';
+      }).join('');
+    }
+  }).catch(function(e){
+    if(tbody) tbody.innerHTML='<tr><td colspan="8" style="color:var(--muted);padding:16px">読み込みエラー</td></tr>';
+    console.error(e);
+  });
+};
+
+window.exportKanriBoCSV = function(){
+  var data = window._kanriBoData;
+  if(!data||!data.length){showToast('先にデータを読み込んでください','amber');return;}
+  var year = (document.getElementById('kanriBoYear')||{value:new Date().getFullYear()}).value;
+  var header = ['氏名','部署','基準日','付与日数','取得日数','残日数','取得日一覧','法定5日達成'];
+  var rows = data.map(function(r){return[r.name,r.dept,r.hire,r.annual,r.used,r.remain,'"'+r.dates+'"',r.legal?'達成':'未達'];});
+  var csv = '\uFEFF'+[header].concat(rows).map(function(r){return r.join(',');}).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='年次有給休暇管理簿_'+year+'.csv';
   a.click();
 };
 
