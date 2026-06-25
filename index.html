@@ -2484,7 +2484,7 @@ function renderGrantRuleTable(){
   tbody.innerHTML=rules.map(function(r){
     return '<tr><td><input class="form-control" type="number" value="'+r.months+'" min="1" style="width:80px"> ヶ月以上</td>'
       +'<td><input class="form-control" type="number" value="'+r.days+'" min="0" step="0.5" style="width:65px"> 日</td>'
-      +'<td><button class="btn btn-sm btn-red" onclick="this.closest('tr').remove()">削除</button></td></tr>';
+      +'<td><button class="btn btn-sm btn-red" onclick="this.parentElement.parentElement.remove()">削除</button></td></tr>';
   }).join('');
 }
 window.addGrantRuleRow = function(){
@@ -2492,7 +2492,7 @@ window.addGrantRuleRow = function(){
   var tr=document.createElement('tr');
   tr.innerHTML='<td><input class="form-control" type="number" value="6" min="1" style="width:80px"> ヶ月以上</td>'
     +'<td><input class="form-control" type="number" value="10" min="0" step="0.5" style="width:65px"> 日</td>'
-    +'<td><button class="btn btn-sm btn-red" onclick="this.closest('tr').remove()">削除</button></td>';
+    +'<td><button class="btn btn-sm btn-red" onclick="this.parentElement.parentElement.remove()">削除</button></td>';
   tbody.appendChild(tr);
 };
 function calcGrantDays(hireDateStr){
