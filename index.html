@@ -371,6 +371,7 @@ tr:hover td{background:#fafafa}
     <div class="tab" onclick="switchTab(this,'tab-leave-dept');loadLeaveDeptSummary()">🏢 部署別集計</div>
     <div class="tab" onclick="switchTab(this,'tab-leave-apps');loadLeave()">📋 申請（自分）</div>
     <div class="tab" onclick="switchTab(this,'tab-leave-kanri');loadLeaveKanriBO()">📒 年次有給休暇管理簿</div>
+    <div class="tab" onclick="switchTab(this,'tab-leave-grant');loadGrantMgmt()">🎁 付与管理</div>
   </div>
 
   <!-- ── タブ1: 全職員一覧 ── -->
@@ -429,6 +430,40 @@ tr:hover td{background:#fafafa}
     <div class="card" id="leaveDeptBars">
       <div class="card-title">📊 部署別消化率バー</div>
       <div id="leaveDeptChart" style="display:flex;flex-direction:column;gap:14px;padding:8px 0"></div>
+    </div>
+  </div>
+
+  <!-- ── タブ5: 付与管理 ── -->
+  <div class="tab-content" id="tab-leave-grant">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        🎁 有給付与管理
+        <div class="flex gap8">
+          <button class="btn btn-outline btn-sm" onclick="loadGrantMgmt()">🔄 再計算</button>
+          <button class="btn btn-primary btn-sm" onclick="autoGrantLeave()">⚡ 一括付与実行</button>
+        </div>
+      </div>
+      <div style="background:#fef3c7;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;color:#92400e">
+        ⚠️ 「一括付与実行」は勤続年数と付与ルールを元に、各職員の有給残日数（繰越込み）を更新します。実行前に内容をご確認ください。
+      </div>
+      <div id="grantRuleSummary" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:var(--muted)"></div>
+      <table>
+        <thead>
+          <tr><th>氏名</th><th>部署</th><th>入社日</th><th>勤続</th><th>今回付与</th><th>繰越</th><th>付与後残</th><th>前回残</th><th>操作</th></tr>
+        </thead>
+        <tbody id="grantMgmtTbl">
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 休暇種類マスター（設定 → 休暇種類設定で変更）</div>
+      <table>
+        <thead><tr><th>種類名</th><th>カテゴリ</th><th>年間付与</th><th>取得単位</th><th>有効期限</th><th>繰越</th></tr></thead>
+        <tbody id="leaveTypeMasterTbl">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -595,15 +630,49 @@ tr:hover td{background:#fafafa}
   </div>
   <div class="settings-section">
     <div class="settings-header">
-      <span>🌴 有給設定</span>
+      <span>🌴 有給・付与設定</span>
       <button class="btn btn-sm btn-primary" onclick="saveLeaveSettings()">保存</button>
     </div>
     <div class="settings-body">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">基本設定</div>
       <div class="form-row3">
-        <div class="form-group"><div class="form-label">基本付与日数</div><input class="form-control" id="baseLeave" type="number" value="10"></div>
         <div class="form-group"><div class="form-label">法定最低取得日数</div><input class="form-control" id="minLeave" type="number" value="5"></div>
         <div class="form-group"><div class="form-label">繰越上限日数</div><input class="form-control" id="maxCarry" type="number" value="20"></div>
+        <div class="form-group"><div class="form-label">有効期限（年）</div><input class="form-control" id="leaveExpiry" type="number" value="2" min="1" max="5"></div>
       </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px">付与方式</div>
+      <div class="form-row">
+        <div class="form-group">
+          <div class="form-label">付与基準</div>
+          <select class="form-control" id="grantMethod">
+            <option value="hire_date">入社日基準（個人ごと）</option>
+            <option value="fixed">一斉付与（4月1日）</option>
+            <option value="custom">一斉付与（カスタム月日）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">カスタム月日</div>
+          <input class="form-control" id="grantCustomDate" placeholder="例: 04-01">
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px">勤続年数別 有給付与日数テーブル（労基法39条ベース・編集可）</div>
+      <table id="grantRuleTable" style="margin-bottom:8px">
+        <thead><tr><th>勤続月数（以上）</th><th>付与日数</th><th>削除</th></tr></thead>
+        <tbody id="grantRuleTbody"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" onclick="addGrantRuleRow()">＋ 行を追加</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-header">
+      <span>📋 休暇種類マスター</span>
+      <button class="btn btn-sm btn-primary" onclick="openLeaveTypeMasterModal()">＋ 追加</button>
+    </div>
+    <div class="settings-body">
+      <table>
+        <thead><tr><th>種類名</th><th>カテゴリ</th><th>年間付与</th><th>取得単位</th><th>有効期限</th><th>繰越</th><th>操作</th></tr></thead>
+        <tbody id="leaveTypeTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px">読み込み中...</td></tr></tbody>
+      </table>
     </div>
   </div>
   <div class="settings-section">
@@ -685,10 +754,13 @@ tr:hover td{background:#fafafa}
     <div class="form-row">
       <div class="form-group">
         <div class="form-label">取得単位</div>
-        <select class="form-control" id="leaveUnit">
+        <select class="form-control" id="leaveUnit" onchange="updateLeaveDaysPreview()">
           <option value="full">全日</option>
           <option value="half_am">午前半日（0.5日）</option>
           <option value="half_pm">午後半日（0.5日）</option>
+          <option value="1h">時間単位 1時間</option>
+          <option value="0.5h">時間単位 30分</option>
+          <option value="0.25h">時間単位 15分</option>
         </select>
       </div>
       <div class="form-group">
@@ -696,6 +768,7 @@ tr:hover td{background:#fafafa}
         <div id="leaveDaysPreview" style="height:38px;line-height:38px;font-size:15px;font-weight:700;color:var(--blue)">—</div>
       </div>
     </div>
+    <div id="leaveBalanceInfo" style="background:#f0f9ff;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--blue);display:none"></div>
     <div class="form-group"><div class="form-label">理由</div><textarea class="form-control" id="leaveReason" rows="2" placeholder="申請理由を入力"></textarea></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('leaveApplyModal')">キャンセル</button>
@@ -790,11 +863,15 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">年間付与日数</div><input class="form-control" id="editUserAnnualLeave" type="number" min="0" max="40" value="6"></div>
-      <div class="form-group"><div class="form-label">有給残日数</div><input class="form-control" id="editUserLeave" type="number" min="0"></div>
+      <div class="form-group"><div class="form-label">有給残日数（繰越込）</div><input class="form-control" id="editUserLeave" type="number" min="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><div class="form-label">繰越日数</div><input class="form-control" id="editUserCarryOver" type="number" min="0" max="40" value="0" placeholder="前年繰越"></div>
+      <div class="form-group"><div class="form-label">入社日（付与基準日）</div><input class="form-control" id="editUserHireDate" type="date"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
-      <div class="form-group"></div>
+      <div class="form-group"><button class="btn btn-outline btn-sm" onclick="calcGrantForUser()" style="margin-top:20px">📊 勤続年数から付与計算</button></div>
     </div>
 
     <!-- ログイン情報変更 -->
@@ -848,6 +925,50 @@ tr:hover td{background:#fafafa}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('leaveGrantModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveLeaveGrant()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Type Master Modal -->
+<div class="modal-overlay" id="leaveTypeMasterModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">&#x1F4CB; 休暇種類設定<span class="modal-close" onclick="closeModal('leaveTypeMasterModal')">&#x00D7;</span></div>
+    <input type="hidden" id="ltmId">
+    <div class="form-row">
+      <div class="form-group"><div class="form-label">種類名</div><input class="form-control" id="ltmName" placeholder="例: 夏季休暇"></div>
+      <div class="form-group"><div class="form-label">カテゴリ</div>
+        <select class="form-control" id="ltmCategory">
+          <option value="paid">&#x1F4C5; 有給休暇</option>
+          <option value="legal">&#x2696;&#xFE0F; 法定休暇</option>
+          <option value="company">&#x1F3E2; 会社独自</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><div class="form-label">年間付与日数</div><input class="form-control" id="ltmDays" type="number" min="0" step="0.5" value="0" placeholder="0=都度設定"></div>
+      <div class="form-group"><div class="form-label">有効期限（年）</div><input class="form-control" id="ltmExpiry" type="number" min="1" max="5" value="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><div class="form-label">取得単位</div>
+        <select class="form-control" id="ltmUnit">
+          <option value="full">全日のみ</option>
+          <option value="full_half">全日・半日</option>
+          <option value="full_half_hour">全日・半日・時間単位</option>
+          <option value="hour">時間単位のみ</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">繰越可否（年）</div>
+        <select class="form-control" id="ltmCarry">
+          <option value="0">繰越不可</option>
+          <option value="1">1年繰越可</option>
+          <option value="2">2年繰越可</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red btn-sm" id="ltmDeleteBtn" onclick="deleteLeaveType()" style="margin-right:auto;display:none">削除</button>
+      <button class="btn btn-outline" onclick="closeModal('leaveTypeMasterModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveLeaveTypeMaster()">&#x1F4BE; 保存</button>
     </div>
   </div>
 </div>
@@ -1401,6 +1522,9 @@ window.submitLeave = function(){
   var daysCount, typeLabel = type;
   if(unit==='half_am'){ daysCount=0.5; typeLabel=type+'（午前半日）'; end=start; }
   else if(unit==='half_pm'){ daysCount=0.5; typeLabel=type+'（午後半日）'; end=start; }
+  else if(unit==='1h'){ daysCount=1/8; typeLabel=type+'（1時間）'; end=start; }
+  else if(unit==='0.5h'){ daysCount=0.5/8; typeLabel=type+'（30分）'; end=start; }
+  else if(unit==='0.25h'){ daysCount=0.25/8; typeLabel=type+'（15分）'; end=start; }
   else {
     var d1=new Date(start), d2=new Date(end||start);
     daysCount = Math.round((d2-d1)/86400000)+1;
@@ -1422,14 +1546,24 @@ function updateLeaveDaysPreview(){
   var end    = (document.getElementById('leaveEnd')||{}).value;
   var unit   = (document.getElementById('leaveUnit')||{value:'full'}).value;
   var el     = document.getElementById('leaveDaysPreview');
-  if(!el) return;
-  if(unit==='half_am'||unit==='half_pm'){ el.textContent='0.5日'; return; }
-  if(!start){ el.textContent='—'; return; }
-  var d1=new Date(start), d2=new Date(end||start);
-  el.textContent = (Math.round((d2-d1)/86400000)+1)+'日';
+  var typeEl = document.getElementById('leaveType');
+  var info   = document.getElementById('leaveBalanceInfo');
+  var txt='—';
+  if(unit==='half_am'||unit==='half_pm') txt='0.5日';
+  else if(unit==='1h') txt='1時間（約0.125日）';
+  else if(unit==='0.5h') txt='30分（約0.063日）';
+  else if(unit==='0.25h') txt='15分（約0.031日）';
+  else if(start){ var d1=new Date(start),d2=new Date(end||start); txt=(Math.round((d2-d1)/86400000)+1)+'日'; }
+  if(el) el.textContent=txt;
+  if(info){
+    if(typeEl && typeEl.value.includes('年次有給') && myProfile){
+      var rem=myProfile.paid_leave_remaining||0; var ann=myProfile.annual_leave_days||6;
+      info.style.display=''; info.innerHTML='📅 有給残日数: <strong>'+rem+'日</strong>（年間付与'+ann+'日）';
+    } else { info.style.display='none'; }
+  }
 }
 document.addEventListener('change', function(e){
-  if(['leaveStart','leaveEnd','leaveUnit'].includes(e.target.id)) updateLeaveDaysPreview();
+  if(['leaveStart','leaveEnd','leaveUnit','leaveType'].includes(e.target.id)) updateLeaveDaysPreview();
 });
 
 // ── Overtime ──
@@ -1612,6 +1746,8 @@ window.openEditUser = function(id){
   document.getElementById('editUserRole').value = u.role||'一般';
   document.getElementById('editUserAnnualLeave').value = u.annual_leave_days != null ? u.annual_leave_days : 6;
   document.getElementById('editUserLeave').value = u.paid_leave_remaining||0;
+  document.getElementById('editUserCarryOver').value = u.carry_over_days||0;
+  var hEl=document.getElementById('editUserHireDate'); if(hEl) hEl.value=u.hire_date||'';
   document.getElementById('editUserStatus').value = u.is_active?'true':'false';
   // メール欄に現在値をセット
   document.getElementById('editUserEmail').value = u.email||'';
@@ -1638,6 +1774,7 @@ window.saveUser = function(){
     role: document.getElementById('editUserRole').value,
     annual_leave_days: parseInt(document.getElementById('editUserAnnualLeave').value)||6,
     paid_leave_remaining: parseInt(document.getElementById('editUserLeave').value)||0,
+    carry_over_days: parseFloat(document.getElementById('editUserCarryOver').value)||0,
     is_active: document.getElementById('editUserStatus').value === 'true'
   };
   // メールが入力されていれば保存
@@ -1747,6 +1884,10 @@ function loadLeaveSettings(){
   el = document.getElementById('minLeave');   if(el) el.value = minL;
   el = document.getElementById('maxCarry');   if(el) el.value = carry;
   el = document.getElementById('leaveDefaultDays'); if(el) el.value = base;
+  renderGrantRuleTable(); renderLeaveTypeTable(); updateLeaveTypeSelect();
+  var gm=localStorage.getItem('grant_method')||'hire_date'; el=document.getElementById('grantMethod'); if(el) el.value=gm;
+  el=document.getElementById('leaveExpiry'); if(el) el.value=parseInt(localStorage.getItem('leave_expiry'))||2;
+  el=document.getElementById('grantCustomDate'); if(el) el.value=localStorage.getItem('grant_custom_date')||'';
   // アラート設定
   el = document.getElementById('alertOtWarn');   if(el) el.value = parseInt(localStorage.getItem('alert_ot_warn'))||30;
   el = document.getElementById('alertOtDanger'); if(el) el.value = parseInt(localStorage.getItem('alert_ot_danger'))||45;
@@ -1755,16 +1896,19 @@ function loadLeaveSettings(){
   el = document.getElementById('alertOtEnable');  if(el) el.checked = localStorage.getItem('alert_ot_enable')!=='false';
 }
 window.saveLeaveSettings = function(){
-  var base = parseInt(document.getElementById('baseLeave').value)||6;
-  var minL = parseInt(document.getElementById('minLeave').value)||5;
-  var carry= parseInt(document.getElementById('maxCarry').value)||20;
-  localStorage.setItem('leave_base_days', base);
+  var minL  = parseInt(document.getElementById('minLeave').value)||5;
+  var carry = parseInt(document.getElementById('maxCarry').value)||20;
+  var exp   = parseInt((document.getElementById('leaveExpiry')||{value:2}).value)||2;
+  var gm    = (document.getElementById('grantMethod')||{value:'hire_date'}).value;
+  var cd    = (document.getElementById('grantCustomDate')||{value:''}).value;
   localStorage.setItem('leave_legal_min', minL);
   localStorage.setItem('leave_max_carry', carry);
-  // 休暇管理タブの年間付与デフォルトも同期
-  var ddEl = document.getElementById('leaveDefaultDays');
-  if(ddEl) ddEl.value = base;
-  showToast('✅ 有給設定を保存しました','green');
+  localStorage.setItem('leave_expiry', exp);
+  localStorage.setItem('grant_method', gm);
+  localStorage.setItem('grant_custom_date', cd);
+  if(typeof saveGrantRules==='function') saveGrantRules();
+  var ddEl = document.getElementById('leaveDefaultDays'); if(ddEl) ddEl.value = carry;
+  showToast('✅ 有給・付与設定を保存しました','green');
 };
 window.saveNotifySettings = function(){showToast('通知設定を保存しました','green');};
 window.saveWorkRule = function(){
@@ -2241,6 +2385,194 @@ window.loadLeaveKanriBO = function(){
     if(tbody) tbody.innerHTML='<tr><td colspan="8" style="color:var(--muted);padding:16px">読み込みエラー</td></tr>';
     console.error(e);
   });
+};
+
+// ══ 休暇種類マスター ══
+var _defaultLeaveTypes = [
+  {id:'nenkyuu',   name:'年次有給休暇',     category:'paid',    days:6,  expiry:2, unit:'full_half_hour', carry:2},
+  {id:'kango',     name:'看護休暇',         category:'legal',   days:5,  expiry:1, unit:'full_half_hour', carry:0},
+  {id:'kaigo',     name:'介護休暇',         category:'legal',   days:5,  expiry:1, unit:'full_half_hour', carry:0},
+  {id:'kaki',      name:'夏季休暇',         category:'company', days:3,  expiry:1, unit:'full_half',      carry:0},
+  {id:'refresh',   name:'リフレッシュ休暇', category:'company', days:2,  expiry:1, unit:'full_half',      carry:0},
+  {id:'keichou',   name:'慶弔休暇',         category:'company', days:5,  expiry:1, unit:'full',           carry:0},
+  {id:'tokubetsu', name:'特別休暇',         category:'company', days:0,  expiry:1, unit:'full',           carry:0},
+  {id:'sanzen',    name:'産前産後休暇',     category:'legal',   days:0,  expiry:0, unit:'full',           carry:0},
+];
+function getLeaveTypes(){
+  try{ var s=localStorage.getItem('leave_types'); return s?JSON.parse(s):_defaultLeaveTypes; }catch(e){ return _defaultLeaveTypes; }
+}
+function saveLeaveTypesToStorage(types){ localStorage.setItem('leave_types',JSON.stringify(types)); }
+function renderLeaveTypeTable(){
+  var types=getLeaveTypes();
+  var catL={'paid':'📅 有給','legal':'⚖️ 法定','company':'🏢 会社独自'};
+  var unitL={'full':'全日','full_half':'全日・半日','full_half_hour':'全日・半日・時間','hour':'時間'};
+  var t1=document.getElementById('leaveTypeTbl'), t2=document.getElementById('leaveTypeMasterTbl');
+  var html=types.map(function(t){
+    return '<tr><td><strong>'+t.name+'</strong></td><td>'+(catL[t.category]||t.category)+'</td>'
+      +'<td style="text-align:center">'+(t.days>0?t.days+'日':'—')+'</td>'
+      +'<td style="font-size:11px">'+(unitL[t.unit]||t.unit)+'</td>'
+      +'<td style="text-align:center">'+(t.expiry>0?t.expiry+'年':'—')+'</td>'
+      +'<td style="text-align:center">'+(t.carry>0?'✅':'—')+'</td>'
+      +'<td><button class="btn btn-sm btn-outline" onclick="openLeaveTypeMasterModal(&quot;'+t.id+'&quot;)">編集</button></td></tr>';
+  }).join('');
+  var html2=types.map(function(t){
+    return '<tr><td><strong>'+t.name+'</strong></td><td>'+(catL[t.category]||t.category)+'</td>'
+      +'<td style="text-align:center">'+(t.days>0?t.days+'日':'—')+'</td>'
+      +'<td style="font-size:11px">'+(unitL[t.unit]||t.unit)+'</td>'
+      +'<td style="text-align:center">'+(t.expiry>0?t.expiry+'年':'—')+'</td>'
+      +'<td style="text-align:center">'+(t.carry>0?'✅':'—')+'</td></tr>';
+  }).join('');
+  if(t1) t1.innerHTML=html;
+  if(t2) t2.innerHTML=html2;
+}
+function updateLeaveTypeSelect(){
+  var types=getLeaveTypes();
+  var sel=document.getElementById('leaveType'); if(!sel) return;
+  var catL={'paid':'📅 有給休暇','legal':'⚖️ 法定休暇','company':'🏢 会社独自'};
+  var groups={};
+  types.forEach(function(t){ if(!groups[t.category]) groups[t.category]=[]; groups[t.category].push(t); });
+  sel.innerHTML=Object.entries(groups).map(function(e){
+    return '<optgroup label="'+(catL[e[0]]||e[0])+'">'+e[1].map(function(t){return '<option>'+t.name+'</option>';}).join('')+'</optgroup>';
+  }).join('');
+}
+window.openLeaveTypeMasterModal = function(id){
+  var types=getLeaveTypes(); var t=id?types.find(function(x){return x.id===id;}):null;
+  document.getElementById('ltmId').value=t?t.id:'';
+  document.getElementById('ltmName').value=t?t.name:'';
+  document.getElementById('ltmCategory').value=t?t.category:'company';
+  document.getElementById('ltmDays').value=t?t.days:0;
+  document.getElementById('ltmExpiry').value=t?t.expiry:1;
+  document.getElementById('ltmUnit').value=t?t.unit:'full';
+  document.getElementById('ltmCarry').value=t?t.carry:0;
+  var del=document.getElementById('ltmDeleteBtn'); if(del) del.style.display=t?'':'none';
+  openModal('leaveTypeMasterModal');
+};
+window.saveLeaveTypeMaster = function(){
+  var id=document.getElementById('ltmId').value;
+  var types=getLeaveTypes();
+  var entry={id:id||('lt_'+Date.now()),name:document.getElementById('ltmName').value.trim(),
+    category:document.getElementById('ltmCategory').value,days:parseFloat(document.getElementById('ltmDays').value)||0,
+    expiry:parseInt(document.getElementById('ltmExpiry').value)||1,unit:document.getElementById('ltmUnit').value,
+    carry:parseInt(document.getElementById('ltmCarry').value)||0};
+  if(!entry.name){showToast('種類名を入力してください','red');return;}
+  var idx=id?types.findIndex(function(x){return x.id===id;}):-1;
+  if(idx>=0) types[idx]=entry; else types.push(entry);
+  saveLeaveTypesToStorage(types); renderLeaveTypeTable(); updateLeaveTypeSelect();
+  closeModal('leaveTypeMasterModal'); showToast('✅ 保存しました','green');
+};
+window.deleteLeaveType = function(){
+  var id=document.getElementById('ltmId').value;
+  if(!id||!confirm('この休暇種類を削除しますか？')) return;
+  saveLeaveTypesToStorage(getLeaveTypes().filter(function(t){return t.id!==id;}));
+  renderLeaveTypeTable(); updateLeaveTypeSelect(); closeModal('leaveTypeMasterModal'); showToast('削除しました','amber');
+};
+
+// ══ 勤続年数別付与テーブル ══
+var _defaultGrantRules=[{months:6,days:10},{months:18,days:11},{months:30,days:12},{months:42,days:14},{months:54,days:16},{months:66,days:18},{months:78,days:20}];
+function getGrantRules(){
+  try{ var s=localStorage.getItem('grant_rules'); return s?JSON.parse(s):_defaultGrantRules; }catch(e){ return _defaultGrantRules; }
+}
+window.saveGrantRules = function(){
+  var rows=[].slice.call(document.querySelectorAll('#grantRuleTbody tr'));
+  var rules=rows.map(function(r){var inp=r.querySelectorAll('input'); return {months:parseInt(inp[0].value)||0,days:parseFloat(inp[1].value)||0};})
+    .filter(function(r){return r.months>0;}).sort(function(a,b){return a.months-b.months;});
+  localStorage.setItem('grant_rules',JSON.stringify(rules));
+  return rules;
+};
+function renderGrantRuleTable(){
+  var rules=getGrantRules(); var tbody=document.getElementById('grantRuleTbody'); if(!tbody) return;
+  tbody.innerHTML=rules.map(function(r){
+    return '<tr><td><input class="form-control" type="number" value="'+r.months+'" min="1" style="width:80px"> ヶ月以上</td>'
+      +'<td><input class="form-control" type="number" value="'+r.days+'" min="0" step="0.5" style="width:65px"> 日</td>'
+      +'<td><button class="btn btn-sm btn-red" onclick="this.closest('tr').remove()">削除</button></td></tr>';
+  }).join('');
+}
+window.addGrantRuleRow = function(){
+  var tbody=document.getElementById('grantRuleTbody'); if(!tbody) return;
+  var tr=document.createElement('tr');
+  tr.innerHTML='<td><input class="form-control" type="number" value="6" min="1" style="width:80px"> ヶ月以上</td>'
+    +'<td><input class="form-control" type="number" value="10" min="0" step="0.5" style="width:65px"> 日</td>'
+    +'<td><button class="btn btn-sm btn-red" onclick="this.closest('tr').remove()">削除</button></td>';
+  tbody.appendChild(tr);
+};
+function calcGrantDays(hireDateStr){
+  if(!hireDateStr) return 0;
+  var months=Math.floor((new Date()-new Date(hireDateStr))/(86400000*30.5));
+  var rules=getGrantRules().slice().sort(function(a,b){return b.months-a.months;});
+  for(var i=0;i<rules.length;i++){ if(months>=rules[i].months) return rules[i].days; }
+  return 0;
+}
+window.calcGrantForUser = function(){
+  var hEl=document.getElementById('editUserHireDate'); if(!hEl||!hEl.value){showToast('入社日を入力してください','red');return;}
+  var grant=calcGrantDays(hEl.value);
+  var maxC=parseInt(localStorage.getItem('leave_max_carry'))||20;
+  var cur=parseFloat(document.getElementById('editUserLeave').value)||0;
+  var carry=Math.min(cur,maxC);
+  document.getElementById('editUserCarryOver').value=carry;
+  document.getElementById('editUserAnnualLeave').value=grant;
+  document.getElementById('editUserLeave').value=grant+carry;
+  showToast('✅ 付与: '+grant+'日 + 繰越'+carry+'日 = '+(grant+carry)+'日','green');
+};
+
+// ══ 付与管理タブ ══
+window.loadGrantMgmt = function(){
+  renderGrantRuleTable(); renderLeaveTypeTable();
+  var tbody=document.getElementById('grantMgmtTbl');
+  var summary=document.getElementById('grantRuleSummary');
+  if(tbody) tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>';
+  var maxCarry=parseInt(localStorage.getItem('leave_max_carry'))||20;
+  var rules=getGrantRules();
+  if(summary){
+    summary.innerHTML='<span>繰越上限: <strong>'+maxCarry+'日</strong></span>'
+      +'<span>最大付与: <strong>'+rules[rules.length-1].days+'日</strong>（勤続'+rules[rules.length-1].months+'ヶ月～）</span>'
+      +'<span style="color:var(--muted)">※ システム設定 → 有給設定で変更</span>';
+  }
+  sb.from('employees').select('id,auth_id,name,department,hire_date,annual_leave_days,paid_leave_remaining,carry_over_days').eq('is_active',true).order('department').order('name')
+  .then(function(r){
+    if(r.error){if(tbody)tbody.innerHTML='<tr><td colspan="9" style="color:var(--red);padding:16px">'+r.error.message+'</td></tr>';return;}
+    window._grantMgmtData=(r.data||[]).map(function(emp){
+      var g=calcGrantDays(emp.hire_date);
+      var cur=emp.paid_leave_remaining||0;
+      var carry=Math.min(cur,maxCarry);
+      var months=emp.hire_date?Math.floor((new Date()-new Date(emp.hire_date))/(86400000*30.5)):0;
+      return {id:emp.id,name:emp.name,dept:emp.department||'—',hire:emp.hire_date||'—',months:months,
+              grantDays:g,carry:carry,newRemain:g+carry,curAnnual:emp.annual_leave_days||0,curRemain:cur};
+    });
+    if(tbody){
+      if(!window._grantMgmtData.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">データなし</td></tr>';return;}
+      tbody.innerHTML=window._grantMgmtData.map(function(e){
+        var changed=e.grantDays!==e.curAnnual||e.newRemain!==e.curRemain;
+        return '<tr style="'+(changed?'background:#fffbeb':'')+'">'
+          +'<td><strong>'+e.name+'</strong></td><td>'+e.dept+'</td>'
+          +'<td style="font-size:11px">'+e.hire+'</td>'
+          +'<td style="text-align:center">'+e.months+'ヶ月</td>'
+          +'<td style="text-align:center;font-weight:700;color:var(--blue)">'+e.grantDays+'日</td>'
+          +'<td style="text-align:center">'+e.carry+'日</td>'
+          +'<td style="text-align:center;font-weight:700;color:'+(changed?'var(--amber)':'var(--muted)')+'">'+e.newRemain+'日'+(changed?' <span style="font-size:10px">↑変更</span>':'')+'</td>'
+          +'<td style="text-align:center;color:var(--muted);font-size:11px">'+e.curRemain+'日</td>'
+          +'<td><button class="btn btn-sm btn-outline" onclick="grantToOne(&quot;'+e.id+'&quot;)">個別付与</button></td></tr>';
+      }).join('');
+    }
+  }).catch(function(e){if(tbody)tbody.innerHTML='<tr><td colspan="9" style="color:var(--muted);padding:16px">読み込みエラー</td></tr>';console.error(e);});
+};
+window.grantToOne = function(empId){
+  var emp=(window._grantMgmtData||[]).find(function(e){return e.id===empId;});
+  if(!emp) return;
+  if(!confirm(emp.name+' に '+emp.grantDays+'日（繰越'+emp.carry+'日込み計'+emp.newRemain+'日）を付与しますか？')) return;
+  sb.from('employees').update({annual_leave_days:emp.grantDays,paid_leave_remaining:emp.newRemain,carry_over_days:emp.carry}).eq('id',empId)
+  .then(function(r){
+    if(r.error){showToast('付与失敗: '+r.error.message,'red');return;}
+    showToast('✅ '+emp.name+' に付与しました（'+emp.newRemain+'日）','green'); loadGrantMgmt();
+  });
+};
+window.autoGrantLeave = function(){
+  var data=window._grantMgmtData; if(!data||!data.length){showToast('先に再計算を押してください','amber');return;}
+  var toUpdate=data.filter(function(e){return e.grantDays>0;});
+  if(!confirm('全'+toUpdate.length+'名に有給を付与します。よろしいですか？')) return;
+  Promise.all(toUpdate.map(function(e){
+    return sb.from('employees').update({annual_leave_days:e.grantDays,paid_leave_remaining:e.newRemain,carry_over_days:e.carry}).eq('id',e.id);
+  })).then(function(){showToast('✅ '+toUpdate.length+'名に一括付与しました','green');loadGrantMgmt();})
+  .catch(function(){showToast('一部エラーが発生しました','red');});
 };
 
 window.exportKanriBoCSV = function(){
