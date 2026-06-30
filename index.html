@@ -3027,7 +3027,7 @@ function _sv(id, val){ var el=document.getElementById(id); if(el) el.value=val!=
 function _sc(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; }
 window.openShiftPatternModal = function(id){
   var pats=getShiftPatterns(); var p=id?pats.find(function(x){return x.id===id;}):null;
-  var tEl=document.getElementById('spmTitle'); if(tEl) tEl.innerHTML=(p?'パターン編集 — '+p.name:'新規パターン登録')+'<span class="modal-close" onclick="closeModal('shiftPatternModal')">×</span>';
+  var tEl=document.getElementById('spmTitle'); if(tEl) tEl.innerHTML=(p?'パターン編集 — '+p.name:'新規パターン登録')+'<span class="modal-close" onclick="closeModal(\x27shiftPatternModal\x27)">×</span>';
   _sv('spmId', p?p.id:''); _sv('spmCode', p?p.code||'':''); _sv('spmName', p?p.name:'');
   _sv('spmType', p?p.type:'normal'); _sv('spmDesc', p?p.desc||'':'');
   _sv('spmColor', p?p.color:'#3b82f6'); _sv('spmStatus', p?String(p.status!==undefined?p.status:1):'1');
@@ -3166,9 +3166,7 @@ window.exportPatternCSV = function(){
     var totalBreak=Array.isArray(p.breaks)?p.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(p.break||0);
     return [p.code||'',p.name,(_TYPE_LABEL[p.type]||p.type),p.start||'',p.end||'',totalBreak,wh,p.lateChk?'有':'無',p.earlyChk?'有':'無',p.status?'有効':'無効',p.expiry||'',p.desc||''].join(',');
   });
-  var csv=header+'
-'+rows.join('
-');
+  var csv=header+'\n'+rows.join('\n');
   var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shift_patterns.csv'; a.click();
 };
