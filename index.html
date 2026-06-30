@@ -3278,61 +3278,83 @@ window.loadShiftDaily = async function(){
   // Count per hour
   var hourCount=new Array(24).fill(0);
 
-  // Render body
-  var pats=getShiftPatterns();
-  var patOpts=pats.map(function(p){return '<option value="'+p.id+'" style="background:'+p.color+'">'+p.name+'</option>';}).join('');
-  var rows=emps.map(function(emp){
-    var cell=getShiftCell(emp.id, dateStr);
-    var pat=cell?pats.find(function(p){return p.id===cell.pattern_id;}):null;
-    var st=cell&&cell.custom_start?cell.custom_start:(pat?pat.start:null);
-    var en=cell&&cell.custom_end?cell.custom_end:(pat?pat.end:null);
-    var brk=pat?pat.break:60;
-    var color=pat?pat.color:'#cbd5e1';
+   // Render body
+   var pats=getShiftPatterns();
+   var rows=emps.map(function(emp){
+     var cell=getShiftCell(emp.id, dateStr);
+     var pat=cell&&cell.pattern_id?pats.find(function(p){return p.id===cell.pattern_id;}):null;
+     var st=cell&&cell.custom_start?cell.custom_start:(pat?pat.start:null);
+     var en=cell&&cell.custom_end?cell.custom_end:(pat?pat.end:null);
+     var brkMins=0;
+     if(pat){ brkMins=Array.isArray(pat.breaks)?pat.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(pat.break||0); }
+     var color=pat?pat.color:'#94a3b8';
+     var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
 
-    // Gantt bars
-    var ganttCells=HOURS.map(function(h){
-      var active=false;
-      if(st&&en&&pat&&pat.type!=='off'){
-        var sh=parseInt(st.split(':')[0]),sm=parseInt(st.split(':')[1]);
-        var eh=parseInt(en.split(':')[0]),em2=parseInt(en.split(':')[1]);
-        var startM=sh*60+sm, endM=eh*60+em2;
-        if(endM<startM) endM+=1440; // overnight
-        var hStart=h*60, hEnd=(h+1)*60;
-        if(startM<hEnd && endM>hStart) active=true;
-      }
-      if(active) hourCount[h]++;
-      return '<td style="border:1px solid var(--border);padding:0;width:36px;height:28px;background:'+(active?color:'')+'"></td>';
-    }).join('');
+     // Gantt bars
+     var ganttCells=HOURS.map(function(h){
+       var active=false;
+       if(pat&&st&&en&&!isOff){
+         var sh=parseInt(st.split(':')[0]),sm=parseInt(st.split(':')[1]);
+         var eh=parseInt(en.split(':')[0]),em2=parseInt(en.split(':')[1]);
+         var startM=sh*60+sm, endM=eh*60+em2;
+         if(endM<startM) endM+=1440;
+         var hStart=h*60, hEnd=(h+1)*60;
+         if(startM<hEnd && endM>hStart) active=true;
+       }
+       if(active) hourCount[h]++;
+       var bg=active?color:(isOff&&pat?pat.color+'33':'');
+       return '<td style="border:1px solid var(--border);padding:0;width:36px;height:28px;background:'+bg+'"></td>';
+     }).join('');
 
-    var patSel='<select onchange="onDailyPatternChange(this,\''+emp.id+'\',\''+dateStr+'\')" style="font-size:11px;height:24px;padding:0 2px;border:1px solid var(--border);border-radius:4px;background:'+(pat?pat.color:'#f1f5f9')+';color:'+(pat&&pat.color&&pat.color!=='#1e293b'?'#fff':'#000')+'">'
-      +pats.map(function(p){return '<option value="'+p.id+'"'+(cell&&cell.pattern_id===p.id?' selected':'')+'>'+p.name+'</option>';}).join('')
-      +'</select>';
-    return '<tr data-emp="'+emp.id+'" data-date="'+dateStr+'">'
-      +'<td style="border:1px solid var(--border);padding:4px 8px;position:sticky;left:0;background:var(--surface1);white-space:nowrap;font-weight:600">'+emp.name+'</td>'
-      +'<td style="border:1px solid var(--border);padding:2px 4px;text-align:center">'+patSel+'</td>'
-      +'<td style="border:1px solid var(--border);padding:2px 4px"><input type="time" value="'+(st||'')+'" data-field="start" style="width:52px;font-size:11px;border:none;background:transparent" onchange="onDailyTimeChange(this,\''+emp.id+'\',\''+dateStr+'\',\'start\')"></td>'
-      +'<td style="border:1px solid var(--border);padding:2px 4px"><input type="time" value="'+(en||'')+'" data-field="end" style="width:52px;font-size:11px;border:none;background:transparent" onchange="onDailyTimeChange(this,\''+emp.id+'\',\''+dateStr+'\',\'end\')"></td>'
-      +'<td style="border:1px solid var(--border);padding:2px 4px;text-align:center;font-size:11px">'+brk+'分</td>'
-      +ganttCells
-      +'</tr>';
-  }).join('');
-  if(body) body.innerHTML=rows||'<tr><td colspan="30" style="text-align:center;padding:20px;color:var(--muted)">データなし</td></tr>';
+     var selBg=pat?pat.color:'#f1f5f9';
+     var selTxt=pat&&pat.color&&pat.color!=='#1e293b'?'#fff':'#374151';
+     var patSel='<select onchange="onDailyPatternChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27)" style="font-size:11px;height:26px;padding:0 4px;border:1px solid var(--border);border-radius:4px;background:'+selBg+';color:'+selTxt+';max-width:100px">'
+       +'<option value="">-- 未設定 --</option>'
+       +pats.map(function(p){return '<option value="'+p.id+'"'+(cell&&cell.pattern_id===p.id?' selected':'')+'>'+p.name+'</option>';}).join('')
+       +'</select>';
 
-  if(foot) foot.innerHTML='<tr style="background:var(--surface2);font-size:11px">'
-    +'<td style="border:1px solid var(--border);padding:4px 8px;position:sticky;left:0;background:var(--surface2);font-weight:700" colspan="5">予定合計人数</td>'
-    +hourCount.map(function(n){return '<td style="border:1px solid var(--border);text-align:center;font-weight:700;color:'+(n>0?'var(--blue)':'var(--muted)')+'">'+n+'</td>';}).join('')
-    +'</tr>';
+     var td='border:1px solid var(--border);padding:3px 5px;';
+     var tdS=td+'position:sticky;left:0;background:var(--surface1);white-space:nowrap;';
+     var tInp='width:62px;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 3px;background:var(--surface1);color:var(--text)';
+     var brkCell=pat?(isOff?'<span style="background:'+color+'33;color:'+color+';border-radius:3px;padding:1px 5px;font-size:10px">'+pat.name+'</span>':brkMins+'分'):'<span style="color:var(--muted);font-size:12px">—</span>';
+
+     return '<tr data-emp="'+emp.id+'" data-date="'+dateStr+'">'
+       +'<td style="'+tdS+'"><span style="font-size:10px;color:var(--muted);margin-right:4px">'+(emp.department||'')+'</span><strong>'+emp.name+'</strong></td>'
+       +'<td style="'+td+'text-align:center">'+patSel+'</td>'
+       +'<td style="'+td+'text-align:center"><input type="time" value="'+(st||'')+'" data-field="start" style="'+tInp+'" onchange="onDailyTimeChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27,\x27start\x27)"></td>'
+       +'<td style="'+td+'text-align:center"><input type="time" value="'+(en||'')+'" data-field="end" style="'+tInp+'" onchange="onDailyTimeChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27,\x27end\x27)"></td>'
+       +'<td style="'+td+'text-align:center;font-size:11px">'+brkCell+'</td>'
+       +ganttCells
+       +'</tr>';
+   }).join('');
+   if(body) body.innerHTML=rows||'<tr><td colspan="30" style="text-align:center;padding:20px;color:var(--muted)">データなし</td></tr>';
+
+   if(foot) foot.innerHTML='<tr style="background:var(--surface2);font-size:11px">'
+     +'<td style="border:1px solid var(--border);padding:4px 8px;position:sticky;left:0;background:var(--surface2);font-weight:700;font-size:11px" colspan="5">予定合計人数</td>'
+     +hourCount.map(function(n){return '<td style="border:1px solid var(--border);text-align:center;font-weight:700;color:'+(n>0?'var(--blue)':'var(--muted)')+'">'+n+'</td>';}).join('')
+     +'</tr>';
+
 };
 
 window.onDailyPatternChange = function(sel, empId, date){
-  var pat=getPatternById(sel.value);
+  var pat=sel.value?getPatternById(sel.value):null;
   var row=sel.closest('tr');
   var stIn=row.querySelector('[data-field="start"]');
   var enIn=row.querySelector('[data-field="end"]');
   sel.style.background=pat?pat.color:'#f1f5f9';
-  if(pat){ if(stIn&&pat.start) stIn.value=pat.start; if(enIn&&pat.end) enIn.value=pat.end; }
+  sel.style.color=pat&&pat.color&&pat.color!=='#1e293b'?'#fff':'#374151';
+  var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
+  if(stIn) stIn.value=(pat&&!isOff&&pat.start)?pat.start:'';
+  if(enIn) enIn.value=(pat&&!isOff&&pat.end)?pat.end:'';
+  // update break cell
+  var brkCell=row.cells[4];
+  if(brkCell){
+    if(!pat) brkCell.innerHTML='<span style="color:var(--muted);font-size:12px">—</span>';
+    else if(isOff) brkCell.innerHTML='<span style="background:'+pat.color+'33;color:'+pat.color+';border-radius:3px;padding:1px 5px;font-size:10px">'+pat.name+'</span>';
+    else{ var bm=Array.isArray(pat.breaks)?pat.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(pat.break||0); brkCell.textContent=bm+'分'; }
+  }
   var cur=getShiftCell(empId,date)||{};
-  setShiftCell(empId,date,Object.assign(cur,{pattern_id:sel.value,custom_start:pat?pat.start:null,custom_end:pat?pat.end:null}));
+  setShiftCell(empId,date,Object.assign(cur,{pattern_id:sel.value||null,custom_start:pat&&!isOff?pat.start:null,custom_end:pat&&!isOff?pat.end:null}));
 };
 window.onDailyTimeChange = function(inp, empId, date, field){
   var cur=getShiftCell(empId,date)||{};
