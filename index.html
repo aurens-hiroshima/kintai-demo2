@@ -2608,6 +2608,7 @@ window.showToast = function(msg,type){
     <div class="tab active" onclick="switchTab(this,'tab-shift-daily');loadShiftDaily()">📅 シフト表</div>
     <div class="tab" onclick="switchTab(this,'tab-shift-monthly');loadShiftMonthly()">📆 スケジュール登録</div>
     <div class="tab" onclick="switchTab(this,'tab-shift-auto');renderShiftAuto()">🤖 シフト自動作成</div>
+    <div class="tab" onclick="switchTab(this,'tab-shift-pattern');loadPatternSettings()">⚙️ パターン設定</div>
   </div>
 
   <!-- ── シフト表（日次ガント） ── -->
@@ -2695,43 +2696,216 @@ window.showToast = function(msg,type){
       </div>
       <div id="autoShiftPreview" style="overflow-x:auto"></div>
     </div>
-    <div class="card" style="max-width:700px">
-      <div class="card-title">⚙️ シフトパターンマスター</div>
-      <table>
-        <thead><tr><th>パターン名</th><th>開始</th><th>終了</th><th>休憩</th><th>色</th><th>操作</th></tr></thead>
-        <tbody id="shiftPatternTbl"></tbody>
-      </table>
-      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="openShiftPatternModal()">＋ パターン追加</button>
+  </div>
+
+  <!-- ── パターン設定 ── -->
+  <div class="tab-content" id="tab-shift-pattern">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin:0">⚙️ パターン設定</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="form-control" id="patternSearch" placeholder="🔍 パターン名・種別で検索" style="width:200px;height:32px;padding:0 10px;font-size:12px" oninput="filterPatternTable()">
+          <select class="form-control" id="patternTypeFilter" onchange="filterPatternTable()" style="width:130px;height:32px;padding:0 8px;font-size:12px">
+            <option value="">全種別</option>
+            <option value="normal">通常勤務</option>
+            <option value="flex">フレックス</option>
+            <option value="deemed">みなし勤務</option>
+            <option value="all_off">全日休暇</option>
+            <option value="half_am">半日休暇（午前）</option>
+            <option value="half_pm">半日休暇（午後）</option>
+            <option value="hourly_off">時間休暇</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="exportPatternCSV()">📤 CSV出力</button>
+          <button class="btn btn-primary btn-sm" onclick="openShiftPatternModal()">＋ 新規登録</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:40px">コード</th>
+              <th style="min-width:100px">パターン名</th>
+              <th style="min-width:90px">勤務種別</th>
+              <th style="min-width:60px">開始</th>
+              <th style="min-width:60px">終了</th>
+              <th style="min-width:60px">休憩</th>
+              <th style="min-width:60px">勤務時間</th>
+              <th style="min-width:60px">遅刻判定</th>
+              <th style="min-width:60px">早退判定</th>
+              <th style="min-width:40px">状態</th>
+              <th style="min-width:80px">更新日</th>
+              <th style="min-width:100px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="shiftPatternTbl"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- シフトパターンモーダル -->
+<!-- シフトパターンモーダル（拡張版） -->
 <div class="modal-overlay" id="shiftPatternModal">
-  <div class="modal" style="width:420px">
-    <div class="modal-title">シフトパターン設定<span class="modal-close" onclick="closeModal('shiftPatternModal')">×</span></div>
+  <div class="modal" style="width:600px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="spmTitle">パターン設定<span class="modal-close" onclick="closeModal('shiftPatternModal')">×</span></div>
     <input type="hidden" id="spmId">
+
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:4px 0 8px;letter-spacing:.5px">基本情報</div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">パターン名</div><input class="form-control" id="spmName" placeholder="例: A勤"></div>
-      <div class="form-group"><div class="form-label">色</div><input class="form-control" id="spmColor" type="color" value="#3b82f6" style="height:38px;padding:2px 4px"></div>
+      <div class="form-group" style="max-width:110px"><div class="form-label">パターンコード <span style="color:var(--red)">*</span></div><input class="form-control" id="spmCode" placeholder="A001"></div>
+      <div class="form-group"><div class="form-label">パターン名 <span style="color:var(--red)">*</span></div><input class="form-control" id="spmName" placeholder="例: 通常勤務A"></div>
+      <div class="form-group" style="max-width:80px"><div class="form-label">色</div><input class="form-control" id="spmColor" type="color" value="#3b82f6" style="height:38px;padding:2px 4px"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">開始時刻</div><input class="form-control" id="spmStart" type="time" value="09:00"></div>
-      <div class="form-group"><div class="form-label">終了時刻</div><input class="form-control" id="spmEnd" type="time" value="18:00"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">休憩（分）</div><input class="form-control" id="spmBreak" type="number" value="60" min="0"></div>
-      <div class="form-group"><div class="form-label">種別</div>
-        <select class="form-control" id="spmType">
-          <option value="work">勤務</option>
-          <option value="off">休日</option>
-          <option value="remote">在宅</option>
-          <option value="biz">出張</option>
+      <div class="form-group">
+        <div class="form-label">勤務種別 <span style="color:var(--red)">*</span></div>
+        <select class="form-control" id="spmType" onchange="onSpmTypeChange()">
+          <option value="normal">通常勤務</option>
+          <option value="flex">フレックス勤務</option>
+          <option value="deemed">みなし勤務（出張・在宅）</option>
+          <option value="all_off">全日休暇</option>
+          <option value="half_am">半日休暇（午前休）</option>
+          <option value="half_pm">半日休暇（午後休）</option>
+          <option value="hourly_off">時間休暇</option>
         </select>
       </div>
+      <div class="form-group"><div class="form-label">説明・備考</div><input class="form-control" id="spmDesc" placeholder="任意"></div>
     </div>
-    <div class="modal-footer">
+
+    <!-- 勤務時間 -->
+    <div id="spmWorkTimeSection">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 8px;letter-spacing:.5px">勤務時間</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">出勤予定</div><input class="form-control" id="spmStart" type="time" value="09:00" oninput="calcSpmWorkHours()"></div>
+        <div class="form-group"><div class="form-label">退勤予定</div><input class="form-control" id="spmEnd" type="time" value="18:00" oninput="calcSpmWorkHours()"></div>
+        <div class="form-group" style="max-width:110px"><div class="form-label">所定勤務時間</div><div id="spmWorkHours" style="height:38px;line-height:38px;font-size:14px;font-weight:700;color:var(--blue)">8:00</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">深夜開始時刻</div><input class="form-control" id="spmNightStart" type="time" value="22:00"></div>
+        <div class="form-group"><div class="form-label">深夜終了時刻</div><input class="form-control" id="spmNightEnd" type="time" value="05:00"></div>
+        <div class="form-group" style="max-width:110px"></div>
+      </div>
+
+      <!-- フレックス設定 -->
+      <div id="spmFlexSection" style="display:none;background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">フレックス設定</div>
+        <div class="form-row">
+          <div class="form-group"><div class="form-label">コアタイム開始</div><input class="form-control" id="spmCoreStart" type="time" value="10:00"></div>
+          <div class="form-group"><div class="form-label">コアタイム終了</div><input class="form-control" id="spmCoreEnd" type="time" value="15:00"></div>
+          <div class="form-group"><div class="form-label">標準労働時間(h)</div><input class="form-control" id="spmStdHours" type="number" value="8" min="1" max="12" step="0.5"></div>
+        </div>
+      </div>
+
+      <!-- 休憩設定 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 8px;letter-spacing:.5px">休憩設定</div>
+      <div class="form-row" style="margin-bottom:6px">
+        <div class="form-group" style="flex:0 0 auto">
+          <div class="form-label">休憩タイプ</div>
+          <select class="form-control" id="spmBreakType" style="width:140px">
+            <option value="fixed">固定休憩</option>
+            <option value="auto">自動計算</option>
+            <option value="punch">打刻ベース</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0 0 auto;align-self:flex-end">
+          <button class="btn btn-outline btn-sm" onclick="addBreakRow()">＋ 休憩追加</button>
+        </div>
+      </div>
+      <div id="spmBreakRows" style="margin-bottom:8px"></div>
+      <div style="font-size:11px;color:var(--muted)">合計休憩: <span id="spmTotalBreak" style="font-weight:700">—</span></div>
+    </div>
+
+    <!-- 打刻制御 -->
+    <div id="spmPunchSection">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;letter-spacing:.5px">打刻制御</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">出勤打刻（～から）</div><input class="form-control" id="spmPunchIn" type="time" value="08:00" placeholder="07:00"></div>
+        <div class="form-group"><div class="form-label">退勤打刻（～から）</div><input class="form-control" id="spmPunchOut" type="time" value="17:00" placeholder="17:00"></div>
+        <div class="form-group">
+          <div class="form-label">予定外打刻</div>
+          <select class="form-control" id="spmPunchAlert">
+            <option value="warn">警告</option>
+            <option value="error">エラー</option>
+            <option value="notify">管理者通知</option>
+            <option value="none">無効</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 遅刻・早退設定 -->
+    <div id="spmLateSect">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;letter-spacing:.5px">遅刻・早退設定</div>
+      <div class="form-row" style="align-items:center">
+        <div style="display:flex;align-items:center;gap:6px;margin-right:16px">
+          <input type="checkbox" id="spmLateChk" checked style="width:16px;height:16px">
+          <label for="spmLateChk" style="font-size:12px">遅刻判定</label>
+        </div>
+        <div class="form-group" style="max-width:110px"><div class="form-label">判定開始</div><input class="form-control" id="spmLateFrom" type="time" value="09:01"></div>
+        <div class="form-group" style="max-width:100px">
+          <div class="form-label">許容時間</div>
+          <select class="form-control" id="spmLateTol">
+            <option value="0">0分</option>
+            <option value="5" selected>5分</option>
+            <option value="10">10分</option>
+            <option value="15">15分</option>
+            <option value="30">30分</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="align-items:center">
+        <div style="display:flex;align-items:center;gap:6px;margin-right:16px">
+          <input type="checkbox" id="spmEarlyChk" checked style="width:16px;height:16px">
+          <label for="spmEarlyChk" style="font-size:12px">早退判定</label>
+        </div>
+        <div class="form-group" style="max-width:110px"><div class="form-label">判定終了</div><input class="form-control" id="spmEarlyTo" type="time" value="17:59"></div>
+        <div class="form-group" style="max-width:100px">
+          <div class="form-label">丸め</div>
+          <select class="form-control" id="spmRounding">
+            <option value="0">丸めなし</option>
+            <option value="5">5分単位</option>
+            <option value="15">15分単位</option>
+            <option value="30">30分単位</option>
+            <option value="60">1時間単位</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 残業設定 -->
+    <div id="spmOtSect">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;letter-spacing:.5px">残業設定</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">法定時間(h/日)</div><input class="form-control" id="spmLegalHours" type="number" value="8" min="0" max="24" step="0.5"></div>
+        <div class="form-group"><div class="form-label">時間外開始(翌日以降)</div><input class="form-control" id="spmOtStart" type="time" value="18:00"></div>
+        <div class="form-group">
+          <div class="form-label">休日勤務扱い</div>
+          <select class="form-control" id="spmHolidayWork">
+            <option value="none">なし</option>
+            <option value="legal">法定休日</option>
+            <option value="non_legal">法定外休日</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 有効期限・状態 -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 8px;letter-spacing:.5px">その他</div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">状態</div>
+        <select class="form-control" id="spmStatus">
+          <option value="1">有効</option>
+          <option value="0">無効</option>
+        </select>
+      </div>
+      <div class="form-group"><div class="form-label">有効期限（任意）</div><input class="form-control" id="spmExpiry" type="date"></div>
+      <div class="form-group"></div>
+    </div>
+
+    <div class="modal-footer" style="margin-top:16px">
       <button class="btn btn-red btn-sm" id="spmDeleteBtn" onclick="deleteShiftPattern()" style="margin-right:auto;display:none">削除</button>
+      <button class="btn btn-outline btn-sm" id="spmCopyBtn" onclick="copyShiftPattern()" style="display:none">📋 コピー</button>
       <button class="btn btn-outline" onclick="closeModal('shiftPatternModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveShiftPattern()">💾 保存</button>
     </div>
@@ -2765,14 +2939,17 @@ window.showToast = function(msg,type){
 
 // ── シフトパターンマスター ──
 var _defaultShiftPatterns = [
-  {id:'sp_tsujou', name:'通常', start:'09:00', end:'18:00', break:60, color:'#3b82f6', type:'work'},
-  {id:'sp_a',      name:'A勤', start:'08:00', end:'17:00', break:60, color:'#06b6d4', type:'work'},
-  {id:'sp_hayaban',name:'早番', start:'07:00', end:'16:00', break:60, color:'#8b5cf6', type:'work'},
-  {id:'sp_oban',   name:'遅番', start:'12:00', end:'21:00', break:60, color:'#f59e0b', type:'work'},
-  {id:'sp_yakin',  name:'夜勤', start:'22:00', end:'07:00', break:60, color:'#1e293b', type:'work'},
-  {id:'sp_koukyu', name:'公休', start:null,    end:null,    break:0,  color:'#ef4444', type:'off'},
-  {id:'sp_zaitaku',name:'在宅', start:'09:00', end:'18:00', break:60, color:'#10b981', type:'remote'},
-  {id:'sp_shucchou',name:'出張',start:'09:00', end:'18:00', break:60, color:'#f59e0b', type:'biz'},
+  {id:'sp_tsujou', code:'N001', name:'通常勤務',  type:'normal',  start:'09:00', end:'18:00', breaks:[{start:'12:00',end:'13:00'}], breakType:'fixed', color:'#3b82f6', nightStart:'22:00', nightEnd:'05:00', lateChk:true, lateFrom:'09:01', lateTol:5, earlyChk:true, earlyTo:'17:59', rounding:0, punchIn:'08:00', punchOut:'17:00', punchAlert:'warn', legalHours:8, otStart:'18:00', holidayWork:'none', status:1, desc:'', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_a',      code:'A001', name:'A勤',       type:'normal',  start:'08:00', end:'17:00', breaks:[{start:'12:00',end:'13:00'}], breakType:'fixed', color:'#06b6d4', nightStart:'22:00', nightEnd:'05:00', lateChk:true, lateFrom:'08:01', lateTol:5, earlyChk:true, earlyTo:'16:59', rounding:0, punchIn:'07:00', punchOut:'16:00', punchAlert:'warn', legalHours:8, otStart:'17:00', holidayWork:'none', status:1, desc:'', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_hayaban',code:'E001', name:'早番',       type:'normal',  start:'07:00', end:'16:00', breaks:[{start:'12:00',end:'13:00'}], breakType:'fixed', color:'#8b5cf6', nightStart:'22:00', nightEnd:'05:00', lateChk:true, lateFrom:'07:01', lateTol:5, earlyChk:true, earlyTo:'15:59', rounding:0, punchIn:'06:00', punchOut:'15:00', punchAlert:'warn', legalHours:8, otStart:'16:00', holidayWork:'none', status:1, desc:'', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_oban',   code:'L001', name:'遅番',       type:'normal',  start:'12:00', end:'21:00', breaks:[{start:'16:00',end:'17:00'}], breakType:'fixed', color:'#f59e0b', nightStart:'22:00', nightEnd:'05:00', lateChk:true, lateFrom:'12:01', lateTol:5, earlyChk:true, earlyTo:'20:59', rounding:0, punchIn:'11:00', punchOut:'20:00', punchAlert:'warn', legalHours:8, otStart:'21:00', holidayWork:'none', status:1, desc:'', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_yakin',  code:'N001', name:'夜勤',       type:'normal',  start:'22:00', end:'07:00', breaks:[{start:'03:00',end:'04:00'}], breakType:'fixed', color:'#1e293b', nightStart:'22:00', nightEnd:'05:00', lateChk:true, lateFrom:'22:01', lateTol:5, earlyChk:true, earlyTo:'06:59', rounding:0, punchIn:'21:00', punchOut:'06:00', punchAlert:'warn', legalHours:8, otStart:'07:00', holidayWork:'none', status:1, desc:'', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_flex',   code:'F001', name:'フレックス', type:'flex',    start:'07:00', end:'22:00', breaks:[{start:'12:00',end:'13:00'}], breakType:'auto',  color:'#06b6d4', nightStart:'22:00', nightEnd:'05:00', lateChk:false, lateFrom:'', lateTol:0, earlyChk:false, earlyTo:'', rounding:0, punchIn:'07:00', punchOut:'12:00', punchAlert:'none', legalHours:8, otStart:'18:00', holidayWork:'none', coreStart:'10:00', coreEnd:'15:00', stdHours:8, status:1, desc:'コアタイム10-15時', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_deemed', code:'D001', name:'みなし勤務', type:'deemed',  start:'09:00', end:'18:00', breaks:[{start:'12:00',end:'13:00'}], breakType:'fixed', color:'#10b981', nightStart:'22:00', nightEnd:'05:00', lateChk:false, lateFrom:'', lateTol:0, earlyChk:false, earlyTo:'', rounding:0, punchIn:'', punchOut:'', punchAlert:'none', legalHours:8, otStart:'18:00', holidayWork:'none', status:1, desc:'出張・在宅テレワーク', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_koukyu', code:'O001', name:'公休',       type:'all_off', start:null,    end:null,    breaks:[], breakType:'fixed', color:'#ef4444', nightStart:'', nightEnd:'', lateChk:false, lateFrom:'', lateTol:0, earlyChk:false, earlyTo:'', rounding:0, punchIn:'', punchOut:'', punchAlert:'none', legalHours:0, otStart:'', holidayWork:'legal', status:1, desc:'法定休日', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_yuukyu', code:'P001', name:'有給休暇',   type:'all_off', start:null,    end:null,    breaks:[], breakType:'fixed', color:'#f59e0b', nightStart:'', nightEnd:'', lateChk:false, lateFrom:'', lateTol:0, earlyChk:false, earlyTo:'', rounding:0, punchIn:'', punchOut:'', punchAlert:'none', legalHours:0, otStart:'', holidayWork:'none', status:1, desc:'年次有給休暇', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_half_am',code:'H001', name:'午前休',     type:'half_am', start:'13:00', end:'18:00', breaks:[], breakType:'fixed', color:'#a78bfa', nightStart:'', nightEnd:'', lateChk:false, lateFrom:'', lateTol:0, earlyChk:true, earlyTo:'17:59', rounding:0, punchIn:'12:00', punchOut:'17:00', punchAlert:'warn', legalHours:4, otStart:'18:00', holidayWork:'none', status:1, desc:'午前半日休暇', expiry:'', updatedAt:'2024-01-01'},
+  {id:'sp_half_pm',code:'H002', name:'午後休',     type:'half_pm', start:'09:00', end:'13:00', breaks:[], breakType:'fixed', color:'#fb923c', nightStart:'', nightEnd:'', lateChk:true, lateFrom:'09:01', lateTol:5, earlyChk:false, earlyTo:'', rounding:0, punchIn:'08:00', punchOut:'12:00', punchAlert:'warn', legalHours:4, otStart:'13:00', holidayWork:'none', status:1, desc:'午後半日休暇', expiry:'', updatedAt:'2024-01-01'},
 ];
 function getShiftPatterns(){
   try{ var s=localStorage.getItem('shift_patterns'); return s?JSON.parse(s):_defaultShiftPatterns; }catch(e){ return _defaultShiftPatterns; }
@@ -2780,19 +2957,63 @@ function getShiftPatterns(){
 function saveShiftPatternsToStorage(pats){ localStorage.setItem('shift_patterns',JSON.stringify(pats)); }
 function getPatternById(id){ return getShiftPatterns().find(function(p){return p.id===id;})||null; }
 
-function renderShiftPatternTable(){
-  var pats=getShiftPatterns();
-  var tbody=document.getElementById('shiftPatternTbl'); if(!tbody) return;
-  tbody.innerHTML=pats.map(function(p){
-    var timeStr=p.start?p.start+' ~ '+p.end:'—';
-    return '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+p.color+';margin-right:6px"></span><strong>'+p.name+'</strong></td>'
-      +'<td style="text-align:center;font-size:11px">'+p.start+'</td>'
-      +'<td style="text-align:center;font-size:11px">'+p.end+'</td>'
-      +'<td style="text-align:center">'+p.break+'分</td>'
-      +'<td><span style="display:inline-block;width:20px;height:14px;border-radius:3px;background:'+p.color+'"></span></td>'
-      +'<td><button class="btn btn-sm btn-outline" onclick="openShiftPatternModal(\''+p.id+'\')">編集</button></td></tr>';
-  }).join('');
+var _TYPE_LABEL = {normal:'通常勤務',flex:'フレックス',deemed:'みなし勤務',all_off:'全日休暇',half_am:'半日(午前)',half_pm:'半日(午後)',hourly_off:'時間休暇',work:'勤務',off:'休日',remote:'在宅',biz:'出張'};
+function calcWorkHours(p){
+  if(!p.start||!p.end) return '0:00';
+  var sh=parseInt(p.start.split(':')[0]),sm=parseInt(p.start.split(':')[1]);
+  var eh=parseInt(p.end.split(':')[0]),em2=parseInt(p.end.split(':')[1]);
+  var total=(eh*60+em2)-(sh*60+sm); if(total<0) total+=1440;
+  var breaks=Array.isArray(p.breaks)?p.breaks.reduce(function(s,b){
+    if(!b.start||!b.end) return s;
+    return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));
+  },0):(p.break||0);
+  var work=total-breaks; if(work<0) work=0;
+  return Math.floor(work/60)+':'+(work%60).toString().padStart(2,'0');
 }
+function _filterPats(){
+  var pats=getShiftPatterns();
+  var kw=(document.getElementById('patternSearch')||{value:''}).value.toLowerCase();
+  var tf=(document.getElementById('patternTypeFilter')||{value:''}).value;
+  if(kw) pats=pats.filter(function(p){return p.name.toLowerCase().includes(kw)||(p.code||'').toLowerCase().includes(kw);});
+  if(tf) pats=pats.filter(function(p){return p.type===tf;});
+  return pats;
+}
+window.filterPatternTable = function(){ renderShiftPatternTable(); };
+window.loadPatternSettings = function(){ renderShiftPatternTable(); };
+function renderShiftPatternTable(){
+  var pats=_filterPats();
+  var tbody=document.getElementById('shiftPatternTbl'); if(!tbody) return;
+  var today=new Date().toISOString().slice(0,10);
+  tbody.innerHTML=pats.map(function(p){
+    var wh=calcWorkHours(p);
+    var expired=p.expiry&&p.expiry<today;
+    var statusBadge=(!p.status&&p.status!==undefined||expired)
+      ?'<span style="background:#fee2e2;color:var(--red);border-radius:4px;padding:1px 6px;font-size:10px">'+(expired?'期限切':'無効')+'</span>'
+      :'<span style="background:#dcfce7;color:var(--green);border-radius:4px;padding:1px 6px;font-size:10px">有効</span>';
+    var totalBreak=Array.isArray(p.breaks)?p.breaks.reduce(function(s,b){
+      if(!b.start||!b.end)return s;
+      return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));
+    },0):(p.break||0);
+    var id=p.id;
+    return '<tr>'
+      +'<td style="font-size:11px;color:var(--muted)">'+(p.code||'—')+'</td>'
+      +'<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+p.color+';margin-right:5px"></span><strong>'+p.name+'</strong>'+(p.desc?'<br><span style="font-size:10px;color:var(--muted)">'+p.desc+'</span>':'')+'</td>'
+      +'<td style="font-size:11px">'+(_TYPE_LABEL[p.type]||p.type)+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+(p.start||'—')+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+(p.end||'—')+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+totalBreak+'分</td>'
+      +'<td style="text-align:center;font-weight:700;color:var(--blue)">'+wh+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+(p.lateChk?'<span style="color:var(--amber)">⚠️</span>':'—')+'</td>'
+      +'<td style="text-align:center;font-size:11px">'+(p.earlyChk?'<span style="color:var(--amber)">⚠️</span>':'—')+'</td>'
+      +'<td>'+statusBadge+'</td>'
+      +'<td style="font-size:10px;color:var(--muted)">'+(p.updatedAt||'—')+'</td>'
+      +'<td style="white-space:nowrap">'
+        +'<button class="btn btn-sm btn-outline" onclick="openShiftPatternModal('+JSON.stringify(id)+')">編集</button> '
+        +'<button class="btn btn-sm btn-outline" onclick="copyShiftPatternDirect('+JSON.stringify(id)+')">複製</button>'
+      +'</td></tr>';
+  }).join('')||'<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--muted)">パターンなし</td></tr>';
+}
+
 function populatePatternSelects(){
   var pats=getShiftPatterns();
   ['autoShiftSat','autoShiftSun'].forEach(function(sid){
@@ -2802,32 +3023,154 @@ function populatePatternSelects(){
   var scm=document.getElementById('scmPattern'); if(!scm) return;
   scm.innerHTML=pats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
 }
+function _sv(id, val){ var el=document.getElementById(id); if(el) el.value=val!==undefined&&val!==null?val:''; }
+function _sc(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; }
 window.openShiftPatternModal = function(id){
   var pats=getShiftPatterns(); var p=id?pats.find(function(x){return x.id===id;}):null;
-  document.getElementById('spmId').value=p?p.id:'';
-  document.getElementById('spmName').value=p?p.name:'';
-  document.getElementById('spmColor').value=p?p.color:'#3b82f6';
-  document.getElementById('spmStart').value=p&&p.start?p.start:'09:00';
-  document.getElementById('spmEnd').value=p&&p.end?p.end:'18:00';
-  document.getElementById('spmBreak').value=p?p.break:60;
-  document.getElementById('spmType').value=p?p.type:'work';
+  var tEl=document.getElementById('spmTitle'); if(tEl) tEl.innerHTML=(p?'パターン編集 — '+p.name:'新規パターン登録')+'<span class="modal-close" onclick="closeModal('shiftPatternModal')">×</span>';
+  _sv('spmId', p?p.id:''); _sv('spmCode', p?p.code||'':''); _sv('spmName', p?p.name:'');
+  _sv('spmType', p?p.type:'normal'); _sv('spmDesc', p?p.desc||'':'');
+  _sv('spmColor', p?p.color:'#3b82f6'); _sv('spmStatus', p?String(p.status!==undefined?p.status:1):'1');
+  _sv('spmExpiry', p?p.expiry||'':'');
+  _sv('spmStart', p&&p.start?p.start:'09:00'); _sv('spmEnd', p&&p.end?p.end:'18:00');
+  _sv('spmNightStart', p&&p.nightStart?p.nightStart:'22:00'); _sv('spmNightEnd', p&&p.nightEnd?p.nightEnd:'05:00');
+  _sv('spmBreakType', p?p.breakType||'fixed':'fixed');
+  _sv('spmPunchIn', p?p.punchIn||'':''); _sv('spmPunchOut', p?p.punchOut||'':'');
+  _sv('spmPunchAlert', p?p.punchAlert||'warn':'warn');
+  _sc('spmLateChk', p?p.lateChk!==false:true); _sv('spmLateFrom', p?p.lateFrom||'09:01':'09:01');
+  _sv('spmLateTol', p?String(p.lateTol||5):'5');
+  _sc('spmEarlyChk', p?p.earlyChk!==false:true); _sv('spmEarlyTo', p?p.earlyTo||'17:59':'17:59');
+  _sv('spmRounding', p?String(p.rounding||0):'0');
+  _sv('spmLegalHours', p?String(p.legalHours!==undefined?p.legalHours:8):'8');
+  _sv('spmOtStart', p?p.otStart||'18:00':'18:00'); _sv('spmHolidayWork', p?p.holidayWork||'none':'none');
+  _sv('spmCoreStart', p?p.coreStart||'10:00':'10:00'); _sv('spmCoreEnd', p?p.coreEnd||'15:00':'15:00');
+  _sv('spmStdHours', p?String(p.stdHours||8):'8');
+  // 休憩行
+  var breaks=p&&Array.isArray(p.breaks)?p.breaks:[{start:'12:00',end:'13:00'}];
+  var br=document.getElementById('spmBreakRows'); if(br){ br.innerHTML=''; breaks.forEach(function(b){_addBreakRowWith(b.start,b.end);}); }
+  calcSpmWorkHours();
+  onSpmTypeChange();
   var del=document.getElementById('spmDeleteBtn'); if(del) del.style.display=p?'':'none';
+  var copy=document.getElementById('spmCopyBtn'); if(copy) copy.style.display=p?'':'none';
   openModal('shiftPatternModal');
 };
+window.onSpmTypeChange = function(){
+  var t=document.getElementById('spmType').value;
+  var isOff=t==='all_off'||t==='hourly_off';
+  var isHalf=t==='half_am'||t==='half_pm';
+  var isFlex=t==='flex';
+  var workSect=document.getElementById('spmWorkTimeSection');
+  var flexSect=document.getElementById('spmFlexSection');
+  var lateSect=document.getElementById('spmLateSect');
+  var otSect=document.getElementById('spmOtSect');
+  if(workSect) workSect.style.display=(isOff)?'none':'';
+  if(flexSect) flexSect.style.display=isFlex?'':'none';
+  if(lateSect) lateSect.style.display=isOff?'none':'';
+  if(otSect) otSect.style.display=isOff?'none':'';
+};
+window.calcSpmWorkHours = function(){
+  var st=document.getElementById('spmStart').value;
+  var en=document.getElementById('spmEnd').value;
+  if(!st||!en){var el=document.getElementById('spmWorkHours');if(el)el.textContent='—';return;}
+  var sh=parseInt(st.split(':')[0]),sm=parseInt(st.split(':')[1]);
+  var eh=parseInt(en.split(':')[0]),em2=parseInt(en.split(':')[1]);
+  var total=(eh*60+em2)-(sh*60+sm); if(total<0) total+=1440;
+  var breakMins=0;
+  document.querySelectorAll('#spmBreakRows .break-row').forEach(function(row){
+    var bs=row.querySelector('.br-start').value; var be=row.querySelector('.br-end').value;
+    if(bs&&be){var bsh=parseInt(bs.split(':')[0])*60+parseInt(bs.split(':')[1]),beh=parseInt(be.split(':')[0])*60+parseInt(be.split(':')[1]);breakMins+=beh-bsh;}
+  });
+  var work=total-breakMins; if(work<0) work=0;
+  var wh=document.getElementById('spmWorkHours'); if(wh) wh.textContent=Math.floor(work/60)+':'+(work%60).toString().padStart(2,'0');
+  var tb=document.getElementById('spmTotalBreak'); if(tb) tb.textContent=breakMins+'分';
+};
+function _addBreakRowWith(st, en){
+  var br=document.getElementById('spmBreakRows'); if(!br) return;
+  var div=document.createElement('div');
+  div.className='break-row'; div.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  div.innerHTML='<input type="time" class="form-control br-start" value="'+(st||'12:00')+'" oninput="calcSpmWorkHours()" style="width:100px">'
+    +'<span style="color:var(--muted)">～</span>'
+    +'<input type="time" class="form-control br-end" value="'+(en||'13:00')+'" oninput="calcSpmWorkHours()" style="width:100px">'
+    +'<button class="btn btn-sm btn-red" onclick="this.parentElement.remove();calcSpmWorkHours()">×</button>';
+  br.appendChild(div);
+}
+window.addBreakRow = function(){ _addBreakRowWith('',''); calcSpmWorkHours(); };
+function _gv(id){ var el=document.getElementById(id); return el?el.value:''; }
+function _gc(id){ var el=document.getElementById(id); return el?el.checked:false; }
 window.saveShiftPattern = function(){
-  var id=document.getElementById('spmId').value;
+  var id=_gv('spmId'); var name=_gv('spmName').trim(); var code=_gv('spmCode').trim();
+  if(!name){showToast('パターン名を入力してください','red');return;}
+  if(!code){showToast('パターンコードを入力してください','red');return;}
+  var type=_gv('spmType');
+  var isOff=type==='all_off'||type==='hourly_off';
+  var breaks=[];
+  document.querySelectorAll('#spmBreakRows .break-row').forEach(function(row){
+    var bs=row.querySelector('.br-start').value; var be=row.querySelector('.br-end').value;
+    if(bs&&be){
+      if(bs>=be){showToast('休憩の開始は終了より前にしてください','red');return;}
+      breaks.push({start:bs,end:be});
+    }
+  });
+  var st=isOff?null:_gv('spmStart'); var en=isOff?null:_gv('spmEnd');
+  if(!isOff&&st&&en&&st>=en&&type!=='normal'){showToast('出勤予定は退勤予定より前にしてください（翌日またぎは除く）','amber');}
+  var totalBreak=breaks.reduce(function(s,b){return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0);
+  var entry={
+    id:id||('sp_'+Date.now()), code:code, name:name, type:type, desc:_gv('spmDesc'),
+    color:_gv('spmColor'), status:parseInt(_gv('spmStatus')), expiry:_gv('spmExpiry'),
+    start:st, end:en, breaks:breaks, breakType:_gv('spmBreakType'), break:totalBreak,
+    nightStart:_gv('spmNightStart'), nightEnd:_gv('spmNightEnd'),
+    punchIn:_gv('spmPunchIn'), punchOut:_gv('spmPunchOut'), punchAlert:_gv('spmPunchAlert'),
+    lateChk:_gc('spmLateChk'), lateFrom:_gv('spmLateFrom'), lateTol:parseInt(_gv('spmLateTol'))||0,
+    earlyChk:_gc('spmEarlyChk'), earlyTo:_gv('spmEarlyTo'), rounding:parseInt(_gv('spmRounding'))||0,
+    legalHours:parseFloat(_gv('spmLegalHours'))||8, otStart:_gv('spmOtStart'), holidayWork:_gv('spmHolidayWork'),
+    coreStart:_gv('spmCoreStart'), coreEnd:_gv('spmCoreEnd'), stdHours:parseFloat(_gv('spmStdHours'))||8,
+    updatedAt:new Date().toISOString().slice(0,10)
+  };
   var pats=getShiftPatterns();
-  var entry={id:id||('sp_'+Date.now()),name:document.getElementById('spmName').value.trim(),
-    color:document.getElementById('spmColor').value,start:document.getElementById('spmStart').value,
-    end:document.getElementById('spmEnd').value,break:parseInt(document.getElementById('spmBreak').value)||0,
-    type:document.getElementById('spmType').value};
-  if(!entry.name){showToast('パターン名を入力してください','red');return;}
-  if(entry.type==='off'){entry.start=null;entry.end=null;}
+  // パターン名重複チェック
+  var dup=pats.find(function(p){return p.name===name&&p.id!==id;});
+  if(dup){ if(!confirm('同名のパターン「'+name+'」が既に存在します。続けますか？')) return; }
   var idx=id?pats.findIndex(function(x){return x.id===id;}):-1;
   if(idx>=0) pats[idx]=entry; else pats.push(entry);
   saveShiftPatternsToStorage(pats);
   renderShiftPatternTable(); populatePatternSelects();
   closeModal('shiftPatternModal'); showToast('✅ パターンを保存しました','green');
+};
+window.copyShiftPattern = function(){
+  var id=_gv('spmId'); if(!id) return;
+  var pats=getShiftPatterns(); var p=pats.find(function(x){return x.id===id;});
+  if(!p) return;
+  var copy=JSON.parse(JSON.stringify(p));
+  copy.id='sp_'+Date.now(); copy.name=p.name+'②'; copy.code=p.code+'_cp';
+  copy.updatedAt=new Date().toISOString().slice(0,10);
+  pats.push(copy); saveShiftPatternsToStorage(pats);
+  renderShiftPatternTable(); populatePatternSelects();
+  closeModal('shiftPatternModal'); showToast('📋 複製しました：'+copy.name,'green');
+  setTimeout(function(){ openShiftPatternModal(copy.id); }, 200);
+};
+window.copyShiftPatternDirect = function(id){
+  var pats=getShiftPatterns(); var p=pats.find(function(x){return x.id===id;});
+  if(!p) return;
+  var copy=JSON.parse(JSON.stringify(p));
+  copy.id='sp_'+Date.now(); copy.name=p.name+'②'; copy.code=(p.code||'')+'-cp';
+  copy.updatedAt=new Date().toISOString().slice(0,10);
+  pats.push(copy); saveShiftPatternsToStorage(pats);
+  renderShiftPatternTable(); populatePatternSelects();
+  showToast('📋 複製しました：'+copy.name,'green');
+};
+window.exportPatternCSV = function(){
+  var pats=getShiftPatterns();
+  var header='パターンコード,パターン名,勤務種別,開始,終了,休憩(分),勤務時間,遅刻判定,早退判定,状態,有効期限,説明';
+  var rows=pats.map(function(p){
+    var wh=calcWorkHours(p);
+    var totalBreak=Array.isArray(p.breaks)?p.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(p.break||0);
+    return [p.code||'',p.name,(_TYPE_LABEL[p.type]||p.type),p.start||'',p.end||'',totalBreak,wh,p.lateChk?'有':'無',p.earlyChk?'有':'無',p.status?'有効':'無効',p.expiry||'',p.desc||''].join(',');
+  });
+  var csv=header+'
+'+rows.join('
+');
+  var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='shift_patterns.csv'; a.click();
 };
 window.deleteShiftPattern = function(){
   var id=document.getElementById('spmId').value;
