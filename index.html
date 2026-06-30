@@ -1028,6 +1028,10 @@ let SB_KEY = localStorage.getItem('sb_key') || '';
 // ────────────────────────────────────────────────────────────
 
 let sb, me, myProfile;
+  // expose to global scope for sub-scripts
+  Object.defineProperty(window, "sb", {get:function(){return sb;}, set:function(v){sb=v;}});
+  Object.defineProperty(window, "me", {get:function(){return me;}, set:function(v){me=v;}});
+  Object.defineProperty(window, "myProfile", {get:function(){return myProfile;}, set:function(v){myProfile=v;}});
 let allUsers = [];
 let calYear, calMonth;
 let shifts = {}; // {YYYY-MM-DD:{empId||'all': type}}
