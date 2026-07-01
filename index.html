@@ -3898,8 +3898,8 @@ function renderShiftPatternTable(){
       +'<td>'+statusBadge+'</td>'
       +'<td style="font-size:10px;color:var(--muted)">'+(p.updatedAt||'—')+'</td>'
       +'<td style="white-space:nowrap">'
-        +'<button class="btn btn-sm btn-outline" onclick="openShiftPatternModal('+JSON.stringify(id)+')">編集</button> '
-        +'<button class="btn btn-sm btn-outline" onclick="copyShiftPatternDirect('+JSON.stringify(id)+')">複製</button>'
+        +'<button class="btn btn-sm btn-outline" onclick="openShiftPatternModal(\''+id+'\')">編集</button> '
+        +'<button class="btn btn-sm btn-outline" onclick="copyShiftPatternDirect(\''+id+'\')">複製</button>'
       +'</td></tr>';
   }).join('')||'<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--muted)">パターンなし</td></tr>';
 }
