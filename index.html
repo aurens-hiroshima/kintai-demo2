@@ -891,6 +891,7 @@ tr:hover td{background:#fafafa}
         <div style="display:flex;align-items:center;gap:6px">
           <button class="btn btn-outline btn-sm" onclick="shiftMonthPrev()">&#9664;</button>
           <span id="shiftMonthLbl" style="font-weight:700;font-size:15px;min-width:100px;text-align:center"></span>
+          <input type="hidden" id="shiftMonthYM">
           <button class="btn btn-outline btn-sm" onclick="shiftMonthNext()">&#9654;</button>
           <button class="btn btn-outline btn-sm" onclick="shiftMonthToday()">今月</button>
         </div>
@@ -899,13 +900,8 @@ tr:hover td{background:#fafafa}
         </select>
         <button class="btn btn-primary btn-sm" onclick="saveShiftMonthly()">💾 一括保存</button>
       </div>
-      <div style="overflow-x:auto">
-        <table id="shiftMonthTable" style="min-width:1400px;border-collapse:collapse;font-size:11px">
-          <thead id="shiftMonthHead"></thead>
-          <tbody id="shiftMonthBody">
-            <tr><td colspan="40" style="text-align:center;padding:30px;color:var(--muted)">読み込み中...</td></tr>
-          </tbody>
-        </table>
+      <div id="shiftMonthTbl" style="overflow-x:auto">
+        <div style="text-align:center;padding:30px;color:var(--muted)">読み込み中...</div>
       </div>
     </div>
   </div>
@@ -1999,7 +1995,7 @@ window.submitLeave = function(){
   sb.from('leave_requests').insert({
     user_id:me.id, leave_type:typeLabel,
     start_date:start, end_date:end||start,
-    days_count:daysCount, reason:reason, status:'pending'
+    reason:reason, status:'pending'
   }).then(function(r){
     if(r.error){showToast('申請失敗: '+r.error.message,'red');return;}
     showToast('休暇申請を提出しました（'+daysCount+'日）','green');
@@ -2959,7 +2955,7 @@ window.loadLeaveAdmin = function(){
 
   Promise.all([
     sb.from('employees').select('id,auth_id,name,department,annual_leave_days,paid_leave_remaining,is_active').eq('is_active',true).order('department').order('name'),
-    sb.from('leave_requests').select('user_id,start_date,end_date,days_count,status').gte('start_date',year+'-01-01').lte('end_date',year+'-12-31')
+    sb.from('leave_requests').select('user_id,start_date,end_date,status').gte('start_date',year+'-01-01').lte('end_date',year+'-12-31')
   ]).then(function(rs){
     var empRes = rs[0], leaveRes = rs[1];
     if(empRes.error){ if(tbody) tbody.innerHTML='<tr><td colspan="9" style="color:var(--red);padding:16px">エラー: '+empRes.error.message+'</td></tr>'; return; }
@@ -2969,7 +2965,7 @@ window.loadLeaveAdmin = function(){
     if(!leaveRes.error && leaveRes.data){
       leaveRes.data.forEach(function(r){
         if(r.status==='approved'){
-          var days = r.days_count || calcDays(r.start_date, r.end_date);
+          var days = calcDays(r.start_date, r.end_date);
           consumed[r.user_id] = (consumed[r.user_id]||0) + days;
         }
       });
@@ -3333,7 +3329,7 @@ window.loadLeaveKanriBO = function(){
   Promise.all([
     sb.from('employees').select('id,auth_id,name,department,hire_date,annual_leave_days,paid_leave_remaining').eq('is_active',true).order('department').order('name'),
     sb.from('leave_requests')
-      .select('user_id,leave_type,start_date,end_date,days_count,status')
+      .select('user_id,leave_type,start_date,end_date,status')
       .gte('start_date',year+'-01-01').lte('end_date',year+'-12-31')
       .eq('status','approved')
   ]).then(function(rs){
@@ -3350,10 +3346,10 @@ window.loadLeaveKanriBO = function(){
     });
     window._kanriBoData = (rs[0].data||[]).map(function(emp){
       var recs = leaveByUser[emp.auth_id]||[];
-      var totalDays = recs.reduce(function(s,r){return s+(r.days_count||calcDays(r.start_date,r.end_date));},0);
+      var totalDays = recs.reduce(function(s,r){return s+calcDays(r.start_date,r.end_date);},0);
       var annual = emp.annual_leave_days||6;
       var remain = emp.paid_leave_remaining!=null?emp.paid_leave_remaining:(annual-totalDays);
-      var dates  = recs.map(function(r){return r.start_date+(r.start_date!==r.end_date?'〜'+r.end_date:'')+(r.days_count===0.5?'(半)':'');}).join('、');
+      var dates  = recs.map(function(r){var d=calcDays(r.start_date,r.end_date);return r.start_date+(r.start_date!==r.end_date?'〜'+r.end_date:'')+(d===0.5?'(半)':'');}).join('、');
       return {name:emp.name,dept:emp.department||'—',hire:emp.hire_date||'—',annual:annual,used:Math.round(totalDays*10)/10,remain:remain,dates:dates||'（なし）',legal:totalDays>=legalMin};
     });
     if(tbody){
@@ -4582,11 +4578,39 @@ window.saveShiftDaily = async function(){
 };
 
 // ── スケジュール登録（月次編集）──
+// ── 月次シフト 月送りナビ ──
+window.shiftMonthToday = function(){
+  var n=new Date();
+  var ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+  var mv=document.getElementById('shiftMonthYM'); if(mv) mv.value=ym;
+  loadShiftMonthly();
+};
+window.shiftMonthPrev = function(){
+  var mv=document.getElementById('shiftMonthYM');
+  var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
+  var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
+  m--; if(m<0){m=11;y--;}
+  var nym=y+'-'+String(m+1).padStart(2,'0');
+  if(mv) mv.value=nym;
+  loadShiftMonthly();
+};
+window.shiftMonthNext = function(){
+  var mv=document.getElementById('shiftMonthYM');
+  var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
+  var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
+  m++; if(m>11){m=0;y++;}
+  var nym=y+'-'+String(m+1).padStart(2,'0');
+  if(mv) mv.value=nym;
+  loadShiftMonthly();
+};
+
 window.loadShiftMonthly = async function(){
   var dept=(document.getElementById('shiftMonthDept')||{value:''}).value;
   var mv=document.getElementById('shiftMonthYM')||null;
   var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
+  if(mv) mv.value=ym;
   var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
+  var lbl=document.getElementById('shiftMonthLbl'); if(lbl) lbl.textContent=y+'年'+(m+1)+'月';
   var daysInMonth=new Date(y,m+1,0).getDate();
   var days=[];
   for(var d=1;d<=daysInMonth;d++) days.push(new Date(y,m,d));
