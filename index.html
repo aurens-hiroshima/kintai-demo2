@@ -544,6 +544,7 @@ tr:hover td{background:#fafafa}
     <div class="tab active" onclick="switchTab(this,'tab-monthly')">月次集計</div>
     <div class="tab" onclick="switchTab(this,'tab-ot-rep')">残業分析</div>
     <div class="tab" onclick="switchTab(this,'tab-leave-rep')">休暇レポート</div>
+    <div class="tab" onclick="switchTab(this,'tab-csv-export')">📥 月別CSV出力</div>
   </div>
   <div class="tab-content active" id="tab-monthly">
     <div class="card">
@@ -567,6 +568,88 @@ tr:hover td{background:#fafafa}
       <div class="card-title">有給消化状況</div>
       <table><thead><tr><th>社員</th><th>部署</th><th>付与</th><th>取得</th><th>残日数</th><th>消化率</th></tr></thead>
       <tbody id="leaveRepTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ── CSV出力タブ ── -->
+  <div class="tab-content" id="tab-csv-export">
+    <div class="card">
+      <div class="card-title">📥 月別データ CSV出力 <span style="font-size:11px;font-weight:400;color:var(--muted)">給与ソフト取込用</span></div>
+
+      <!-- 対象期間 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">① 対象期間</div>
+      <div class="form-row" style="margin-bottom:16px">
+        <div class="form-group">
+          <div class="form-label">対象年月</div>
+          <input type="month" class="form-control" id="csvMonth" style="width:180px">
+        </div>
+        <div class="form-group">
+          <div class="form-label">出力対象 部署</div>
+          <select class="form-control" id="csvDept" style="width:180px">
+            <option value="">全部署</option>
+            <option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">雇用区分</div>
+          <select class="form-control" id="csvEmpType" style="width:160px">
+            <option value="">すべて</option>
+            <option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 出力形式 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">② 出力形式</div>
+      <div class="form-row" style="margin-bottom:16px">
+        <div class="form-group">
+          <div class="form-label">時間表示形式</div>
+          <select class="form-control" id="csvTimeFmt" style="width:200px">
+            <option value="decimal">10進数（例: 8.5）</option>
+            <option value="hhmm">60進数（例: 8:30）</option>
+            <option value="minutes">分単位（例: 510）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">時間の区切り文字（60進数時）</div>
+          <select class="form-control" id="csvTimeSep" style="width:160px">
+            <option value=":">コロン（8:30）</option>
+            <option value=".">ドット（8.30）</option>
+          </select>
+        </div>
+        <div class="form-group" style="padding-top:20px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="csvHeader" checked> ヘッダー行を出力する
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;margin-top:8px">
+            <input type="checkbox" id="csvQuote"> 項目をダブルクォートで囲む
+          </label>
+        </div>
+      </div>
+
+      <!-- 出力項目 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">③ 出力項目</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-sm btn-outline" onclick="csvSelectAll(true)">全選択</button>
+        <button class="btn btn-sm btn-outline" onclick="csvSelectAll(false)">全解除</button>
+      </div>
+      <div id="csvColsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 16px;margin-bottom:20px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+        <!-- JS で生成 -->
+      </div>
+
+      <!-- プレビュー -->
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <button class="btn btn-outline" onclick="csvPreview()">🔍 プレビュー</button>
+        <button class="btn btn-primary" onclick="csvDownload()">📥 CSVダウンロード</button>
+        <span id="csvPreviewInfo" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div id="csvPreviewWrap" style="display:none;overflow-x:auto;margin-top:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">プレビュー（先頭5名）</div>
+        <table id="csvPreviewTbl" style="font-size:12px;min-width:100%">
+          <thead id="csvPreviewHead"></thead>
+          <tbody id="csvPreviewBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1931,10 +2014,363 @@ window.saveWorkRule = function(){
   showToast('就業ルールを追加しました','green');
 };
 
-// ── CSV Export ──
+// ── CSV Export (旧 stub → 勤務実績一覧用) ──
 window.exportCSV = function(){
-  showToast('CSV出力機能（実装中）','amber');
+  // 勤務実績一覧テーブルの簡易CSV出力
+  var tbl = document.getElementById('attendTbl') || document.getElementById('repTbl');
+  if(!tbl){ showToast('先に集計してください','amber'); return; }
+  var rows = [['社員','部署','実働時間','時間外','深夜','休日出勤','有休','状態']];
+  tbl.querySelectorAll('tr').forEach(function(tr){
+    var cells = Array.from(tr.querySelectorAll('td')).map(function(td){ return '"'+td.textContent.trim()+'"'; });
+    if(cells.length) rows.push(cells);
+  });
+  var csv = '﻿' + rows.map(function(r){ return r.join(','); }).join('\r\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = '勤務実績_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 };
+
+// ══════════════════════════════════════════════
+// 月別データ CSV出力（給与ソフト取込用）
+// ══════════════════════════════════════════════
+var CSV_COLS = [
+  {id:'emp_code',    label:'社員コード',       cat:'基本情報', defaultOn:true},
+  {id:'name',        label:'氏名',             cat:'基本情報', defaultOn:true},
+  {id:'dept',        label:'所属',             cat:'基本情報', defaultOn:true},
+  {id:'emp_type',    label:'雇用区分',         cat:'基本情報', defaultOn:true},
+  {id:'work_days',   label:'出勤日数',         cat:'勤務集計', defaultOn:true},
+  {id:'absence_days',label:'欠勤日数',         cat:'勤務集計', defaultOn:true},
+  {id:'sched_hours', label:'所定労働時間',     cat:'勤務集計', defaultOn:true},
+  {id:'actual_hours',label:'実労働時間',       cat:'勤務集計', defaultOn:true},
+  {id:'ot_legal',    label:'時間外（法定内）', cat:'残業',     defaultOn:true},
+  {id:'ot_extra',    label:'時間外（法定外）', cat:'残業',     defaultOn:true},
+  {id:'midnight',    label:'深夜労働時間',     cat:'残業',     defaultOn:true},
+  {id:'holiday_days',label:'休日出勤日数',     cat:'休日',     defaultOn:false},
+  {id:'holiday_hrs', label:'休日出勤時間',     cat:'休日',     defaultOn:false},
+  {id:'late_cnt',    label:'遅刻回数',         cat:'遅刻早退', defaultOn:false},
+  {id:'late_hrs',    label:'遅刻時間',         cat:'遅刻早退', defaultOn:false},
+  {id:'early_cnt',   label:'早退回数',         cat:'遅刻早退', defaultOn:false},
+  {id:'early_hrs',   label:'早退時間',         cat:'遅刻早退', defaultOn:false},
+  {id:'leave_paid',  label:'有給休暇取得日数', cat:'休暇',     defaultOn:true},
+  {id:'leave_special',label:'特別休暇取得日数',cat:'休暇',     defaultOn:false},
+  {id:'leave_remain',label:'有給残日数',       cat:'休暇',     defaultOn:true},
+  {id:'approved_ot', label:'申請残業時間',     cat:'申請',     defaultOn:false},
+];
+
+// 起動時に出力項目チェックボックスを生成
+(function initCsvCols(){
+  var cats = {};
+  CSV_COLS.forEach(function(c){ (cats[c.cat] = cats[c.cat]||[]).push(c); });
+  var grid = document.getElementById('csvColsGrid');
+  if(!grid) return;
+  var html = '';
+  Object.keys(cats).forEach(function(cat){
+    html += '<div style="grid-column:1/-1;font-size:11px;font-weight:700;color:var(--muted);margin-top:4px">' + cat + '</div>';
+    cats[cat].forEach(function(c){
+      html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">'
+        + '<input type="checkbox" class="csv-col-chk" data-id="' + c.id + '"' + (c.defaultOn?' checked':'') + '>'
+        + c.label + '</label>';
+    });
+  });
+  grid.innerHTML = html;
+})();
+
+window.csvSelectAll = function(val){
+  document.querySelectorAll('.csv-col-chk').forEach(function(el){ el.checked = val; });
+};
+
+// 選択済みカラム一覧を取得
+function getSelectedCols(){
+  var sel = [];
+  document.querySelectorAll('.csv-col-chk:checked').forEach(function(el){
+    var col = CSV_COLS.find(function(c){ return c.id === el.dataset.id; });
+    if(col) sel.push(col);
+  });
+  return sel;
+}
+
+// 時間フォーマット変換（分→表示形式）
+function fmtTime(minutes){
+  var fmt = (document.getElementById('csvTimeFmt')||{value:'decimal'}).value;
+  var sep = (document.getElementById('csvTimeSep')||{value:':'}).value;
+  if(fmt === 'minutes') return String(Math.round(minutes));
+  if(fmt === 'hhmm'){
+    var h = Math.floor(minutes/60);
+    var m = Math.round(minutes%60);
+    return h + sep + (m<10?'0':'') + m;
+  }
+  // decimal
+  return (minutes/60).toFixed(2);
+}
+
+// メインデータ計算
+async function calcCsvData(ym){
+  if(!sb) return [];
+  // 対象月の開始・終了日
+  var parts = ym.split('-');
+  var y = parseInt(parts[0]), m = parseInt(parts[1]);
+  var start = new Date(y, m-1, 1);
+  var end   = new Date(y, m, 0);
+  var startStr = ym + '-01';
+  var endStr   = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
+
+  var deptFilter  = (document.getElementById('csvDept')||{value:''}).value;
+  var empTypeFilter = (document.getElementById('csvEmpType')||{value:''}).value;
+
+  // 1. 従業員一覧
+  var empQ = sb.from('employees').select('id, auth_id, name, department, employment_type, paid_leave_remaining, annual_leave_days').eq('is_active', true);
+  if(deptFilter) empQ = empQ.eq('department', deptFilter);
+  if(empTypeFilter) empQ = empQ.eq('employment_type', empTypeFilter);
+  var {data: emps, error: empErr} = await empQ.order('department').order('name');
+  if(empErr || !emps) return [];
+
+  var authIds = emps.map(function(e){ return e.auth_id; }).filter(Boolean);
+  if(!authIds.length) return [];
+
+  // 2. 打刻データ（対象月）
+  var {data: punches} = await sb.from('punch_records')
+    .select('user_id, punch_type, punched_at')
+    .in('user_id', authIds)
+    .gte('punched_at', startStr + 'T00:00:00')
+    .lte('punched_at', endStr + 'T23:59:59')
+    .order('punched_at');
+
+  // 3. 休暇申請（承認済）
+  var {data: leaves} = await sb.from('leave_requests')
+    .select('user_id, leave_type, days_count, start_date, end_date')
+    .in('user_id', authIds)
+    .eq('status', '承認')
+    .lte('start_date', endStr)
+    .gte('end_date', startStr);
+
+  // 4. 残業申請（承認済）
+  var {data: otrecs} = await sb.from('overtime_requests')
+    .select('user_id, hours, date')
+    .in('user_id', authIds)
+    .eq('status', '承認')
+    .gte('date', startStr)
+    .lte('date', endStr);
+
+  // 打刻をユーザー別・日付別に整理
+  var punchMap = {};
+  (punches||[]).forEach(function(p){
+    var dt = new Date(p.punched_at);
+    var dateKey = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+    if(!punchMap[p.user_id]) punchMap[p.user_id] = {};
+    if(!punchMap[p.user_id][dateKey]) punchMap[p.user_id][dateKey] = [];
+    punchMap[p.user_id][dateKey].push({type: p.punch_type, time: dt});
+  });
+
+  // 休暇をユーザー別に整理
+  var leaveMap = {};
+  (leaves||[]).forEach(function(l){
+    if(!leaveMap[l.user_id]) leaveMap[l.user_id] = {paid:0, special:0};
+    var isPaid = ['有給休暇','年次有給','有休'].some(function(k){ return (l.leave_type||'').includes(k); });
+    if(isPaid) leaveMap[l.user_id].paid += (l.days_count||0);
+    else leaveMap[l.user_id].special += (l.days_count||0);
+  });
+
+  // 残業申請をユーザー別に整理
+  var otReqMap = {};
+  (otrecs||[]).forEach(function(r){
+    otReqMap[r.user_id] = (otReqMap[r.user_id]||0) + (r.hours||0);
+  });
+
+  // 土日リスト
+  var weekends = {};
+  for(var d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+    var dow = d.getDay();
+    if(dow===0||dow===6){
+      var dk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      weekends[dk] = true;
+    }
+  }
+
+  // 従業員ごとに集計
+  var rows = emps.map(function(emp, idx){
+    var uid = emp.auth_id;
+    var dayPunches = punchMap[uid] || {};
+    var leaveInfo  = leaveMap[uid] || {paid:0, special:0};
+    var approvedOt = otReqMap[uid] || 0;
+
+    var workDays=0, absenceDays=0, actualMins=0, midnightMins=0;
+    var holidayDays=0, holidayMins=0, lateCnt=0, lateMins=0, earlyCnt=0, earlyMins=0;
+    var schedMins = 0; // 所定（1日8h×出勤日数）
+
+    Object.keys(dayPunches).forEach(function(dateKey){
+      var recs = dayPunches[dateKey];
+      var inRec  = recs.filter(function(r){ return r.type==='出勤'; }).sort(function(a,b){return a.time-b.time;})[0];
+      var outRec = recs.filter(function(r){ return r.type==='退勤'; }).sort(function(a,b){return b.time-a.time;})[0];
+      if(!inRec) return;
+      workDays++;
+      var isHoliday = weekends[dateKey];
+
+      if(outRec){
+        var diffMins = (outRec.time - inRec.time) / 60000;
+        // 休憩控除（自動）
+        var breakMins = diffMins >= 480 ? 60 : diffMins >= 360 ? 45 : diffMins >= 240 ? 30 : 0;
+        var netMins = Math.max(0, diffMins - breakMins);
+
+        if(isHoliday){ holidayDays++; holidayMins += netMins; }
+        else { actualMins += netMins; schedMins += 480; }
+
+        // 深夜（22:00〜翌5:00）
+        var inH = inRec.time.getHours() + inRec.time.getMinutes()/60;
+        var outH = outRec.time.getHours() + outRec.time.getMinutes()/60;
+        if(outH < inH) outH += 24; // 日跨ぎ
+        var midStart = Math.max(inH, 22), midEnd = Math.min(outH, 29); // 29=翌5時
+        if(midEnd > midStart) midnightMins += (midEnd - midStart) * 60;
+
+        // 遅刻判定（9時以降出勤）
+        if(!isHoliday && inRec.time.getHours() * 60 + inRec.time.getMinutes() > 540){
+          lateCnt++;
+          lateMins += (inRec.time.getHours()*60 + inRec.time.getMinutes()) - 540;
+        }
+        // 早退判定（18時前退勤）
+        if(!isHoliday && outRec.time.getHours() * 60 + outRec.time.getMinutes() < 1080){
+          earlyCnt++;
+          earlyMins += 1080 - (outRec.time.getHours()*60 + outRec.time.getMinutes());
+        }
+      }
+    });
+
+    // 欠勤（所定労働日 - 出勤日数 - 休暇日数）
+    var businessDays = getBusinessDays(start, end);
+    absenceDays = Math.max(0, businessDays - workDays - leaveInfo.paid - leaveInfo.special);
+
+    // 残業（法定内8h未満・法定外8h超）
+    var otTotalMins = Math.max(0, actualMins - schedMins);
+    var otLegalMins = 0, otExtraMins = 0;
+    if(otTotalMins > 0){ otExtraMins = otTotalMins; } // 簡略化: 全額法定外扱い
+
+    return {
+      emp_code:     String(idx+1).padStart(4,'0'),
+      name:         emp.name||'',
+      dept:         emp.department||'',
+      emp_type:     emp.employment_type||'',
+      work_days:    workDays,
+      absence_days: absenceDays,
+      sched_hours:  schedMins,
+      actual_hours: actualMins,
+      ot_legal:     otLegalMins,
+      ot_extra:     otExtraMins,
+      midnight:     Math.round(midnightMins),
+      holiday_days: holidayDays,
+      holiday_hrs:  Math.round(holidayMins),
+      late_cnt:     lateCnt,
+      late_hrs:     Math.round(lateMins),
+      early_cnt:    earlyCnt,
+      early_hrs:    Math.round(earlyMins),
+      leave_paid:   Math.round(leaveInfo.paid * 10) / 10,
+      leave_special: Math.round(leaveInfo.special * 10) / 10,
+      leave_remain: emp.paid_leave_remaining || 0,
+      approved_ot:  approvedOt,
+    };
+  });
+
+  return rows;
+}
+
+// 営業日数を計算（土日除く）
+function getBusinessDays(start, end){
+  var cnt = 0;
+  for(var d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+    var dow = d.getDay();
+    if(dow !== 0 && dow !== 6) cnt++;
+  }
+  return cnt;
+}
+
+// 行データを列に応じてフォーマット
+function rowToValues(row, cols){
+  var TIME_COLS = ['sched_hours','actual_hours','ot_legal','ot_extra','midnight','holiday_hrs','late_hrs','early_hrs'];
+  return cols.map(function(col){
+    var v = row[col.id];
+    if(v === undefined || v === null) return '';
+    if(TIME_COLS.indexOf(col.id) >= 0) return fmtTime(v);
+    if(col.id === 'approved_ot') return fmtTime(v * 60); // hourを分に
+    return String(v);
+  });
+}
+
+// CSVセルをフォーマット
+function csvCell(v, useQuote){
+  var s = String(v);
+  if(useQuote) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+
+// プレビュー表示
+window.csvPreview = async function(){
+  var ym = (document.getElementById('csvMonth')||{value:''}).value;
+  if(!ym){ showToast('対象年月を選択してください','red'); return; }
+  var cols = getSelectedCols();
+  if(!cols.length){ showToast('出力項目を1つ以上選択してください','red'); return; }
+
+  showToast('データ集計中...','amber');
+  var rows = await calcCsvData(ym);
+  if(!rows.length){ showToast('データがありません','amber'); return; }
+
+  var preview = rows.slice(0,5);
+  var infoEl = document.getElementById('csvPreviewInfo');
+  if(infoEl) infoEl.textContent = '全' + rows.length + '名 / ' + cols.length + '項目';
+
+  var head = document.getElementById('csvPreviewHead');
+  var body = document.getElementById('csvPreviewBody');
+  if(head) head.innerHTML = '<tr>' + cols.map(function(c){ return '<th style="white-space:nowrap">'+c.label+'</th>'; }).join('') + '</tr>';
+  if(body) body.innerHTML = preview.map(function(r){
+    return '<tr>' + rowToValues(r, cols).map(function(v){ return '<td>'+v+'</td>'; }).join('') + '</tr>';
+  }).join('');
+
+  var wrap = document.getElementById('csvPreviewWrap');
+  if(wrap) wrap.style.display = 'block';
+  showToast('プレビューを表示しました','green');
+};
+
+// CSVダウンロード
+window.csvDownload = async function(){
+  var ym = (document.getElementById('csvMonth')||{value:''}).value;
+  if(!ym){ showToast('対象年月を選択してください','red'); return; }
+  var cols = getSelectedCols();
+  if(!cols.length){ showToast('出力項目を1つ以上選択してください','red'); return; }
+
+  showToast('CSV生成中...','amber');
+  var rows = await calcCsvData(ym);
+  if(!rows.length){ showToast('対象データがありません','amber'); return; }
+
+  var useHeader = (document.getElementById('csvHeader')||{checked:true}).checked;
+  var useQuote  = (document.getElementById('csvQuote')||{checked:false}).checked;
+  var lines = [];
+
+  if(useHeader){
+    lines.push(cols.map(function(c){ return csvCell(c.label, useQuote); }).join(','));
+  }
+  rows.forEach(function(r){
+    lines.push(rowToValues(r, cols).map(function(v){ return csvCell(v, useQuote); }).join(','));
+  });
+
+  var csv = '﻿' + lines.join('\r\n'); // BOM付きUTF-8
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '月別勤怠データ_' + ym + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ CSVをダウンロードしました（' + rows.length + '名）','green');
+};
+
+// 対象年月の初期値をセット
+(function(){
+  var el = document.getElementById('csvMonth');
+  if(el && !el.value){
+    var now = new Date();
+    el.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+})();
 
 // ── Modal ──
 window.openModal = function(id){document.getElementById(id).classList.add('open');};
