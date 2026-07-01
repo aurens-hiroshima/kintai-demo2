@@ -4284,7 +4284,7 @@ window.previewAutoShift = async function(){
 
   // 人員チェック
   var reqs = getAutoShiftReqs();
-  var alerts = [];
+  var alertRows = []; // {date, dow, patName, cnt, req, shortage}
   days.forEach(function(d){
     var ds = fmtDateISO(d);
     var dt = dayType(d);
@@ -4294,7 +4294,7 @@ window.previewAutoShift = async function(){
       var cnt = (planMap[ds][pid]||[]).length;
       if(cnt < req){
         var pat = getPatternById(pid);
-        alerts.push(ds+' '+dow(d)+' ／ '+(pat?pat.name:pid)+' ： '+cnt+'人（必要：'+req+'人）');
+        alertRows.push({date:ds, dow:dow(d), patName:pat?pat.name:pid, cnt:cnt, req:req, shortage:req-cnt});
       }
     });
   });
@@ -4303,15 +4303,55 @@ window.previewAutoShift = async function(){
   var newCount = _autoShiftPlan.length;
   var skipCount = emps.length * days.length - newCount;
   var koukuCount = _autoShiftPlan.filter(function(r){ return r.patternId==='sp_koukyu'; }).length;
+  var totalShortage = alertRows.reduce(function(s,r){return s+r.shortage;},0);
 
-  statusEl.innerHTML = '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">'
-    +'<span style="font-size:13px"><b style="color:var(--blue)">'+newCount+'件</b> 生成</span>'
-    +'<span style="font-size:13px"><b style="color:var(--muted)">'+skipCount+'件</b> スキップ</span>'
-    +'<span style="font-size:13px"><b style="color:var(--muted)">'+koukuCount+'件</b> 公休</span>'
-    +(alerts.length?'<span style="font-size:13px;color:var(--red)"><b>⚠️ 不足 '+alerts.length+'件</b></span>':'<span style="font-size:13px;color:var(--green)">✅ 人員充足</span>')
+  // ── ステータスバー ──
+  statusEl.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:10px">'
+    +'<span style="font-size:13px">📋 生成: <b style="color:var(--blue)">'+newCount+'件</b></span>'
+    +'<span style="color:var(--border)">|</span>'
+    +'<span style="font-size:13px">⏭ スキップ: <b style="color:var(--muted)">'+skipCount+'件</b></span>'
+    +'<span style="color:var(--border)">|</span>'
+    +'<span style="font-size:13px">🏖 公休: <b style="color:var(--muted)">'+koukuCount+'件</b></span>'
+    +'<span style="color:var(--border)">|</span>'
+    +(alertRows.length
+      ? '<span style="font-size:13px;color:var(--red);font-weight:700">⚠️ 人員不足: '+alertRows.length+'箇所 / 合計'+totalShortage+'人不足</span>'
+      : '<span style="font-size:13px;color:var(--green);font-weight:700">✅ 全日程 人員充足</span>')
     +'</div>';
-  if(alerts.length){
-    statusEl.innerHTML += '<div style="background:#fff5f5;border:1px solid var(--red);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:8px"><b>人員不足アラート</b><br>'+alerts.join('<br>')+'</div>';
+
+  // ── 人員不足アラート表 ──
+  if(alertRows.length){
+    var alertHtml = '<div style="border:2px solid var(--red);border-radius:8px;overflow:hidden;margin-bottom:10px">'
+      +'<div style="background:#dc2626;color:#fff;padding:8px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px">'
+      +'⚠️ 人員不足アラート'
+      +'<span style="background:rgba(255,255,255,0.25);border-radius:12px;padding:1px 10px;font-size:12px">'+alertRows.length+'件</span>'
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<thead><tr style="background:#fff5f5">'
+      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">日付</th>'
+      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">曜日</th>'
+      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">パターン</th>'
+      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">現在</th>'
+      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">必要</th>'
+      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">不足</th>'
+      +'</tr></thead><tbody>';
+    alertRows.forEach(function(r, i){
+      var sev = r.shortage>=3 ? '#dc2626' : r.shortage>=2 ? '#ea580c' : '#d97706';
+      var bg = i%2===0 ? '#fff' : '#fff8f8';
+      alertHtml += '<tr style="background:'+bg+'">'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;font-weight:600">'+r.date+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;color:var(--muted)">'+r.dow+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2">'+r.patName+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center">'+r.cnt+'人</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center">'+r.req+'人</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center;font-weight:700;color:'+sev+'">'
+        +'あと'+r.shortage+'人</td>'
+        +'</tr>';
+    });
+    alertHtml += '</tbody></table>'
+      +'<div style="background:#fff5f5;padding:7px 14px;font-size:11px;color:#991b1b;border-top:1px solid #fca5a5">'
+      +'💡 合計 <b>'+totalShortage+'人分</b> の配置が不足しています。シフトパターンの設定か最低人数の設定を見直してください。'
+      +'</div></div>';
+    statusEl.innerHTML += alertHtml;
   }
   renderAutoShiftPreviewTable(emps, days);
   document.getElementById('registerAutoShiftBtn').disabled = newCount===0;
