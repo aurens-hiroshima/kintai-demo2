@@ -2,995 +2,1321 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>勤怠管理システム｜職員</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1e40af">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>勤怠管理｜スタッフ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --blue:#185FA5;--lblue:#E6F1FB;--green:#16a34a;--lgreen:#dcfce7;
-  --red:#dc2626;--lred:#fee2e2;--amber:#d97706;--lamber:#fef3c7;
-  --purple:#7c3aed;--lpurple:#ede9fe;
-  --bg:#f1f5f9;--card:#fff;--border:#e2e8f0;
-  --text:#1e293b;--muted:#64748b;--sidebar:#0f172a;
+  --pri:#1e40af;--pri-l:#dbeafe;--pri-d:#1e3a8a;
+  --suc:#16a34a;--suc-l:#dcfce7;
+  --dan:#dc2626;--dan-l:#fee2e2;
+  --war:#d97706;--war-l:#fef3c7;
+  --pur:#7c3aed;--pur-l:#ede9fe;
+  --bg:#f1f5f9;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;
+  --hh:54px;--nh:62px;
 }
-body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
-.sidebar{width:220px;background:var(--sidebar);color:#e2e8f0;display:flex;flex-direction:column;flex-shrink:0;position:fixed;height:100vh;overflow-y:auto;z-index:100}
-.sidebar-logo{padding:20px 16px 16px;font-size:15px;font-weight:700;color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
-.sidebar-logo span{display:block;font-size:11px;font-weight:400;color:rgba(255,255,255,.4);margin-top:2px}
-.sidebar-section{padding:12px 12px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);text-transform:uppercase}
-.nav-item{display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:8px;margin:1px 6px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.7);transition:background .15s}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:var(--blue);color:#fff}
-.nav-item .icon{font-size:16px;width:20px;text-align:center}
-.sidebar-bottom{margin-top:auto;padding:12px}
-.sidebar-user{padding:10px 12px;background:rgba(255,255,255,.07);border-radius:8px;font-size:12px;color:rgba(255,255,255,.6)}
-.sidebar-user strong{display:block;color:#fff;font-size:13px}
-.btn-logout{margin-top:8px;width:100%;padding:8px;background:rgba(255,255,255,.08);border:none;border-radius:6px;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer}
-.btn-logout:hover{background:rgba(255,255,255,.14);color:#fff}
-.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
-.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar-title{font-size:18px;font-weight:700}
-.topbar-right{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
-.content{padding:24px;flex:1}
-.page{display:none}.page.active{display:block}
-.card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:16px}
-.card-title{font-size:15px;font-weight:700;margin-bottom:14px}
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
-.kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px}
-.kpi-label{font-size:12px;color:var(--muted);margin-bottom:6px}
-.kpi-val{font-size:28px;font-weight:700}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:2px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:var(--muted);border-bottom:2px solid var(--border)}
-td{padding:10px 12px;border-bottom:1px solid var(--border)}
-tr:hover td{background:#fafafa}
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.badge-green{background:var(--lgreen);color:var(--green)}
-.badge-red{background:var(--lred);color:var(--red)}
-.badge-amber{background:var(--lamber);color:var(--amber)}
-.badge-blue{background:var(--lblue);color:var(--blue)}
-.badge-gray{background:#f1f5f9;color:#64748b}
-.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
-.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1451a0}
-.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{background:#f8fafc}
-.btn-green{background:var(--green);color:#fff}
-.btn-red{background:var(--red);color:#fff}
-.btn-sm{padding:5px 10px;font-size:12px}
-.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border)}
-.tab{padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px}
-.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
-.tab-content{display:none}.tab-content.active{display:block}
-.form-group{margin-bottom:14px}
-.form-label{font-size:12px;font-weight:600;margin-bottom:5px;color:var(--muted)}
-.form-control{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none}
-.form-control:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.1)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200}
-.modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:14px;padding:24px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto}
-.modal-title{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between}
-.modal-close{cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
-.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
-.punch-card{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:14px;padding:28px;margin-bottom:16px;text-align:center}
-.punch-time{font-size:52px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px}
-.punch-date{font-size:15px;color:rgba(255,255,255,.6);margin-top:4px;margin-bottom:20px}
-.punch-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.punch-btn{padding:12px 22px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;transition:.2s}
-.punch-btn:hover{opacity:.85;transform:translateY(-1px)}
-.punch-status{margin-top:14px;font-size:13px;color:rgba(255,255,255,.6)}
-.toast{position:fixed;top:20px;right:20px;background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;z-index:999;transform:translateX(120%);transition:.3s;box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.toast.show{transform:none}
-#loginPage{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a5f);display:flex;align-items:center;justify-content:center;z-index:500}
-.login-box{background:#fff;border-radius:16px;padding:36px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.login-logo{text-align:center;margin-bottom:24px}
-.login-logo h1{font-size:20px;font-weight:700;color:var(--text)}
-.login-logo p{font-size:12px;color:var(--muted);margin-top:4px}
-.flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}.items-center{align-items:center}.justify-between{justify-content:space-between}
-.mt8{margin-top:8px}.mt16{margin-top:16px}.mb8{margin-bottom:8px}.mb16{margin-bottom:16px}
-.w-full{width:100%}
-.bar-wrap{background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:.4s}
-.settings-section{border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
-.settings-header{background:#f8fafc;padding:12px 16px;font-weight:700;font-size:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.settings-body{padding:16px}
-.quick-link{display:flex;align-items:center;gap:10px;padding:14px;background:#f8fafc;border-radius:10px;text-decoration:none;color:var(--text);border:1px solid var(--border);transition:.15s;cursor:pointer}
-.quick-link:hover{background:var(--lblue);border-color:var(--blue)}
-.quick-link .ql-icon{font-size:24px}
-.quick-link .ql-label{font-size:13px;font-weight:700}
-.quick-link .ql-sub{font-size:11px;color:var(--muted)}
-.quick-links-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{font-family:'Hiragino Sans','Meiryo',sans-serif;background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden;position:relative}
+
+/* ── Header ── */
+.hdr{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--hh);background:var(--pri);color:#fff;display:flex;align-items:center;padding:0 4px 0 8px;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hdr-back{background:none;border:none;color:#fff;font-size:22px;padding:8px;cursor:pointer;border-radius:8px;line-height:1}
+.hdr h1{font-size:17px;font-weight:700;flex:1;margin:0 4px}
+.hdr-act{background:none;border:none;color:#fff;font-size:20px;padding:8px;cursor:pointer;line-height:1}
+.hdr-badge{background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+
+/* ── Bottom Nav ── */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nh);background:#fff;border-top:1px solid var(--border);display:flex;z-index:200;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;color:var(--muted);cursor:pointer;padding:6px 0;position:relative;transition:color .15s}
+.bnav-btn i{font-size:24px;line-height:1}
+.bnav-btn.on{color:var(--pri)}
+.bnav-dot{position:absolute;top:8px;right:calc(50% - 16px);width:8px;height:8px;background:var(--dan);border-radius:50%;border:2px solid #fff}
+
+/* ── Page ── */
+.pg{display:none;padding-top:calc(var(--hh)+8px);padding-bottom:calc(var(--nh)+8px);min-height:100vh}
+.pg.on{display:block}
+.pg.no-hdr{padding-top:0}
+.pg.no-nav{padding-bottom:16px}
+.pg.full{padding-top:0;padding-bottom:0}
+
+/* ── Sections ── */
+.sec{padding:0 16px 12px}
+.sec-title{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:16px 16px 8px}
+
+/* ── Cards ── */
+.card-app{background:var(--card);border-radius:16px;padding:16px;margin:0 16px 12px;box-shadow:0 1px 6px rgba(0,0,0,.06);border:1px solid var(--border)}
+.card-app.p0{padding:0;overflow:hidden}
+.card-hero{background:var(--pri);border-radius:20px;padding:20px;margin:8px 16px 12px;color:#fff}
+
+/* ── List ── */
+.list-wrap{background:var(--card);border-radius:16px;margin:0 16px 12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.list-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.list-row:last-child{border-bottom:none}
+.list-row:active{background:#f8fafc}
+.list-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;margin-right:12px}
+.list-title{font-size:14px;font-weight:600;line-height:1.3}
+.list-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.list-right{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.list-chev{font-size:16px;color:var(--border)}
+
+/* ── Badges ── */
+.badge-app{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.b-pend{background:var(--war-l);color:var(--war)}
+.b-appr{background:var(--suc-l);color:var(--suc)}
+.b-rej{background:var(--dan-l);color:var(--dan)}
+.b-blue{background:var(--pri-l);color:var(--pri)}
+.b-gray{background:#f1f5f9;color:var(--muted)}
+.b-pur{background:var(--pur-l);color:var(--pur)}
+
+/* ── Punch Buttons ── */
+.punch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 12px}
+.pbtn{border:none;border-radius:18px;padding:20px 8px;font-size:16px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;transition:transform .1s,opacity .1s;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.pbtn i{font-size:32px}
+.pbtn:active{transform:scale(.96)}
+.pbtn-in{background:var(--pri);color:#fff}
+.pbtn-out{background:var(--dan);color:#fff}
+.pbtn-brk{background:var(--war);color:#fff}
+.pbtn-ret{background:var(--suc);color:#fff}
+.pbtn-go{background:#7c3aed;color:#fff}
+.pbtn-back{background:#0891b2;color:#fff}
+.pbtn.done{opacity:.45;pointer-events:none}
+
+/* ── Clock display ── */
+.clock-wrap{text-align:center;padding:24px 16px 8px}
+.clock-time{font-size:60px;font-weight:200;letter-spacing:-3px;color:var(--text);line-height:1}
+.clock-date{font-size:14px;color:var(--muted);margin-top:4px}
+.clock-status{display:inline-flex;align-items:center;gap:6px;background:var(--suc-l);color:var(--suc);border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-top:10px}
+
+/* ── Calendar ── */
+.cal-wrap{padding:0 16px}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:0 0 12px}
+.cal-nav span{font-size:17px;font-weight:800}
+.cal-nav button{background:none;border:1px solid var(--border);border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px;color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dh{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0}
+.cal-dh.sun{color:var(--dan)}
+.cal-dh.sat{color:var(--pri)}
+.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;cursor:pointer;position:relative;font-size:13px;font-weight:600;transition:background .1s}
+.cal-cell:active{background:#e2e8f0}
+.cal-cell .dn{line-height:1}
+.cal-cell .sb{font-size:8px;font-weight:800;border-radius:4px;padding:1px 3px;margin-top:2px;color:#fff;line-height:1.2}
+.cal-cell.sun .dn{color:var(--dan)}
+.cal-cell.sat .dn{color:var(--pri)}
+.cal-cell.tod{background:var(--pri)}
+.cal-cell.tod .dn{color:#fff}
+.cal-cell.off{background:#fee2e2}
+.cal-cell.wish{background:#f0fdf4}
+.cal-cell.other{opacity:.3}
+
+/* ── Login ── */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px}
+.login-logo{width:88px;height:88px;background:var(--pri);border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:20px;box-shadow:0 8px 24px rgba(30,64,175,.35)}
+.login-title{font-size:24px;font-weight:800;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:36px}
+
+/* ── Forms ── */
+.f-group{margin-bottom:16px}
+.f-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;display:block}
+.f-ctrl{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:13px;font-size:15px;background:#fff;color:var(--text);outline:none;font-family:inherit;transition:border-color .15s}
+.f-ctrl:focus{border-color:var(--pri)}
+.f-ctrl.err{border-color:var(--dan)}
+select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+
+/* ── Big buttons ── */
+.btn-app{width:100%;padding:15px;border-radius:14px;border:none;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .1s,transform .1s}
+.btn-app:active{opacity:.85;transform:scale(.99)}
+.btn-pri{background:var(--pri);color:#fff}
+.btn-suc{background:var(--suc);color:#fff}
+.btn-dan{background:var(--dan);color:#fff}
+.btn-out{background:#fff;color:var(--pri);border:2px solid var(--pri)}
+.btn-gray{background:#f1f5f9;color:var(--text)}
+
+/* ── Stat cards ── */
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-card{background:#fff;border-radius:14px;padding:14px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-size:26px;font-weight:800;line-height:1}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* ── Progress bar ── */
+.prog-bar{background:#e2e8f0;border-radius:6px;height:8px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;border-radius:6px;background:var(--pri);transition:width .4s}
+
+/* ── Notice list ── */
+.notice-row{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.notice-row:last-child{border-bottom:none}
+.notice-row.unread .notice-title{font-weight:700}
+.notice-title{font-size:14px;margin-bottom:4px}
+.notice-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.unread-dot{width:8px;height:8px;background:var(--dan);border-radius:50%;flex-shrink:0}
+
+/* ── GPS indicator ── */
+.gps-pill{display:inline-flex;align-items:center;gap:5px;background:var(--suc-l);color:var(--suc);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700}
+
+/* ── Timeline ── */
+.timeline{padding:0 16px}
+.tl-item{display:flex;gap:12px;margin-bottom:16px}
+.tl-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tl-line{position:relative}
+.tl-line::before{content:'';position:absolute;left:5px;top:16px;width:2px;height:calc(100% + 8px);background:var(--border)}
+.tl-content{flex:1}
+.tl-time{font-size:12px;color:var(--muted);font-weight:600}
+.tl-label{font-size:14px;font-weight:700}
+
+/* ── Toast ── */
+.app-toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.app-toast.show{opacity:1}
+
+/* ── Info rows ── */
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-key{font-size:13px;color:var(--muted)}
+.info-val{font-size:14px;font-weight:600;text-align:right}
+
+/* ── Avatar ── */
+.avatar{width:72px;height:72px;border-radius:50%;background:var(--pri-l);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:var(--pri);flex-shrink:0}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;border-bottom:2px solid var(--border);margin:0 16px 16px}
+.tab-item{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer}
+.tab-item.on{color:var(--pri);border-bottom-color:var(--pri)}
+
+/* ── Scrollable ── */
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ── Leave bar ── */
+.leave-card{background:var(--card);border-radius:16px;padding:16px;margin:0 16px 12px;border:1px solid var(--border)}
+.leave-days{font-size:36px;font-weight:800;color:var(--pri);line-height:1}
+.leave-unit{font-size:14px;color:var(--muted);margin-left:4px}
 </style>
 </head>
 <body>
 
-<!-- Login -->
-<div id="loginPage">
-  <div class="login-box">
-    <div class="login-logo">
-      <h1>🕐 勤怠管理システム</h1>
-      <p>職員ポータル</p>
-    </div>
-    <div class="form-group"><div class="form-label">メールアドレス</div><input class="form-control" id="loginEmail" type="email" placeholder="you@example.com"></div>
-    <div class="form-group"><div class="form-label">パスワード</div><input class="form-control" id="loginPass" type="password" placeholder="••••••••"></div>
-    <button class="btn btn-primary w-full" onclick="doLogin()" style="margin-top:8px">ログイン</button>
-    <div id="loginErr" style="color:var(--red);font-size:12px;margin-top:8px;text-align:center"></div>
-    <div id="sbConfigSection" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">⚙️ Supabase設定（初回のみ）</div>
-      <div class="form-group"><div class="form-label">Project URL</div><input class="form-control" id="cfgUrl" placeholder="https://xxxx.supabase.co" style="font-size:12px"></div>
-      <div class="form-group"><div class="form-label">Anon Key</div><input class="form-control" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs..." style="font-size:12px"></div>
-      <button class="btn btn-outline" style="width:100%;font-size:12px" onclick="saveSupabaseConfig()">設定を保存</button>
-    </div>
-    <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--muted)">
-      <a href="index.html" style="color:var(--blue)">管理者ログインはこちら</a>
-    </div>
-  </div>
+<!-- ══════ HEADER ══════ -->
+<div class="hdr" id="hdr">
+  <button class="hdr-back" id="backBtn" onclick="goBack()" style="display:none"><i class="bi bi-chevron-left"></i></button>
+  <h1 id="hdrTitle">ホーム</h1>
+  <button class="hdr-act" onclick="goScreen('screen-notice')"><i class="bi bi-bell"></i><span class="hdr-badge" id="noticeBadge">3</span></button>
 </div>
 
-<!-- App -->
-<div id="app" style="display:none;width:100%">
-<!-- Sidebar -->
-<div class="sidebar">
-  <div class="sidebar-logo">🕐 勤怠管理<span>職員ポータル</span></div>
-  <div class="sidebar-section">マイメニュー</div>
-  <div class="nav-item active" onclick="nav('dashboard')"><span class="icon">📊</span>ダッシュボード</div>
-  <div class="nav-item" onclick="nav('punch')"><span class="icon">👊</span>打刻</div>
-  <div class="nav-item" onclick="nav('timecard')"><span class="icon">📋</span>タイムカード</div>
-  <div class="nav-item" onclick="nav('leave')"><span class="icon">🌴</span>休暇管理</div>
-  <div class="nav-item" onclick="nav('overtime')"><span class="icon">⏰</span>残業管理</div>
-  <div class="nav-item" onclick="nav('myrequests')"><span class="icon">📝</span>申請履歴</div>
-  <div class="sidebar-section">その他</div>
-  <div class="nav-item" onclick="window.open('kiosk.html','_blank')"><span class="icon">🖥️</span>打刻専用画面</div>
-  <div class="nav-item" onclick="window.open('calendar_system.html','_blank')"><span class="icon">📅</span>変形時間カレンダー</div>
-  <div id="adminMenuSection" style="display:none">
-    <div class="sidebar-section">管理者メニュー</div>
-    <div class="nav-item" onclick="nav('users')"><span class="icon">👤</span>ユーザー管理</div>
-    <div class="nav-item" onclick="nav('settings')"><span class="icon">⚙️</span>システム設定</div>
-    <div class="nav-item" onclick="window.location.href='index.html'"><span class="icon">🔑</span>管理者画面へ</div>
-  </div>
-  <div class="sidebar-bottom">
-    <div class="sidebar-user"><strong id="sidebarName">職員</strong><span id="sidebarDept"></span></div>
-    <button class="btn-logout" onclick="doLogout()">ログアウト</button>
-  </div>
-</div>
+<!-- ══════ SCREENS ══════ -->
 
-<!-- Main -->
-<div class="main">
-<div class="topbar">
-  <div class="topbar-title" id="topbarTitle">ダッシュボード</div>
-  <div class="topbar-right"><span id="topbarDate"></span></div>
-</div>
-<div class="content">
-
-<!-- ── Dashboard ── -->
-<div class="page active" id="page-dashboard">
-  <!-- Quick Links -->
-  <div class="quick-links-grid">
-    <div class="quick-link" onclick="nav('punch')">
-      <div class="ql-icon">👊</div>
-      <div><div class="ql-label">打刻する</div><div class="ql-sub">出勤・退勤・休憩</div></div>
-    </div>
-    <div class="quick-link" onclick="nav('timecard')">
-      <div class="ql-icon">📋</div>
-      <div><div class="ql-label">タイムカード</div><div class="ql-sub">勤怠確認</div></div>
-    </div>
-    <div class="quick-link" onclick="nav('leave')">
-      <div class="ql-icon">🌴</div>
-      <div><div class="ql-label">休暇申請</div><div class="ql-sub">有給・特別休暇</div></div>
-    </div>
-    <div class="quick-link" onclick="nav('overtime')">
-      <div class="ql-icon">⏰</div>
-      <div><div class="ql-label">残業申請</div><div class="ql-sub">残業・深夜対応</div></div>
-    </div>
-    <div class="quick-link" onclick="window.open('calendar_system.html','_blank')">
-      <div class="ql-icon">📅</div>
-      <div><div class="ql-label">変形時間カレンダー</div><div class="ql-sub">シフト確認</div></div>
-    </div>
-    <div class="quick-link" onclick="window.open('kiosk.html','_blank')">
-      <div class="ql-icon">🖥️</div>
-      <div><div class="ql-label">打刻専用画面</div><div class="ql-sub">共用端末はこちら</div></div>
-    </div>
-  </div>
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">有給残日数</div><div class="kpi-val" id="dashLeave" style="color:var(--green)">—</div><div class="kpi-sub">日</div></div>
-    <div class="kpi"><div class="kpi-label">今月の実働時間</div><div class="kpi-val" id="dashWork" style="color:var(--blue)">—</div><div class="kpi-sub">時間</div></div>
-    <div class="kpi"><div class="kpi-label">今月の残業時間</div><div class="kpi-val" id="dashOt" style="color:var(--amber)">—</div><div class="kpi-sub">時間</div></div>
-    <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="dashPending" style="color:var(--red)">—</div><div class="kpi-sub">件</div></div>
-  </div>
-  <div class="card">
-    <div class="card-title">📋 本日の打刻状況</div>
-    <div id="todayStatus" style="font-size:14px;color:var(--muted)">読み込み中...</div>
-  </div>
-  <div class="card">
-    <div class="card-title">🔔 申請状況</div>
-    <table><thead><tr><th>種類</th><th>内容</th><th>申請日</th><th>状態</th></tr></thead>
-    <tbody id="dashRequestTbl"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-  </div>
-</div>
-
-<!-- ── Punch ── -->
-<div class="page" id="page-punch">
-  <div class="punch-card">
-    <div class="punch-time" id="punchClock">--:--:--</div>
-    <div class="punch-date" id="punchDate"></div>
-    <div class="punch-btns">
-      <button class="punch-btn" style="background:#22c55e;color:#fff" onclick="doPunch('出勤')">🟢 出勤</button>
-      <button class="punch-btn" style="background:#ef4444;color:#fff" onclick="doPunch('退勤')">🔴 退勤</button>
-      <button class="punch-btn" style="background:#f59e0b;color:#fff" onclick="doPunch('休憩開始')">⏸ 休憩開始</button>
-      <button class="punch-btn" style="background:#3b82f6;color:#fff" onclick="doPunch('休憩終了')">▶ 休憩終了</button>
-    </div>
-    <div class="punch-status" id="punchStatus"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">本日の打刻ログ</div>
-    <table><thead><tr><th>種別</th><th>時刻</th><th>備考</th></tr></thead>
-    <tbody id="todayPunchLog"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-  </div>
-  <div class="card">
-    <div class="card-title">✏️ 打刻修正申請</div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">日付</div><input class="form-control" id="punchFixDate" type="date"></div>
-      <div class="form-group"><div class="form-label">種別</div>
-        <select class="form-control" id="punchFixType"><option>出勤</option><option>退勤</option><option>休憩開始</option><option>休憩終了</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">時刻</div><input class="form-control" id="punchFixTime" type="time"></div>
-      <div class="form-group"><div class="form-label">理由</div><input class="form-control" id="punchFixNote" placeholder="打刻漏れのため"></div>
-    </div>
-    <button class="btn btn-outline" onclick="submitPunchFix()">修正申請を送る</button>
-  </div>
-</div>
-
-<!-- ── Timecard ── -->
-<div class="page" id="page-timecard">
-  <div class="card">
-    <div class="flex gap8 items-center mb16">
-      <input type="month" class="form-control" id="tcMonth" style="width:160px">
-      <button class="btn btn-primary" onclick="loadTimecard()">表示</button>
-    </div>
-    <table>
-      <thead><tr><th>日付</th><th>曜日</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>時間外</th><th>備考</th></tr></thead>
-      <tbody id="timecardTbl"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">月を選択してください</td></tr></tbody>
-    </table>
-    <div id="tcSummary" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
-  </div>
-</div>
-
-<!-- ── Leave ── -->
-<div class="page" id="page-leave">
-  <div class="flex gap8 mb16">
-    <button class="btn btn-primary" onclick="openModal('leaveApplyModal')">＋ 休暇申請</button>
-  </div>
-  <div class="card">
-    <div class="card-title">有給残日数</div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">有給残日数</div><div class="kpi-val" id="leaveRemain" style="color:var(--green)">—</div><div class="kpi-sub">日</div></div>
-      <div class="kpi"><div class="kpi-label">今年度取得</div><div class="kpi-val" id="leaveUsed" style="color:var(--blue)">—</div><div class="kpi-sub">日</div></div>
-      <div class="kpi"><div class="kpi-label">付与日数</div><div class="kpi-val" id="leaveTotal" style="color:var(--muted)">—</div><div class="kpi-sub">日</div></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">申請履歴</div>
-    <table><thead><tr><th>種類</th><th>開始日</th><th>終了日</th><th>日数</th><th>理由</th><th>状態</th></tr></thead>
-    <tbody id="leaveTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-  </div>
-</div>
-
-<!-- ── Overtime ── -->
-<div class="page" id="page-overtime">
-  <div class="flex gap8 mb16">
-    <button class="btn btn-primary" onclick="openModal('otApplyModal')">＋ 残業申請</button>
-  </div>
-  <div class="card">
-    <div class="card-title">今月の残業状況</div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">今月の残業時間</div><div class="kpi-val" id="otMonthTotal" style="color:var(--amber)">—</div><div class="kpi-sub">時間</div></div>
-      <div class="kpi"><div class="kpi-label">月上限</div><div class="kpi-val" style="color:var(--muted)">45</div><div class="kpi-sub">時間（法定）</div></div>
-    </div>
-    <div style="margin-top:8px">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">月間進捗</div>
-      <div class="bar-wrap"><div class="bar-fill" id="otBar" style="width:0%;background:var(--blue)"></div></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">残業申請履歴</div>
-    <table><thead><tr><th>日付</th><th>時間</th><th>理由</th><th>申請日</th><th>状態</th></tr></thead>
-    <tbody id="otTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-  </div>
-</div>
-
-<!-- ── My Requests ── -->
-<div class="page" id="page-myrequests">
-  <div class="tabs">
-    <div class="tab active" onclick="switchTab(this,'tab-myleave')">休暇申請</div>
-    <div class="tab" onclick="switchTab(this,'tab-myot')">残業申請</div>
-    <div class="tab" onclick="switchTab(this,'tab-mypunch')">打刻申請</div>
-  </div>
-  <div class="tab-content active" id="tab-myleave">
-    <div class="card">
-      <table><thead><tr><th>種類</th><th>開始日</th><th>終了日</th><th>日数</th><th>状態</th><th>申請日</th></tr></thead>
-      <tbody id="myLeaveTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-    </div>
-  </div>
-  <div class="tab-content" id="tab-myot">
-    <div class="card">
-      <table><thead><tr><th>日付</th><th>時間</th><th>理由</th><th>状態</th><th>申請日</th></tr></thead>
-      <tbody id="myOtTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-    </div>
-  </div>
-  <div class="tab-content" id="tab-mypunch">
-    <div class="card">
-      <table><thead><tr><th>日付</th><th>種別</th><th>時刻</th><th>備考</th><th>申請日</th></tr></thead>
-      <tbody id="myPunchTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
-    </div>
-  </div>
-</div>
-
-<!-- ── Calendar ── -->
-<div class="page" id="page-calendar">
-  <div class="card">
-    <div class="flex gap8 items-center mb16">
-      <button class="btn btn-outline btn-sm" onclick="calPrev()">◀ 前月</button>
-      <span id="calLabel" style="font-weight:700;font-size:15px;min-width:100px;text-align:center"></span>
-      <button class="btn btn-outline btn-sm" onclick="calNext()">次月 ▶</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px" id="calGrid">
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--red)">日</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--muted)">月</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--muted)">火</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--muted)">水</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--muted)">木</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--muted)">金</div>
-      <div style="text-align:center;font-size:11px;font-weight:700;padding:4px;color:var(--blue)">土</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">今月の労働時間目標</div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">所定労働日数</div><div class="kpi-val" id="calWorkDays" style="color:var(--blue)">—</div><div class="kpi-sub">日</div></div>
-      <div class="kpi"><div class="kpi-label">所定労働時間</div><div class="kpi-val" id="calWorkHours" style="color:var(--green)">—</div><div class="kpi-sub">時間</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Users (管理者のみ) ── -->
-<div class="page" id="page-users">
-  <div class="flex gap8 mb16">
-    <button class="btn btn-primary" onclick="openModal('addUserModal')">＋ ユーザー追加</button>
-    <input type="text" class="form-control" id="userSearch" placeholder="氏名で検索..." style="width:220px;margin-left:auto" oninput="filterUsers()">
-  </div>
-  <div class="card">
-    <table>
-      <thead><tr><th>氏名</th><th>部署</th><th>雇用形態</th><th>権限</th><th>入社日</th><th>ステータス</th><th>操作</th></tr></thead>
-      <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ── Settings (管理者のみ) ── -->
-<div class="page" id="page-settings">
-  <div class="settings-section">
-    <div class="settings-header"><span>🔗 外部リンク</span></div>
-    <div class="settings-body" style="display:flex;gap:12px;flex-wrap:wrap">
-      <a href="kiosk.html" target="_blank" class="btn btn-outline">🖥️ 打刻専用画面を開く</a>
-      <a href="index.html" class="btn btn-outline">🔑 管理者画面へ移動</a>
-      <a href="calendar_system.html" target="_blank" class="btn btn-outline">📅 変形時間カレンダー</a>
-    </div>
-  </div>
-  <div class="settings-section">
-    <div class="settings-header">
-      <span>⚙️ 就業ルール</span>
-      <button class="btn btn-sm btn-primary" onclick="openModal('workRuleModal')">＋ 追加</button>
-    </div>
-    <div class="settings-body">
-      <table>
-        <thead><tr><th>ルール名</th><th>所定開始</th><th>所定終了</th><th>所定時間</th><th>休憩</th><th>時間外割増</th></tr></thead>
-        <tbody>
-          <tr><td>標準（正社員）</td><td>09:00</td><td>18:00</td><td>8h</td><td>60分</td><td>25%</td></tr>
-          <tr><td>フレックス</td><td>コアタイム10-15時</td><td>—</td><td>8h</td><td>60分</td><td>25%</td></tr>
-          <tr><td>パート（6h）</td><td>09:00</td><td>15:00</td><td>6h</td><td>45分</td><td>25%</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <div class="settings-section">
-    <div class="settings-header">
-      <span>👤 ユーザー追加ガイド</span>
-    </div>
-    <div class="settings-body">
-      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
-        <div style="background:var(--lblue);border-radius:8px;padding:12px">
-          <strong style="color:var(--blue)">Step 1: Supabase Authenticationでユーザー作成</strong>
-          <ol style="margin-top:8px;padding-left:18px;line-height:2">
-            <li>supabase.com にログイン → プロジェクトを開く</li>
-            <li>左メニュー「Authentication」→「Users」→「Add user」</li>
-            <li>メールアドレスとパスワードを入力 → 「Create user」</li>
-          </ol>
-        </div>
-        <div style="background:var(--lgreen);border-radius:8px;padding:12px">
-          <strong style="color:var(--green)">Step 2: 従業員テーブルに紐付け</strong>
-          <div style="background:#fff;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;margin-top:8px;color:#333;line-height:1.8">
-            INSERT INTO employees (auth_id, name, department, role, employment_type, is_active, paid_leave_remaining)<br>
-            SELECT id, '氏名', '部署名', '一般', '正社員', true, 10<br>
-            FROM auth.users WHERE email = 'メールアドレス';
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="openModal('addUserModal')">＋ ユーザー追加フォームを開く</button>
+<!-- ① ログイン -->
+<div class="pg full no-nav on" id="screen-login">
+  <div class="login-wrap">
+    <div class="login-logo">🕐</div>
+    <div class="login-title">勤怠管理</div>
+    <div class="login-sub">スタッフポータル</div>
+    <div style="width:100%;max-width:340px">
+      <div class="f-group">
+        <label class="f-label">社員番号 / メールアドレス</label>
+        <input class="f-ctrl" type="text" placeholder="例：EMP001">
       </div>
-    </div>
-  </div>
-  <div class="settings-section">
-    <div class="settings-header">
-      <span>🏢 会社情報</span>
-      <button class="btn btn-sm btn-primary" onclick="showToast('設定を保存しました','green')">保存</button>
-    </div>
-    <div class="settings-body">
-      <div class="form-row">
-        <div class="form-group"><div class="form-label">会社名</div><input class="form-control" value="株式会社サンプル"></div>
-        <div class="form-group"><div class="form-label">代表者名</div><input class="form-control"></div>
+      <div class="f-group">
+        <label class="f-label">パスワード</label>
+        <input class="f-ctrl" type="password" placeholder="••••••••">
       </div>
-    </div>
-  </div>
-  <div class="settings-section">
-    <div class="settings-header"><span>🌴 有給設定</span><button class="btn btn-sm btn-primary" onclick="showToast('設定を保存しました','green')">保存</button></div>
-    <div class="settings-body">
-      <div class="form-row3">
-        <div class="form-group"><div class="form-label">基本付与日数</div><input class="form-control" type="number" value="10"></div>
-        <div class="form-group"><div class="form-label">法定最低取得</div><input class="form-control" type="number" value="5"></div>
-        <div class="form-group"><div class="form-label">繰越上限</div><input class="form-control" type="number" value="20"></div>
+      <div style="margin-bottom:24px">
+        <button class="btn-app btn-pri" onclick="doLogin()">ログイン</button>
+      </div>
+      <div style="text-align:center">
+        <a href="#" onclick="goScreen('screen-reset-pw');return false" style="font-size:13px;color:var(--pri);text-decoration:none">パスワードを忘れた方はこちら</a>
       </div>
     </div>
   </div>
 </div>
 
-</div>
-</div>
-</div><!-- app -->
-
-<div class="toast" id="toast"></div>
-
-<!-- ── Modals ── -->
-<div class="modal-overlay" id="leaveApplyModal">
-  <div class="modal">
-    <div class="modal-title">🌴 休暇申請<span class="modal-close" onclick="closeModal('leaveApplyModal')">×</span></div>
-    <div class="form-group"><div class="form-label">休暇種類</div>
-      <select class="form-control" id="leaveType"><option>年次有給休暇</option><option>特別休暇</option><option>育児休暇</option><option>介護休暇</option><option>慶弔休暇</option><option>半日休暇</option></select></div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">開始日</div><input class="form-control" id="leaveStart" type="date"></div>
-      <div class="form-group"><div class="form-label">終了日</div><input class="form-control" id="leaveEnd" type="date"></div>
+<!-- ② パスワード再設定 -->
+<div class="pg no-nav" id="screen-reset-pw">
+  <div style="padding:24px 16px 0">
+    <div style="font-size:20px;font-weight:800;margin-bottom:8px">パスワード再設定</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:28px">登録されたメールアドレスに再設定リンクを送信します。</div>
+    <div class="f-group">
+      <label class="f-label">メールアドレス</label>
+      <input class="f-ctrl" type="email" placeholder="example@company.jp">
     </div>
-    <div class="form-group"><div class="form-label">理由</div><textarea class="form-control" id="leaveReason" rows="3" placeholder="申請理由を入力"></textarea></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('leaveApplyModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitLeave()">申請する</button>
+    <div style="margin-top:8px"><button class="btn-app btn-pri" onclick="showToast('送信しました')">送信する</button></div>
+    <div style="text-align:center;margin-top:16px"><a href="#" onclick="goScreen('screen-login');return false" style="font-size:13px;color:var(--muted);text-decoration:none">← ログインに戻る</a></div>
+  </div>
+</div>
+
+<!-- ③ ホーム -->
+<div class="pg" id="screen-home">
+  <div class="card-hero">
+    <div style="font-size:13px;opacity:.8;margin-bottom:4px">おはようございます</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:2px">山田 太郎 さん</div>
+    <div style="font-size:13px;opacity:.75">総務部 ／ 正社員</div>
+    <div style="margin-top:16px;background:rgba(255,255,255,.15);border-radius:12px;padding:12px 14px">
+      <div style="font-size:11px;opacity:.8;margin-bottom:4px">今日のシフト</div>
+      <div style="font-size:22px;font-weight:800">9:00 〜 18:00</div>
+      <div style="font-size:12px;opacity:.75;margin-top:2px">通常勤務 ／ 休憩60分</div>
+    </div>
+  </div>
+  <!-- 打刻状況 -->
+  <div class="sec-title">打刻状況</div>
+  <div class="card-app">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--muted)">2026年7月1日（水）</div>
+      <div class="gps-pill"><i class="bi bi-geo-alt-fill"></i> 本社</div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item tl-line">
+        <div class="tl-dot" style="background:var(--pri)"></div>
+        <div class="tl-content"><div class="tl-time">09:03</div><div class="tl-label">出勤</div></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:var(--border)"></div>
+        <div class="tl-content" style="color:var(--muted)"><div class="tl-time">--:--</div><div class="tl-label">退勤待ち</div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <button class="btn-app btn-pri" onclick="goScreen('screen-punch')" style="padding:12px;font-size:14px"><i class="bi bi-box-arrow-in-right"></i> 打刻する</button>
+      <button class="btn-app btn-out" style="padding:12px;font-size:14px" onclick="goScreen('screen-punch-history')"><i class="bi bi-clock-history"></i> 履歴</button>
+    </div>
+  </div>
+  <!-- 今月サマリ -->
+  <div class="sec-title">今月の勤務</div>
+  <div class="card-app">
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-val" style="color:var(--pri)">18.5<span style="font-size:14px">h</span></div><div class="stat-lbl">今月勤務時間</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--war)">2.0<span style="font-size:14px">h</span></div><div class="stat-lbl">残業時間</div></div>
+    </div>
+    <div style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>出勤日数</span><span style="font-weight:700;color:var(--text)">3 / 22日</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:14%"></div></div>
+    </div>
+  </div>
+  <!-- お知らせ -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 16px 8px">
+    <div class="sec-title" style="margin:0">お知らせ</div>
+    <a href="#" onclick="goScreen('screen-notice');return false" style="font-size:12px;color:var(--pri);text-decoration:none">すべて見る</a>
+  </div>
+  <div class="list-wrap">
+    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">【重要】7月の就業規則改訂について</div>
+      <div class="notice-meta"><span class="unread-dot"></span><span>管理部</span><span>2026/07/01</span></div>
+    </div>
+    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">6月シフト確定のお知らせ</div>
+      <div class="notice-meta"><span>管理部</span><span>2026/06/25</span></div>
+    </div>
+  </div>
+  <!-- 申請状況 -->
+  <div class="sec-title">申請状況</div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-file-text" style="color:var(--pri)"></i></div>
+      <div><div class="list-title">有給休暇申請</div><div class="list-sub">7月5日（土）</div></div>
+      <div class="list-right"><span class="badge-app b-pend">審査中</span></div>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-file-check" style="color:var(--suc)"></i></div>
+      <div><div class="list-title">残業申請</div><div class="list-sub">6月30日（月）</div></div>
+      <div class="list-right"><span class="badge-app b-appr">承認済</span></div>
+    </div>
+  </div>
+  <div style="height:8px"></div>
+</div>
+
+<!-- ④ 打刻メイン -->
+<div class="pg" id="screen-punch">
+  <div class="clock-wrap">
+    <div class="clock-time" id="punchClock">09:14</div>
+    <div class="clock-date">2026年7月1日（水）</div>
+    <div class="clock-status"><i class="bi bi-circle-fill" style="font-size:8px"></i> 出勤中</div>
+  </div>
+  <!-- GPS -->
+  <div style="text-align:center;margin:8px 0 16px">
+    <div class="gps-pill"><i class="bi bi-geo-alt-fill"></i> 本社オフィス（認証済）</div>
+  </div>
+  <!-- 打刻ボタン -->
+  <div class="punch-grid">
+    <button class="pbtn pbtn-in done" onclick="doPunch('出勤')"><i class="bi bi-box-arrow-in-right"></i>出勤</button>
+    <button class="pbtn pbtn-out" onclick="doPunch('退勤')"><i class="bi bi-box-arrow-left"></i>退勤</button>
+    <button class="pbtn pbtn-brk" onclick="doPunch('休憩開始')"><i class="bi bi-cup-hot"></i>休憩<br>開始</button>
+    <button class="pbtn pbtn-ret" onclick="doPunch('休憩終了')"><i class="bi bi-arrow-return-left"></i>休憩<br>終了</button>
+    <button class="pbtn pbtn-go" onclick="doPunch('外出')"><i class="bi bi-door-open"></i>外出</button>
+    <button class="pbtn pbtn-back" onclick="doPunch('戻り')"><i class="bi bi-door-closed"></i>戻り</button>
+  </div>
+  <!-- 写真撮影オプション -->
+  <div class="card-app" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px">
+    <div><div style="font-size:13px;font-weight:600">写真撮影</div><div style="font-size:11px;color:var(--muted)">打刻時に自撮り撮影</div></div>
+    <div style="position:relative;display:inline-block">
+      <input type="checkbox" id="photoToggle" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;transition:background .2s">
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="otApplyModal">
-  <div class="modal">
-    <div class="modal-title">⏰ 残業申請<span class="modal-close" onclick="closeModal('otApplyModal')">×</span></div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">日付</div><input class="form-control" id="otDate" type="date"></div>
-      <div class="form-group"><div class="form-label">残業時間（h）</div><input class="form-control" id="otHours" type="number" step="0.5" min="0.5" max="10"></div>
+<!-- ⑤ 打刻確認モーダル風 -->
+<div class="pg" id="screen-punch-confirm">
+  <div style="padding:32px 24px;text-align:center">
+    <div style="font-size:64px;margin-bottom:16px">✅</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:8px">打刻完了</div>
+    <div style="font-size:15px;color:var(--muted);margin-bottom:4px" id="punchConfirmType">出勤</div>
+    <div style="font-size:36px;font-weight:200;margin:16px 0" id="punchConfirmTime">09:03</div>
+    <div class="gps-pill" style="margin-bottom:24px"><i class="bi bi-geo-alt-fill"></i> 本社オフィス</div>
+    <button class="btn-app btn-pri" onclick="goScreen('screen-home')">ホームに戻る</button>
+  </div>
+</div>
+
+<!-- ⑥ 打刻履歴 -->
+<div class="pg" id="screen-punch-history">
+  <div class="sec-title">2026年7月</div>
+  <div class="list-wrap">
+    <div class="list-row">
+      <div><div class="list-title">7月1日（水）</div><div class="list-sub">出勤 09:03 ／ 退勤 --:--</div></div>
+      <div class="list-right"><span class="badge-app b-blue">勤務中</span></div>
     </div>
-    <div class="form-group"><div class="form-label">理由</div>
-      <select class="form-control" id="otReason"><option>プロジェクト対応</option><option>緊急対応</option><option>月末処理</option><option>その他</option></select></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('otApplyModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="submitOT()">申請する</button>
+    <div class="list-row">
+      <div><div class="list-title">6月30日（月）</div><div class="list-sub">出勤 08:58 ／ 退勤 19:10</div></div>
+      <div class="list-right" style="flex-direction:column;align-items:flex-end"><span style="font-size:13px;font-weight:700">10:12</span><span style="font-size:11px;color:var(--war)">残業2:10</span></div>
+    </div>
+    <div class="list-row">
+      <div><div class="list-title">6月27日（金）</div><div class="list-sub">出勤 09:01 ／ 退勤 18:03</div></div>
+      <div class="list-right"><span style="font-size:13px;font-weight:700">9:02</span></div>
+    </div>
+    <div class="list-row">
+      <div><div class="list-title">6月26日（木）</div><div class="list-sub">出勤 09:15 ／ 退勤 18:00</div></div>
+      <div class="list-right" style="flex-direction:column;align-items:flex-end"><span style="font-size:13px;font-weight:700">8:45</span><span style="font-size:11px;color:var(--war)">遅刻15分</span></div>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-punch')">
+      <div><div class="list-title">6月25日（水）</div><div class="list-sub" style="color:var(--dan)">退勤打刻なし</div></div>
+      <div class="list-right"><span class="badge-app b-rej">要修正</span><i class="bi bi-chevron-right list-chev"></i></div>
     </div>
   </div>
 </div>
 
-<!-- Add User (管理者用) -->
-<div class="modal-overlay" id="addUserModal">
-  <div class="modal" style="width:600px">
-    <div class="modal-title">👤 ユーザー追加<span class="modal-close" onclick="closeModal('addUserModal')">×</span></div>
-    <div style="background:var(--lblue);border-radius:8px;padding:10px;font-size:12px;color:var(--blue);margin-bottom:14px">
-      ℹ️ 追加後、Supabase AuthenticationでもユーザーIDの紐付けが必要です
+<!-- ⑦ シフトカレンダー -->
+<div class="pg" id="screen-shift">
+  <div style="padding:8px 16px 0">
+    <div class="cal-nav">
+      <button onclick="showToast('前月')">&#9664;</button>
+      <span>2026年7月</span>
+      <button onclick="showToast('翌月')">&#9654;</button>
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">氏名 *</div><input class="form-control" id="newUserName" placeholder="山田 太郎"></div>
-      <div class="form-group"><div class="form-label">メール *</div><input class="form-control" id="newUserEmail" type="email"></div>
+  </div>
+  <div class="cal-wrap">
+    <div class="cal-grid">
+      <div class="cal-dh sun">日</div><div class="cal-dh">月</div><div class="cal-dh">火</div><div class="cal-dh">水</div><div class="cal-dh">木</div><div class="cal-dh">金</div><div class="cal-dh sat">土</div>
+      <!-- Week 1 -->
+      <div class="cal-cell sun"><div class="dn">1</div><div class="sb" style="background:#6b7280">休</div></div>
+      <div class="cal-cell tod" onclick="goScreen('screen-shift-detail')"><div class="dn">2</div><div class="sb" style="background:#ffffff44">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">3</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">4</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">5</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell wish" onclick="goScreen('screen-shift-detail')"><div class="dn">6</div><div class="sb" style="background:#16a34a">希</div></div>
+      <div class="cal-cell sat off"><div class="dn">7</div><div class="sb" style="background:#6b7280">休</div></div>
+      <!-- Week 2 -->
+      <div class="cal-cell sun off"><div class="dn">8</div><div class="sb" style="background:#6b7280">休</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">9</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">10</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">11</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">12</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">13</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell sat off"><div class="dn">14</div></div>
+      <!-- Week 3 -->
+      <div class="cal-cell sun off"><div class="dn">15</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">16</div><div class="sb" style="background:#7c3aed">E</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">17</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell off" onclick="goScreen('screen-wish-off')"><div class="dn">18</div><div class="sb" style="background:#dc2626">希休</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">19</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">20</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell sat off"><div class="dn">21</div></div>
+      <!-- Week 4 -->
+      <div class="cal-cell sun off"><div class="dn">22</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">23</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">24</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">25</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">26</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">27</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell sat off"><div class="dn">28</div></div>
+      <!-- Week 5 -->
+      <div class="cal-cell sun off"><div class="dn">29</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">30</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell" onclick="goScreen('screen-shift-detail')"><div class="dn">31</div><div class="sb" style="background:#1e40af">N</div></div>
+      <div class="cal-cell other"></div><div class="cal-cell other"></div><div class="cal-cell other"></div><div class="cal-cell other"></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">部署</div>
-        <select class="form-control" id="newUserDept"><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
-      <div class="form-group"><div class="form-label">雇用形態</div>
-        <select class="form-control" id="newUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option></select></div>
+  </div>
+  <!-- 凡例 -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:4px;font-size:11px"><div style="width:12px;height:12px;border-radius:3px;background:#1e40af"></div>通常(N)</div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:11px"><div style="width:12px;height:12px;border-radius:3px;background:#7c3aed"></div>早番(E)</div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:11px"><div style="width:12px;height:12px;border-radius:3px;background:#dc2626"></div>希望休</div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:11px"><div style="width:12px;height:12px;border-radius:3px;background:#16a34a"></div>希望出勤</div>
+  </div>
+  <div style="padding:0 16px 8px">
+    <button class="btn-app btn-out" onclick="goScreen('screen-shift-request')"><i class="bi bi-pencil-square"></i> 希望シフトを入力する</button>
+  </div>
+</div>
+
+<!-- ⑧ シフト詳細 -->
+<div class="pg" id="screen-shift-detail">
+  <div class="card-app">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">2026年7月2日（木）</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:12px">通常勤務（Nパターン）</div>
+    <div class="info-row"><span class="info-key">勤務開始</span><span class="info-val">09:00</span></div>
+    <div class="info-row"><span class="info-key">勤務終了</span><span class="info-val">18:00</span></div>
+    <div class="info-row"><span class="info-key">休憩</span><span class="info-val">60分</span></div>
+    <div class="info-row"><span class="info-key">勤務時間</span><span class="info-val" style="color:var(--pri)">8時間</span></div>
+    <div class="info-row"><span class="info-key">勤務場所</span><span class="info-val">本社オフィス</span></div>
+  </div>
+  <div style="padding:0 16px"><button class="btn-app btn-out" onclick="goScreen('screen-apply-shift-change')"><i class="bi bi-arrow-left-right"></i> シフト変更を申請する</button></div>
+</div>
+
+<!-- ⑨ 希望シフト入力 -->
+<div class="pg" id="screen-shift-request">
+  <div class="sec-title">2026年7月 — 希望入力</div>
+  <div class="card-app">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">⚠️ 提出締切：2026年6月20日（土）23:59</div>
+    <!-- Simple date list for input -->
+    <div id="wishList">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:14px;font-weight:600">7月1日（日）</div><div style="font-size:11px;color:var(--muted)">公休</div></div>
+        <span class="badge-app b-gray">休日</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:14px;font-weight:600">7月2日（月）</div></div>
+        <select class="f-ctrl" style="width:130px;padding:8px 10px;font-size:13px">
+          <option>指定なし</option><option>出勤希望</option><option selected>希望休</option><option>A勤希望</option><option>E勤希望</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div><div style="font-size:14px;font-weight:600">7月3日（火）</div></div>
+        <select class="f-ctrl" style="width:130px;padding:8px 10px;font-size:13px">
+          <option selected>指定なし</option><option>出勤希望</option><option>希望休</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+        <div><div style="font-size:14px;font-weight:600">7月4日（水）</div></div>
+        <select class="f-ctrl" style="width:130px;padding:8px 10px;font-size:13px">
+          <option selected>指定なし</option><option>出勤希望</option><option>希望休</option>
+        </select>
+      </div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">権限</div>
-        <select class="form-control" id="newUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
-      <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="newUserJoin" type="date"></div>
+  </div>
+  <div class="sec-title">コメント</div>
+  <div style="padding:0 16px">
+    <textarea class="f-ctrl" rows="3" placeholder="管理者へのメモ（例：午後は早めに上がりたいです）"></textarea>
+  </div>
+  <div style="padding:12px 16px"><button class="btn-app btn-pri" onclick="showToast('希望シフトを提出しました')">提出する</button></div>
+</div>
+
+<!-- ⑩ 希望休入力 -->
+<div class="pg" id="screen-wish-off">
+  <div class="card-app">
+    <div style="font-size:17px;font-weight:800;margin-bottom:16px">希望休入力 — 7月18日（金）</div>
+    <div class="f-group">
+      <label class="f-label">種別</label>
+      <select class="f-ctrl">
+        <option selected>希望休</option><option>有給希望</option><option>出勤希望</option>
+      </select>
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">有給付与日数</div><input class="form-control" id="newUserLeave" type="number" value="10"></div>
+    <div class="f-group">
+      <label class="f-label">勤務希望時間（任意）</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <input class="f-ctrl" type="time" value="09:00">
+        <input class="f-ctrl" type="time" value="18:00">
+      </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('addUserModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="addUser()">追加する</button>
+    <div class="f-group">
+      <label class="f-label">コメント</label>
+      <textarea class="f-ctrl" rows="2" placeholder="理由など（任意）">病院受診のため午後は休みを希望します</textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('登録しました');goBack()">登録する</button>
+  </div>
+</div>
+
+<!-- ⑪ 申請一覧 -->
+<div class="pg" id="screen-apply">
+  <div class="tab-bar">
+    <div class="tab-item on">すべて</div>
+    <div class="tab-item">審査中</div>
+    <div class="tab-item">承認済</div>
+    <div class="tab-item">差戻し</div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div>
+      <div style="flex:1"><div class="list-title">有給休暇</div><div class="list-sub">7月5日（土）　1日</div></div>
+      <span class="badge-app b-pend">審査中</span>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-clock-history" style="color:var(--suc)"></i></div>
+      <div style="flex:1"><div class="list-title">残業申請</div><div class="list-sub">6月30日（月）　2時間</div></div>
+      <span class="badge-app b-appr">承認済</span>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div>
+      <div style="flex:1"><div class="list-title">打刻修正</div><div class="list-sub">6月25日（水）</div></div>
+      <span class="badge-app b-appr">承認済</span>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--dan-l)"><i class="bi bi-x-circle" style="color:var(--dan)"></i></div>
+      <div style="flex:1"><div class="list-title">シフト変更申請</div><div class="list-sub">6月20日（土）</div></div>
+      <span class="badge-app b-rej">差戻し</span>
+    </div>
+  </div>
+  <div style="padding:8px 16px">
+    <button class="btn-app btn-pri" onclick="goScreen('screen-apply-new')"><i class="bi bi-plus-circle"></i> 新規申請</button>
+  </div>
+</div>
+
+<!-- ⑫ 新規申請選択 -->
+<div class="pg" id="screen-apply-new">
+  <div class="sec-title">休暇申請</div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-apply-leave')"><div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div><div class="list-title">有給休暇</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-half-leave')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-stop-circle" style="color:var(--pur)"></i></div><div class="list-title">半日休暇</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-hourly-leave')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-clock" style="color:var(--suc)"></i></div><div class="list-title">時間単位休暇</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-absence')"><div class="list-icon" style="background:var(--dan-l)"><i class="bi bi-calendar-x" style="color:var(--dan)"></i></div><div class="list-title">欠勤申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-late-early')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-alarm" style="color:var(--war)"></i></div><div class="list-title">遅刻・早退申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+  <div class="sec-title">その他申請</div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-apply-ot')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-moon-stars" style="color:var(--war)"></i></div><div class="list-title">残業申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-holiday-work')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-check" style="color:var(--suc)"></i></div><div class="list-title">休日出勤申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-punch')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div><div class="list-title">打刻修正申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-shift-change')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-arrow-left-right" style="color:var(--suc)"></i></div><div class="list-title">シフト変更申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+</div>
+
+<!-- ⑬ 有給申請 -->
+<div class="pg" id="screen-apply-leave">
+  <div class="card-app" style="background:var(--pri-l);border-color:var(--pri-l)">
+    <div style="font-size:12px;color:var(--pri);font-weight:700">有給残日数</div>
+    <div><span class="leave-days">12.5</span><span class="leave-unit">日</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:62%"></div></div>
+    <div style="font-size:11px;color:var(--pri)">付与20日 ／ 消化7.5日</div>
+  </div>
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">取得区分</label>
+      <select class="f-ctrl"><option>全日</option><option>午前半休</option><option>午後半休</option><option>時間単位</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">開始日</label>
+      <input class="f-ctrl" type="date" value="2026-07-05">
+    </div>
+    <div class="f-group">
+      <label class="f-label">終了日</label>
+      <input class="f-ctrl" type="date" value="2026-07-05">
+    </div>
+    <div class="f-group">
+      <label class="f-label">理由（任意）</label>
+      <textarea class="f-ctrl" rows="2" placeholder="私用のため"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-app btn-gray" onclick="goBack()" style="flex:1">キャンセル</button>
+      <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')" style="flex:2">申請する</button>
     </div>
   </div>
 </div>
 
-<!-- Edit User -->
-<div class="modal-overlay" id="editUserModal">
-  <div class="modal">
-    <div class="modal-title">✏️ ユーザー編集<span class="modal-close" onclick="closeModal('editUserModal')">×</span></div>
-    <input type="hidden" id="editUserId">
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">氏名</div><input class="form-control" id="editUserName"></div>
-      <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+<!-- ⑭ 半休申請 -->
+<div class="pg" id="screen-apply-half-leave">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">取得日</label>
+      <input class="f-ctrl" type="date" value="2026-07-10">
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">権限</div><select class="form-control" id="editUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
-      <div class="form-group"><div class="form-label">有給残日数</div><input class="form-control" id="editUserLeave" type="number"></div>
+    <div class="f-group">
+      <label class="f-label">区分</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label style="display:flex;align-items:center;gap:8px;padding:14px;border:2px solid var(--pri);border-radius:13px;cursor:pointer;background:var(--pri-l)">
+          <input type="radio" name="half" checked style="accent-color:var(--pri)"><span style="font-weight:700;color:var(--pri)">午前半休</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:14px;border:1.5px solid var(--border);border-radius:13px;cursor:pointer">
+          <input type="radio" name="half"><span style="font-weight:700">午後半休</span>
+        </label>
+      </div>
     </div>
-    <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('editUserModal')">キャンセル</button>
-      <button class="btn btn-red" onclick="disableUser()" style="margin-right:auto">無効化</button>
-      <button class="btn btn-primary" onclick="saveUser()">保存</button>
+    <div class="f-group">
+      <label class="f-label">理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="通院のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑮ 時間休申請 -->
+<div class="pg" id="screen-apply-hourly-leave">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">取得日</label>
+      <input class="f-ctrl" type="date" value="2026-07-08">
+    </div>
+    <div class="f-group">
+      <label class="f-label">取得時間帯</label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+        <input class="f-ctrl" type="time" value="13:00">
+        <span style="color:var(--muted)">〜</span>
+        <input class="f-ctrl" type="time" value="15:00">
+      </div>
+    </div>
+    <div class="card-app" style="background:#f0fdf4;border-color:#bbf7d0;margin:0 0 16px">
+      <div style="font-size:12px;color:var(--suc);font-weight:700">取得単位：30分単位　／　最大：年8時間</div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="通院のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑯ 残業申請 -->
+<div class="pg" id="screen-apply-ot">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">残業日</label>
+      <input class="f-ctrl" type="date" value="2026-07-02">
+    </div>
+    <div class="f-group">
+      <label class="f-label">予定残業時間</label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+        <input class="f-ctrl" type="time" value="18:00">
+        <span style="color:var(--muted)">〜</span>
+        <input class="f-ctrl" type="time" value="20:00">
+      </div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">残業理由</label>
+      <select class="f-ctrl"><option>業務上の必要</option><option>プロジェクト対応</option><option>繁忙期対応</option><option>その他</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">詳細・備考</label>
+      <textarea class="f-ctrl" rows="2" placeholder="月次報告書の作成対応のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑰ 休日出勤申請 -->
+<div class="pg" id="screen-apply-holiday-work">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">出勤日</label>
+      <input class="f-ctrl" type="date" value="2026-07-12">
+    </div>
+    <div class="f-group">
+      <label class="f-label">勤務時間</label>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
+        <input class="f-ctrl" type="time" value="09:00">
+        <span style="color:var(--muted)">〜</span>
+        <input class="f-ctrl" type="time" value="15:00">
+      </div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">振替休日</label>
+      <input class="f-ctrl" type="date">
+    </div>
+    <div class="f-group">
+      <label class="f-label">出勤理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="システムメンテナンス対応のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑱ 欠勤申請 -->
+<div class="pg" id="screen-apply-absence">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">欠勤日</label>
+      <input class="f-ctrl" type="date" value="2026-07-15">
+    </div>
+    <div class="f-group">
+      <label class="f-label">欠勤区分</label>
+      <select class="f-ctrl"><option>全日欠勤</option><option>午前欠勤</option><option>午後欠勤</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">理由</label>
+      <select class="f-ctrl"><option>病気・体調不良</option><option>家族の看護</option><option>冠婚葬祭</option><option>その他</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">詳細</label>
+      <textarea class="f-ctrl" rows="2" placeholder="発熱のため"></textarea>
+    </div>
+    <button class="btn-app btn-dan" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑲ 遅刻・早退申請 -->
+<div class="pg" id="screen-apply-late-early">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">申請種別</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid var(--war);border-radius:13px;background:var(--war-l);cursor:pointer">
+          <input type="radio" name="letype" checked style="accent-color:var(--war)"><span style="font-weight:700;color:var(--war)">遅刻</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:12px;border:1.5px solid var(--border);border-radius:13px;cursor:pointer">
+          <input type="radio" name="letype"><span style="font-weight:700">早退</span>
+        </label>
+      </div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">対象日</label>
+      <input class="f-ctrl" type="date" value="2026-07-03">
+    </div>
+    <div class="f-group">
+      <label class="f-label">出勤（予定）時刻</label>
+      <input class="f-ctrl" type="time" value="10:30">
+    </div>
+    <div class="f-group">
+      <label class="f-label">理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="電車遅延のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ⑳ 打刻修正申請 -->
+<div class="pg" id="screen-apply-punch">
+  <div style="padding:0 16px">
+    <div class="card-app" style="background:var(--dan-l);border-color:#fca5a5">
+      <div style="font-size:13px;color:var(--dan);font-weight:700"><i class="bi bi-exclamation-triangle"></i> 退勤打刻なし — 6月25日（水）</div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">修正種別</label>
+      <select class="f-ctrl"><option>退勤打刻漏れ</option><option>出勤打刻漏れ</option><option>時刻修正</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">正しい退勤時刻</label>
+      <input class="f-ctrl" type="time" value="18:10">
+    </div>
+    <div class="f-group">
+      <label class="f-label">修正理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="打刻を忘れて退社してしまいました">打刻を忘れて退社してしまいました。</textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ㉑ シフト変更申請 -->
+<div class="pg" id="screen-apply-shift-change">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">変更希望日</label>
+      <input class="f-ctrl" type="date" value="2026-07-10">
+    </div>
+    <div class="f-group">
+      <label class="f-label">現在のシフト</label>
+      <div class="card-app" style="padding:12px;margin:0;background:#f8fafc"><div style="font-weight:700">N勤 09:00〜18:00</div></div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">希望シフト</label>
+      <select class="f-ctrl"><option>E勤 07:00〜16:00</option><option>L勤 12:00〜21:00</option><option>休日希望</option></select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">変更理由</label>
+      <textarea class="f-ctrl" rows="2" placeholder="医療機関受診のため"></textarea>
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+  </div>
+</div>
+
+<!-- ㉒ 申請詳細 -->
+<div class="pg" id="screen-apply-detail">
+  <div class="card-app">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+      <div><div style="font-size:18px;font-weight:800">有給休暇申請</div><div style="font-size:13px;color:var(--muted);margin-top:2px">申請番号：REQ-2026-0147</div></div>
+      <span class="badge-app b-pend" style="font-size:13px;padding:5px 14px">審査中</span>
+    </div>
+    <div class="info-row"><span class="info-key">取得日</span><span class="info-val">2026年7月5日（土）</span></div>
+    <div class="info-row"><span class="info-key">取得区分</span><span class="info-val">全日</span></div>
+    <div class="info-row"><span class="info-key">申請日時</span><span class="info-val">2026/07/01 10:32</span></div>
+    <div class="info-row"><span class="info-key">承認者</span><span class="info-val">田中 部長</span></div>
+  </div>
+  <!-- Approval flow -->
+  <div class="sec-title">承認状況</div>
+  <div class="card-app p0">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+      <div style="width:32px;height:32px;background:var(--suc-l);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px">✅</div>
+      <div><div style="font-size:13px;font-weight:700">1次承認</div><div style="font-size:11px;color:var(--muted)">田中 課長 / 2026/07/01 11:20</div></div>
+      <span class="badge-app b-appr ms-auto">承認</span>
+    </div>
+    <div style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+      <div style="width:32px;height:32px;background:var(--war-l);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px">⏳</div>
+      <div><div style="font-size:13px;font-weight:700">2次承認</div><div style="font-size:11px;color:var(--muted)">佐藤 部長 / 未承認</div></div>
+      <span class="badge-app b-pend ms-auto">審査中</span>
+    </div>
+  </div>
+  <div style="padding:0 16px 8px">
+    <button class="btn-app btn-gray" onclick="showToast('取り下げました');goScreen('screen-apply')">申請を取り下げる</button>
+  </div>
+</div>
+
+<!-- ㉓ 承認状況 -->
+<div class="pg" id="screen-approval-status">
+  <div class="stat-row" style="padding:0 16px 12px">
+    <div class="stat-card"><div class="stat-val" style="color:var(--war)">2</div><div class="stat-lbl">審査中</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--suc)">8</div><div class="stat-lbl">今月承認済</div></div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div>
+      <div style="flex:1"><div class="list-title">有給休暇 — 7月5日</div><div class="list-sub">2026/07/01 申請</div></div>
+      <span class="badge-app b-pend">審査中</span>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--war-l)"><i class="bi bi-moon-stars" style="color:var(--war)"></i></div>
+      <div style="flex:1"><div class="list-title">残業申請 — 7月2日</div><div class="list-sub">2026/06/30 申請</div></div>
+      <span class="badge-app b-pend">審査中</span>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-apply-detail')">
+      <div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-check-circle" style="color:var(--suc)"></i></div>
+      <div style="flex:1"><div class="list-title">残業申請 — 6月30日</div><div class="list-sub">2026/06/29 申請</div></div>
+      <span class="badge-app b-appr">承認済</span>
     </div>
   </div>
 </div>
 
-<!-- Work Rule -->
-<div class="modal-overlay" id="workRuleModal">
-  <div class="modal">
-    <div class="modal-title">⚙️ 就業ルール追加<span class="modal-close" onclick="closeModal('workRuleModal')">×</span></div>
-    <div class="form-group"><div class="form-label">ルール名</div><input class="form-control" id="ruleName"></div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">開始時間</div><input class="form-control" id="ruleStart" type="time" value="09:00"></div>
-      <div class="form-group"><div class="form-label">終了時間</div><input class="form-control" id="ruleEnd" type="time" value="18:00"></div>
+<!-- ㉔ お知らせ一覧 -->
+<div class="pg" id="screen-notice">
+  <div class="list-wrap" style="margin-top:8px">
+    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">【重要】7月の就業規則改訂について</div>
+      <div class="notice-meta"><span class="unread-dot"></span><span class="badge-app b-rej" style="font-size:10px">重要</span><span>管理部</span><span>2026/07/01</span></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">所定時間（h）</div><input class="form-control" id="ruleHours" type="number" value="8"></div>
-      <div class="form-group"><div class="form-label">休憩（分）</div><input class="form-control" id="ruleBreak" type="number" value="60"></div>
+    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">7月シフトが確定しました</div>
+      <div class="notice-meta"><span class="unread-dot"></span><span>人事部</span><span>2026/06/28</span></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('workRuleModal')">キャンセル</button>
-      <button class="btn btn-primary" onclick="showToast('就業ルールを追加しました','green');closeModal(\'workRuleModal\')">保存</button>
+    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">夏季休暇の取得について（申請期限：7月15日）</div>
+      <div class="notice-meta"><span class="unread-dot"></span><span>人事部</span><span>2026/06/25</span></div>
+    </div>
+    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">社内システムメンテナンスのお知らせ</div>
+      <div class="notice-meta"><span>システム部</span><span>2026/06/20</span></div>
+    </div>
+    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">健康診断日程のご案内（PDF添付）</div>
+      <div class="notice-meta"><span><i class="bi bi-paperclip"></i> 添付あり</span><span>総務部</span><span>2026/06/15</span></div>
+    </div>
+    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
+      <div class="notice-title">6月度給与明細の確認について</div>
+      <div class="notice-meta"><span>経理部</span><span>2026/06/10</span></div>
     </div>
   </div>
 </div>
+
+<!-- ㉕ お知らせ詳細 -->
+<div class="pg" id="screen-notice-detail">
+  <div class="card-app">
+    <div class="badge-app b-rej" style="margin-bottom:8px">重要</div>
+    <div style="font-size:18px;font-weight:800;margin-bottom:8px">7月の就業規則改訂について</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;display:flex;gap:8px">
+      <span>管理部</span><span>2026年7月1日</span>
+    </div>
+    <div style="font-size:14px;line-height:1.8;color:var(--text)">
+      <p>スタッフの皆様へ</p>
+      <p style="margin-top:12px">2026年7月1日より、就業規則の一部が改訂されます。主な変更点は以下の通りです。</p>
+      <p style="margin-top:12px"><strong>【変更点】</strong><br>
+      1. 有給休暇の時間単位取得が可能になります（最大8時間/年）<br>
+      2. フレックスタイム制のコアタイムが10:00〜15:00に変更されます<br>
+      3. 育児・介護休業の申請期限が30日前から14日前に変更されます</p>
+      <p style="margin-top:12px">詳細は添付の改訂版就業規則をご確認ください。</p>
+      <p style="margin-top:12px">ご不明な点は人事部までお問い合わせください。</p>
+    </div>
+    <!-- 添付ファイル -->
+    <div style="margin-top:16px;padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="showToast('PDFを開きます')">
+      <i class="bi bi-file-pdf" style="font-size:24px;color:var(--dan)"></i>
+      <div><div style="font-size:13px;font-weight:700">就業規則改訂版_2026年7月.pdf</div><div style="font-size:11px;color:var(--muted)">245 KB</div></div>
+      <i class="bi bi-download ms-auto" style="color:var(--pri)"></i>
+    </div>
+  </div>
+</div>
+
+<!-- ㉖ 有給管理 -->
+<div class="pg" id="screen-leave">
+  <!-- Summary card -->
+  <div class="leave-card" style="margin:8px 16px 12px;background:linear-gradient(135deg,var(--pri),#3b82f6);color:#fff;border:none">
+    <div style="font-size:12px;opacity:.8;margin-bottom:4px">有給残日数</div>
+    <div><span style="font-size:48px;font-weight:800;line-height:1">12.5</span><span style="font-size:16px;opacity:.8;margin-left:6px">日</span></div>
+    <div class="prog-bar" style="margin:12px 0 8px;background:rgba(255,255,255,.3)"><div style="height:100%;border-radius:6px;background:#fff;width:62%"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;opacity:.8">
+      <span>付与：20日</span><span>消化：7.5日</span><span>消滅予定：0日</span>
+    </div>
+  </div>
+  <div class="stat-row" style="padding:0 16px 12px">
+    <div class="stat-card"><div class="stat-val" style="color:var(--pri)">0.5</div><div class="stat-lbl">時間有給残(h)</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--war)">7.5</div><div class="stat-lbl">消化日数</div></div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-leave-history')">
+      <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-calendar-check" style="color:var(--pri)"></i></div>
+      <div class="list-title">取得履歴</div>
+      <i class="bi bi-chevron-right list-chev ms-auto"></i>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-leave-grant')">
+      <div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-gift" style="color:var(--suc)"></i></div>
+      <div class="list-title">付与履歴</div>
+      <i class="bi bi-chevron-right list-chev ms-auto"></i>
+    </div>
+    <div class="list-row" onclick="goScreen('screen-leave-expire')">
+      <div class="list-icon" style="background:var(--war-l)"><i class="bi bi-alarm" style="color:var(--war)"></i></div>
+      <div class="list-title">消滅予定</div>
+      <i class="bi bi-chevron-right list-chev ms-auto"></i>
+    </div>
+  </div>
+  <div style="padding:0 16px">
+    <button class="btn-app btn-pri" onclick="goScreen('screen-apply-leave')"><i class="bi bi-plus-circle"></i> 有給申請する</button>
+  </div>
+</div>
+
+<!-- ㉗ 取得履歴 -->
+<div class="pg" id="screen-leave-history">
+  <div class="list-wrap">
+    <div class="list-row"><div style="flex:1"><div class="list-title">有給休暇</div><div class="list-sub">2026/07/05（土）全日</div></div><span style="font-size:13px;font-weight:700;color:var(--dan)">-1.0日</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">午前半休</div><div class="list-sub">2026/06/20（土）</div></div><span style="font-size:13px;font-weight:700;color:var(--dan)">-0.5日</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">有給休暇</div><div class="list-sub">2026/06/03〜06/04（2日）</div></div><span style="font-size:13px;font-weight:700;color:var(--dan)">-2.0日</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">時間有給</div><div class="list-sub">2026/05/15（水）13:00〜15:00</div></div><span style="font-size:13px;font-weight:700;color:var(--dan)">-2.0h</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">有給休暇</div><div class="list-sub">2026/05/02〜05/06（5日）</div></div><span style="font-size:13px;font-weight:700;color:var(--dan)">-5.0日</span></div>
+  </div>
+</div>
+
+<!-- ㉘ 付与履歴 -->
+<div class="pg" id="screen-leave-grant">
+  <div class="list-wrap">
+    <div class="list-row"><div style="flex:1"><div class="list-title">定期付与</div><div class="list-sub">2026/04/01 ／ 有効期限：2028/03/31</div></div><span style="font-size:13px;font-weight:700;color:var(--suc)">+20日</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">定期付与</div><div class="list-sub">2025/04/01 ／ 有効期限：2027/03/31</div></div><span style="font-size:13px;font-weight:700;color:var(--suc)">+18日</span></div>
+    <div class="list-row"><div style="flex:1"><div class="list-title">繰越</div><div class="list-sub">2025/04/01</div></div><span style="font-size:13px;font-weight:700;color:var(--suc)">+2日</span></div>
+  </div>
+</div>
+
+<!-- ㉙ 消滅予定 -->
+<div class="pg" id="screen-leave-expire">
+  <div class="card-app" style="background:var(--war-l);border-color:#fcd34d">
+    <div style="font-size:13px;font-weight:700;color:var(--war);margin-bottom:8px"><i class="bi bi-exclamation-triangle"></i> 消滅予定の有給があります</div>
+    <div style="font-size:13px;color:var(--text)">2027年3月31日に <strong>2日</strong> が消滅予定です。年度末前に取得をご検討ください。</div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row"><div style="flex:1"><div class="list-title">2025年度付与分（繰越）</div><div class="list-sub">消滅日：2027/03/31</div></div><span style="font-size:13px;font-weight:700;color:var(--war)">2日</span></div>
+  </div>
+  <div style="padding:0 16px">
+    <button class="btn-app btn-pri" onclick="goScreen('screen-apply-leave')">有給を申請する</button>
+  </div>
+</div>
+
+<!-- ㉚ メニュー -->
+<div class="pg" id="screen-menu">
+  <!-- User info -->
+  <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#fff;margin-bottom:8px;border-bottom:1px solid var(--border)">
+    <div class="avatar">山</div>
+    <div>
+      <div style="font-size:17px;font-weight:800">山田 太郎</div>
+      <div style="font-size:12px;color:var(--muted)">総務部 ／ 社員番号：EMP-001</div>
+      <div style="font-size:12px;color:var(--muted)">正社員 ／ 入社：2020年4月</div>
+    </div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-timecard')"><div class="list-icon" style="background:#f0f9ff"><i class="bi bi-table" style="color:var(--pri)"></i></div><div class="list-title">勤務実績</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-approval-status')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-check2-all" style="color:var(--war)"></i></div><div class="list-title">承認状況</div><span class="badge-app b-pend ms-auto">2件</span><i class="bi bi-chevron-right list-chev"></i></div>
+    <div class="list-row" onclick="goScreen('screen-leave')"><div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div><div class="list-title">有給管理</div><div class="list-right"><span style="font-size:12px;font-weight:700;color:var(--pri)">残12.5日</span><i class="bi bi-chevron-right list-chev"></i></div></div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-mypage')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-person-circle" style="color:var(--muted)"></i></div><div class="list-title">マイページ</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-qualification')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-award" style="color:var(--suc)"></i></div><div class="list-title">資格・スキル</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-settings')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-gear" style="color:var(--muted)"></i></div><div class="list-title">設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+  <div style="padding:8px 16px">
+    <button class="btn-app" style="background:#f1f5f9;color:var(--dan);font-weight:700" onclick="goScreen('screen-login')"><i class="bi bi-box-arrow-right"></i> ログアウト</button>
+  </div>
+</div>
+
+<!-- ㉛ マイページ -->
+<div class="pg" id="screen-mypage">
+  <div style="display:flex;flex-direction:column;align-items:center;padding:20px;background:#fff;margin-bottom:8px;border-bottom:1px solid var(--border)">
+    <div class="avatar" style="width:88px;height:88px;font-size:40px;margin-bottom:12px">山</div>
+    <div style="font-size:20px;font-weight:800">山田 太郎</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:4px">総務部 ／ 正社員</div>
+  </div>
+  <div class="card-app p0">
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">社員番号</span><span class="info-val">EMP-001</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">所属部署</span><span class="info-val">総務部</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">役職</span><span class="info-val">主任</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">雇用区分</span><span class="info-val">正社員</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">入社日</span><span class="info-val">2020年4月1日</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">メール</span><span class="info-val" style="font-size:12px">yamada@company.jp</span></div>
+    <div class="info-row" style="padding:12px 16px"><span class="info-key">電話</span><span class="info-val">090-0000-0000</span></div>
+  </div>
+  <div style="padding:0 16px">
+    <button class="btn-app btn-out" onclick="goScreen('screen-profile-edit')"><i class="bi bi-pencil"></i> プロフィールを編集する</button>
+  </div>
+</div>
+
+<!-- ㉜ プロフィール編集 -->
+<div class="pg" id="screen-profile-edit">
+  <div style="padding:0 16px">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:16px 0">
+      <div class="avatar" style="width:72px;height:72px;font-size:32px;position:relative;cursor:pointer" onclick="showToast('写真を変更')">
+        山
+        <div style="position:absolute;bottom:0;right:0;background:var(--pri);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:2px solid #fff"><i class="bi bi-camera"></i></div>
+      </div>
+    </div>
+    <div class="f-group"><label class="f-label">氏名（変更不可）</label><input class="f-ctrl" value="山田 太郎" disabled style="background:#f1f5f9"></div>
+    <div class="f-group"><label class="f-label">電話番号</label><input class="f-ctrl" type="tel" value="090-0000-0000"></div>
+    <div class="f-group"><label class="f-label">緊急連絡先</label><input class="f-ctrl" type="tel" placeholder="090-0000-0000"></div>
+    <div class="f-group"><label class="f-label">通勤方法</label><select class="f-ctrl"><option>電車</option><option>バス</option><option>車</option><option>自転車</option><option>徒歩</option></select></div>
+    <div class="f-group"><label class="f-label">通勤時間（分）</label><input class="f-ctrl" type="number" value="35"></div>
+    <button class="btn-app btn-pri" onclick="showToast('更新しました');goBack()">保存する</button>
+  </div>
+</div>
+
+<!-- ㉝ パスワード変更 -->
+<div class="pg" id="screen-password">
+  <div style="padding:0 16px">
+    <div class="f-group"><label class="f-label">現在のパスワード</label><input class="f-ctrl" type="password" placeholder="••••••••"></div>
+    <div class="f-group"><label class="f-label">新しいパスワード</label><input class="f-ctrl" type="password" placeholder="8文字以上・英数字混在"></div>
+    <div class="f-group"><label class="f-label">新しいパスワード（確認）</label><input class="f-ctrl" type="password" placeholder="••••••••"></div>
+    <div style="background:#f8fafc;border-radius:12px;padding:12px;font-size:12px;color:var(--muted);margin-bottom:16px">
+      ・8文字以上<br>・英字（大文字/小文字）と数字を含む<br>・記号を含めるとより安全です
+    </div>
+    <button class="btn-app btn-pri" onclick="showToast('パスワードを変更しました');goBack()">変更する</button>
+  </div>
+</div>
+
+<!-- ㉞ 通知設定 -->
+<div class="pg" id="screen-notif-settings">
+  <div class="card-app p0">
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">打刻リマインダー</div><div class="list-sub">出勤・退勤時刻にプッシュ通知</div></div>
+      <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">申請状況通知</div><div class="list-sub">承認・差戻し時に通知</div></div>
+      <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">シフト確定通知</div><div class="list-sub">翌月シフト確定時に通知</div></div>
+      <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">お知らせ通知</div><div class="list-sub">新着お知らせ時に通知</div></div>
+      <input type="checkbox" style="width:44px;height:24px;appearance:none;background:var(--border);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">有給消滅警告</div><div class="list-sub">消滅30日前に通知</div></div>
+      <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+  </div>
+</div>
+
+<!-- ㉟ 設定 -->
+<div class="pg" id="screen-settings">
+  <div class="list-wrap">
+    <div class="list-row" onclick="goScreen('screen-password')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-key" style="color:var(--muted)"></i></div><div class="list-title">パスワード変更</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+  <div class="list-wrap">
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">ダークモード</div></div>
+      <input type="checkbox" style="width:44px;height:24px;appearance:none;background:var(--border);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+    <div class="list-row" style="cursor:default">
+      <div style="flex:1"><div class="list-title">バイオメトリクス認証</div><div class="list-sub">Face ID / 指紋でログイン</div></div>
+      <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
+    </div>
+  </div>
+  <div style="padding:8px 16px;text-align:center">
+    <div style="font-size:12px;color:var(--muted)">バージョン 1.0.0</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:2px">© 2026 Company Inc.</div>
+  </div>
+</div>
+
+<!-- ㊱ 資格・スキル -->
+<div class="pg" id="screen-qualification">
+  <div class="list-wrap">
+    <div class="list-row"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-award" style="color:var(--war)"></i></div><div><div class="list-title">日商簿記2級</div><div class="list-sub">取得：2019年6月</div></div><span class="badge-app b-appr ms-auto">認定済</span></div>
+    <div class="list-row"><div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-award" style="color:var(--pri)"></i></div><div><div class="list-title">ITパスポート</div><div class="list-sub">取得：2020年10月</div></div><span class="badge-app b-appr ms-auto">認定済</span></div>
+    <div class="list-row"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-plus-circle" style="color:var(--muted)"></i></div><div class="list-title">資格を追加する</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+</div>
+
+<!-- ㊲ 勤務実績 -->
+<div class="pg" id="screen-timecard">
+  <div class="card-app" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <button onclick="showToast('前月')" style="border:none;background:none;font-size:20px;color:var(--muted)">&#9664;</button>
+      <span style="font-size:15px;font-weight:800">2026年7月</span>
+      <button onclick="showToast('翌月')" style="border:none;background:none;font-size:20px;color:var(--muted)">&#9654;</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-val" style="color:var(--pri)">3</div><div class="stat-lbl">出勤日数</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--war)">2.0h</div><div class="stat-lbl">残業時間</div></div>
+    </div>
+  </div>
+  <div class="list-wrap">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:8px 16px;font-size:11px;font-weight:700;color:var(--muted);background:#f8fafc;border-bottom:1px solid var(--border)">
+      <span>日付</span><span style="text-align:center">出勤</span><span style="text-align:center">退勤</span><span style="text-align:right">勤務時間</span>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center">
+      <div><div style="font-size:13px;font-weight:600">7/1（水）</div><div style="font-size:10px;color:var(--suc)">勤務中</div></div>
+      <span style="font-size:13px;text-align:center">09:03</span>
+      <span style="font-size:13px;text-align:center;color:var(--muted)">--:--</span>
+      <span style="font-size:12px;text-align:right;color:var(--muted)">--:--</span>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center">
+      <div><div style="font-size:13px;font-weight:600">6/30（月）</div></div>
+      <span style="font-size:13px;text-align:center">08:58</span>
+      <span style="font-size:13px;text-align:center">19:10</span>
+      <span style="font-size:12px;text-align:right;font-weight:700">10:12</span>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:12px 16px;align-items:center">
+      <div><div style="font-size:13px;font-weight:600">6/27（金）</div></div>
+      <span style="font-size:13px;text-align:center">09:01</span>
+      <span style="font-size:13px;text-align:center">18:03</span>
+      <span style="font-size:12px;text-align:right;font-weight:700">9:02</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ BOTTOM NAV ══════ -->
+<div class="bnav" id="bnav">
+  <button class="bnav-btn on" id="nav-home" onclick="navTo('screen-home','ホーム','nav-home')">
+    <i class="bi bi-house-fill"></i>ホーム
+  </button>
+  <button class="bnav-btn" id="nav-punch" onclick="navTo('screen-punch','打刻','nav-punch')">
+    <i class="bi bi-fingerprint"></i>打刻
+  </button>
+  <button class="bnav-btn" id="nav-shift" onclick="navTo('screen-shift','シフト','nav-shift')">
+    <i class="bi bi-calendar3"></i>シフト
+  </button>
+  <button class="bnav-btn" id="nav-apply" onclick="navTo('screen-apply','申請','nav-apply')" style="position:relative">
+    <i class="bi bi-file-earmark-text"></i>申請
+    <div class="bnav-dot"></div>
+  </button>
+  <button class="bnav-btn" id="nav-menu" onclick="navTo('screen-menu','メニュー','nav-menu')">
+    <i class="bi bi-grid-3x3-gap-fill"></i>メニュー
+  </button>
+</div>
+
+<!-- Toast -->
+<div class="app-toast" id="toast"></div>
 
 <script>
-(function(){
-'use strict';
-let SB_URL = localStorage.getItem('sb_url') || '';
-let SB_KEY = localStorage.getItem('sb_key') || '';
+// ── 画面履歴スタック ──
+var _history = [];
+var _navScreens = {
+  'screen-home':'nav-home',
+  'screen-punch':'nav-punch',
+  'screen-shift':'nav-shift',
+  'screen-apply':'nav-apply',
+  'screen-menu':'nav-menu'
+};
+var _navTitles = {
+  'screen-home':'ホーム','screen-punch':'打刻','screen-shift':'シフト',
+  'screen-apply':'申請','screen-menu':'メニュー'
+};
+var _titles = {
+  'screen-login':'ログイン','screen-reset-pw':'パスワード再設定',
+  'screen-home':'ホーム','screen-punch':'打刻','screen-punch-confirm':'打刻完了',
+  'screen-punch-history':'打刻履歴','screen-shift':'シフト',
+  'screen-shift-detail':'シフト詳細','screen-shift-request':'希望シフト入力',
+  'screen-wish-off':'希望休入力','screen-apply':'申請','screen-apply-new':'申請種別選択',
+  'screen-apply-leave':'有給申請','screen-apply-half-leave':'半日休暇申請',
+  'screen-apply-hourly-leave':'時間単位休暇申請','screen-apply-ot':'残業申請',
+  'screen-apply-holiday-work':'休日出勤申請','screen-apply-absence':'欠勤申請',
+  'screen-apply-late-early':'遅刻・早退申請','screen-apply-punch':'打刻修正申請',
+  'screen-apply-shift-change':'シフト変更申請','screen-apply-detail':'申請詳細',
+  'screen-approval-status':'承認状況',
+  'screen-notice':'お知らせ','screen-notice-detail':'お知らせ詳細',
+  'screen-leave':'有給管理','screen-leave-history':'取得履歴',
+  'screen-leave-grant':'付与履歴','screen-leave-expire':'消滅予定',
+  'screen-menu':'メニュー','screen-mypage':'マイページ',
+  'screen-profile-edit':'プロフィール編集','screen-password':'パスワード変更',
+  'screen-notif-settings':'通知設定','screen-settings':'設定',
+  'screen-qualification':'資格・スキル','screen-timecard':'勤務実績'
+};
 
-let sb, me, myProfile;
-let allUsers = [];
-let calYear, calMonth;
-const holidays2026 = ['2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-10-12','2026-11-03','2026-11-23','2026-12-23'];
+function goScreen(id){
+  var cur = document.querySelector('.pg.on');
+  if(cur) _history.push(cur.id);
+  
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  var pg = document.getElementById(id);
+  if(!pg) return;
+  pg.classList.add('on');
+  
+  // Update header
+  var isNavRoot = !!_navScreens[id];
+  var isLogin = id==='screen-login'||id==='screen-reset-pw'||id==='screen-punch-confirm';
+  document.getElementById('hdr').style.display = isLogin?'none':'flex';
+  document.getElementById('bnav').style.display = isLogin?'none':'flex';
+  document.getElementById('backBtn').style.display = isNavRoot?'none':'block';
+  document.getElementById('hdrTitle').textContent = _titles[id]||id;
+  
+  // Update nav active
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
+  var navId = _navScreens[id];
+  if(navId) document.getElementById(navId).classList.add('on');
+  
+  // Scroll to top
+  window.scrollTo(0,0);
+}
 
-window.addEventListener('DOMContentLoaded', function(){
-  const now = new Date();
-  calYear = now.getFullYear(); calMonth = now.getMonth();
-  document.getElementById('tcMonth').value = now.toISOString().slice(0,7);
-  document.getElementById('topbarDate').textContent = now.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
-  startClock();
-  setTimeout(initSupabase,200);
-});
+function navTo(screenId, title, navId){
+  _history = [];
+  goScreen(screenId);
+}
 
-function initSupabase(){
-  if(!window.supabase){showToast('SDK読み込みエラー','red');return;}
-  if(!SB_URL || SB_URL === 'YOUR_SUPABASE_URL'){
-    document.getElementById('loginPage').style.display='flex';
-    document.getElementById('sbConfigSection').style.display='';
-    return;
+function goBack(){
+  if(_history.length){
+    var prev = _history.pop();
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+    var pg = document.getElementById(prev);
+    if(pg) pg.classList.add('on');
+    var isNavRoot = !!_navScreens[prev];
+    document.getElementById('backBtn').style.display = isNavRoot?'none':'block';
+    document.getElementById('hdrTitle').textContent = _titles[prev]||prev;
+    document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
+    var navId = _navScreens[prev];
+    if(navId) document.getElementById(navId).classList.add('on');
+    window.scrollTo(0,0);
   }
-  try {
-    sb = window.supabase.createClient(SB_URL, SB_KEY);
-  } catch(e) {
-    document.getElementById('loginPage').style.display='flex';
-    document.getElementById('sbConfigSection').style.display='';
-    return;
-  }
-  sb.auth.getSession().then(function(r){
-    if(r.data && r.data.session){
-      me = r.data.session.user; loadProfile();
-    } else {
-      document.getElementById('loginPage').style.display='flex';
-    }
-  }).catch(function(){
-    document.getElementById('loginPage').style.display='flex';
-    document.getElementById('sbConfigSection').style.display='';
-  });
 }
 
-window.saveSupabaseConfig = function(){
-  const url = document.getElementById('cfgUrl').value.trim();
-  const key = document.getElementById('cfgKey').value.trim();
-  if(!url||!url.startsWith('https://')){document.getElementById('loginErr').textContent='正しいURLを入力（https://から）';return;}
-  if(!key){document.getElementById('loginErr').textContent='Anon Keyを入力してください';return;}
-  localStorage.setItem('sb_url',url); localStorage.setItem('sb_key',key);
-  SB_URL=url; SB_KEY=key;
-  document.getElementById('loginErr').textContent='';
-  document.getElementById('sbConfigSection').style.display='none';
-  try { sb=window.supabase.createClient(SB_URL,SB_KEY); showToast('設定を保存しました','green'); } catch(e){document.getElementById('loginErr').textContent='設定が無効: '+e.message;}
-};
-
-window.doLogin = function(){
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPass').value;
-  if(!email||!pass){document.getElementById('loginErr').textContent='入力してください';return;}
-  if(!sb){
-    if(!SB_URL){document.getElementById('sbConfigSection').style.display='';document.getElementById('loginErr').textContent='まずSupabase設定を入力してください';return;}
-    try{sb=window.supabase.createClient(SB_URL,SB_KEY);}catch(e){document.getElementById('loginErr').textContent='設定エラー: '+e.message;return;}
-  }
-  sb.auth.signInWithPassword({email,password:pass}).then(function(r){
-    if(r.error){document.getElementById('loginErr').textContent='ログイン失敗: '+r.error.message;return;}
-    me = r.data.user; loadProfile();
-  });
-};
-window.doLogout = function(){sb.auth.signOut().then(()=>location.reload());};
-
-function loadProfile(){
-  sb.from('employees').select('*').eq('auth_id',me.id).single().then(function(r){
-    myProfile = r.data || {name:me.email,department:'',role:'一般',paid_leave_remaining:0,annual_leave_days:20};
-    document.getElementById('sidebarName').textContent = myProfile.name||me.email;
-    document.getElementById('sidebarDept').textContent = myProfile.department||'';
-    // Show admin menu if admin
-    if(myProfile.role==='管理者'||myProfile.role==='部門長'){
-      document.getElementById('adminMenuSection').style.display='';
-    }
-    document.getElementById('loginPage').style.display='none';
-    document.getElementById('app').style.display='';
-    loadDashboard();
-  });
+function doLogin(){
+  showToast('ログインしました');
+  setTimeout(()=>goScreen('screen-home'),600);
 }
 
-const PAGE_TITLES = {dashboard:'ダッシュボード',punch:'打刻',timecard:'タイムカード',leave:'休暇管理',overtime:'残業管理',myrequests:'申請履歴',calendar:'変形時間カレンダー',users:'ユーザー管理',settings:'システム設定'};
-window.nav = function(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const page=document.getElementById('page-'+id);
-  if(page) page.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n=>{
-    if(n.getAttribute('onclick')==="nav('"+id+"')") n.classList.add('active');
-  });
-  document.getElementById('topbarTitle').textContent = PAGE_TITLES[id]||id;
-  if(id==='punch') initPunch();
-  if(id==='timecard') loadTimecard();
-  if(id==='leave') loadLeave();
-  if(id==='overtime') loadOvertimePage();
-  if(id==='myrequests') loadMyRequests();
-  if(id==='calendar'){ window.open('calendar_system.html','_blank'); return; }
-  if(id==='users') loadAllUsers();
-};
-
-function startClock(){
-  function tick(){
-    const now=new Date();
-    const el=document.getElementById('punchClock');
-    if(el) el.textContent=now.toLocaleTimeString('ja-JP');
-    const pd=document.getElementById('punchDate');
-    if(pd) pd.textContent=now.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
-  }
-  tick(); setInterval(tick,1000);
+function doPunch(type){
+  document.getElementById('punchConfirmType').textContent = type;
+  var now = new Date();
+  document.getElementById('punchConfirmTime').textContent = 
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  goScreen('screen-punch-confirm');
 }
 
-// ── Dashboard ──
-function loadDashboard(){
-  if(!me) return;
-  if(myProfile){
-    document.getElementById('dashLeave').textContent = myProfile.paid_leave_remaining||0;
-  }
-  const today = new Date().toISOString().slice(0,10);
-  sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59').order('punched_at',{ascending:true}).then(function(r){
-    const div=document.getElementById('todayStatus');
-    if(r.error||!r.data||!r.data.length){
-      div.innerHTML='<span style="color:var(--muted)">本日はまだ打刻していません</span> <button class="btn btn-sm btn-primary" onclick="nav(\'punch\')" style="margin-left:8px">今すぐ打刻</button>';
-      return;
-    }
-    const last=r.data[r.data.length-1];
-    let html='';
-    r.data.forEach(function(p){
-      const col=p.punch_type==='出勤'?'var(--green)':p.punch_type==='退勤'?'var(--red)':'var(--amber)';
-      html+='<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:13px"><span style="color:'+col+'">●</span><strong>'+p.punch_type+'</strong> '+new Date(p.punched_at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+'</span>';
-    });
-    div.innerHTML=html;
-  });
-  // Pending
-  Promise.all([
-    sb.from('leave_requests').select('count',{count:'exact',head:true}).eq('user_id',me.id).eq('status','pending'),
-    sb.from('overtime_requests').select('count',{count:'exact',head:true}).eq('user_id',me.id).eq('status','pending')
-  ]).then(function(res){
-    document.getElementById('dashPending').textContent=(res[0].count||0)+(res[1].count||0);
-  });
-  // Month work hours (simplified)
-  document.getElementById('dashWork').textContent='—';
-  document.getElementById('dashOt').textContent='—';
-  // Recent requests
-  sb.from('leave_requests').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).limit(5).then(function(r){
-    const tbody=document.getElementById('dashRequestTbl');
-    const items=r.data||[];
-    if(!items.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">申請履歴なし</td></tr>';return;}
-    const smap={pending:'badge-amber',approved:'badge-green',rejected:'badge-red'};
-    const slbl={pending:'審査中',approved:'承認済',rejected:'否認'};
-    tbody.innerHTML=items.map(function(req){
-      return '<tr><td><span class="badge badge-blue">休暇</span></td><td>'+req.leave_type+' '+req.start_date+'</td><td>'+req.created_at.slice(0,10)+'</td><td><span class="badge '+smap[req.status]+'">'+slbl[req.status]+'</span></td></tr>';
-    }).join('');
-  });
+// Clock update
+function updateClock(){
+  var now = new Date();
+  var t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  var el = document.getElementById('punchClock');
+  if(el) el.textContent = t;
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// Toast
+var _toastTimer;
+function showToast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>el.classList.remove('show'),2500);
 }
 
-// ── Punch ──
-function initPunch(){loadTodayPunchLog();}
-function loadTodayPunchLog(){
-  if(!me) return;
-  const today=new Date().toISOString().slice(0,10);
-  sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59').order('punched_at',{ascending:true}).then(function(r){
-    const tbody=document.getElementById('todayPunchLog');
-    if(r.error||!r.data||!r.data.length){
-      tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">本日の打刻なし</td></tr>';
-      document.getElementById('punchStatus').textContent='';return;
-    }
-    tbody.innerHTML=r.data.map(function(p){
-      return '<tr><td><span class="badge '+(p.punch_type==='出勤'?'badge-green':p.punch_type==='退勤'?'badge-red':'badge-amber')+'">'+p.punch_type+'</span></td><td>'+new Date(p.punched_at).toLocaleTimeString('ja-JP')+'</td><td>'+(p.note||'')+'</td></tr>';
-    }).join('');
-    const last=r.data[r.data.length-1];
-    document.getElementById('punchStatus').textContent='最終打刻：'+last.punch_type+' '+new Date(last.punched_at).toLocaleTimeString('ja-JP');
-  });
-}
-window.doPunch=function(type){
-  if(!me){showToast('ログインが必要です','red');return;}
-  sb.from('punch_records').insert({user_id:me.id,punch_type:type,punched_at:new Date().toISOString()}).then(function(r){
-    if(r.error){showToast('打刻失敗: '+r.error.message,'red');return;}
-    showToast(type+'しました','green');loadTodayPunchLog();loadDashboard();
-  });
-};
-window.submitPunchFix=function(){
-  const date=document.getElementById('punchFixDate').value;
-  const type=document.getElementById('punchFixType').value;
-  const time=document.getElementById('punchFixTime').value;
-  const note=document.getElementById('punchFixNote').value||'打刻修正申請';
-  if(!date||!time){showToast('日付と時刻を入力してください','red');return;}
-  sb.from('punch_records').insert({user_id:me.id,punch_type:type,punched_at:date+'T'+time+':00+09:00',note}).then(function(r){
-    if(r.error){showToast('申請失敗: '+r.error.message,'red');return;}
-    showToast('打刻修正申請を送信しました','green');
-  });
-};
-
-// ── Timecard ──
-window.loadTimecard=function(){
-  const ym=document.getElementById('tcMonth').value;
-  if(!ym||!me)return;
-  const [y,m]=ym.split('-').map(Number);
-  const start=ym+'-01T00:00:00', end=new Date(y,m,0).toISOString().slice(0,10)+'T23:59:59';
-  sb.from('punch_records').select('*').eq('user_id',me.id).gte('punched_at',start).lte('punched_at',end).order('punched_at',{ascending:true}).then(function(r){
-    const tbody=document.getElementById('timecardTbl');
-    if(r.error){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--red);padding:20px">エラー</td></tr>';return;}
-    const days={};
-    (r.data||[]).forEach(function(p){
-      const d=p.punched_at.slice(0,10);
-      if(!days[d]) days[d]={in:null,out:null,breaks:[]};
-      if(p.punch_type==='出勤'&&!days[d].in) days[d].in=p.punched_at;
-      if(p.punch_type==='退勤') days[d].out=p.punched_at;
-      if(p.punch_type==='休憩開始') days[d].breaks.push({s:p.punched_at});
-      if(p.punch_type==='休憩終了'){const b=days[d].breaks.find(x=>!x.e);if(b)b.e=p.punched_at;}
-    });
-    const daysInMonth=new Date(y,m,0).getDate();
-    const wdays=['日','月','火','水','木','金','土'];
-    let totalWork=0,totalOt=0,rows='';
-    for(let d=1;d<=daysInMonth;d++){
-      const dt=ym+'-'+String(d).padStart(2,'0');
-      const wd=new Date(dt).getDay();
-      const info=days[dt]||{};
-      let workMin=0,breakMin=0;
-      if(info.in&&info.out){
-        workMin=Math.round((new Date(info.out)-new Date(info.in))/60000);
-        (info.breaks||[]).forEach(function(b){if(b.s&&b.e)breakMin+=Math.round((new Date(b.e)-new Date(b.s))/60000);});
-        workMin=Math.max(0,workMin-breakMin);
-      }
-      const otMin=Math.max(0,workMin-480);
-      totalWork+=workMin;totalOt+=otMin;
-      const isWE=wd===0||wd===6;
-      rows+='<tr style="'+(isWE?'background:#fafafa':'')+'"><td style="color:'+(wd===0?'var(--red)':wd===6?'var(--blue)':'')+'">'+dt+'</td><td>'+wdays[wd]+'</td><td>'+(info.in?new Date(info.in).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'')+'</td><td>'+(info.out?new Date(info.out).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'')+'</td><td>'+(breakMin?Math.floor(breakMin/60)+'h'+breakMin%60+'m':'')+'</td><td>'+(workMin?Math.floor(workMin/60)+'h'+workMin%60+'m':'')+'</td><td>'+(otMin?'<span style="color:var(--red)">'+Math.floor(otMin/60)+'h'+otMin%60+'m</span>':'')+'</td><td></td></tr>';
-    }
-    tbody.innerHTML=rows;
-    document.getElementById('tcSummary').textContent='月間実働：'+Math.floor(totalWork/60)+'h'+totalWork%60+'m　時間外：'+Math.floor(totalOt/60)+'h'+totalOt%60+'m';
-  });
-};
-
-// ── Leave ──
-function loadLeave(){
-  if(!me)return;
-  if(myProfile){
-    document.getElementById('leaveRemain').textContent=myProfile.paid_leave_remaining||0;
-    document.getElementById('leaveTotal').textContent=myProfile.annual_leave_days||20;
-    document.getElementById('leaveUsed').textContent=(myProfile.annual_leave_days||20)-(myProfile.paid_leave_remaining||0);
-  }
-  sb.from('leave_requests').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).then(function(r){
-    const tbody=document.getElementById('leaveTbl');
-    if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">申請履歴なし</td></tr>';return;}
-    const smap={pending:'badge-amber',approved:'badge-green',rejected:'badge-red'};
-    const slbl={pending:'審査中',approved:'承認済',rejected:'否認'};
-    tbody.innerHTML=r.data.map(function(req){
-      const days=req.end_date?Math.round((new Date(req.end_date)-new Date(req.start_date))/86400000)+1:1;
-      return '<tr><td>'+req.leave_type+'</td><td>'+req.start_date+'</td><td>'+(req.end_date||req.start_date)+'</td><td>'+days+'日</td><td>'+(req.reason||'')+'</td><td><span class="badge '+smap[req.status]+'">'+slbl[req.status]+'</span></td></tr>';
-    }).join('');
-  });
-}
-window.submitLeave=function(){
-  const type=document.getElementById('leaveType').value;
-  const start=document.getElementById('leaveStart').value;
-  const end=document.getElementById('leaveEnd').value;
-  const reason=document.getElementById('leaveReason').value;
-  if(!start){showToast('開始日を入力してください','red');return;}
-  sb.from('leave_requests').insert({user_id:me.id,leave_type:type,start_date:start,end_date:end||start,reason,status:'pending'}).then(function(r){
-    if(r.error){showToast('申請失敗: '+r.error.message,'red');return;}
-    showToast('休暇申請を提出しました','green');closeModal('leaveApplyModal');loadLeave();loadDashboard();
-  });
-};
-
-// ── Overtime ──
-function loadOvertimePage(){
-  if(!me)return;
-  sb.from('overtime_requests').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).then(function(r){
-    const tbody=document.getElementById('otTbl');
-    const smap={pending:'badge-amber',approved:'badge-green',rejected:'badge-red'};
-    const slbl={pending:'審査中',approved:'承認済',rejected:'否認'};
-    if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">申請履歴なし</td></tr>';return;}
-    let total=0;
-    tbody.innerHTML=r.data.map(function(req){
-      const ym=new Date().toISOString().slice(0,7);
-      if(req.overtime_date&&req.overtime_date.slice(0,7)===ym) total+=parseFloat(req.hours)||0;
-      return '<tr><td>'+req.overtime_date+'</td><td>'+req.hours+'h</td><td>'+(req.reason||'')+'</td><td>'+req.created_at.slice(0,10)+'</td><td><span class="badge '+smap[req.status]+'">'+slbl[req.status]+'</span></td></tr>';
-    }).join('');
-    document.getElementById('otMonthTotal').textContent=total;
-    const pct=Math.min(100,Math.round(total/45*100));
-    const col=pct>80?'var(--red)':pct>60?'var(--amber)':'var(--blue)';
-    document.getElementById('otBar').style.width=pct+'%';
-    document.getElementById('otBar').style.background=col;
-  });
-}
-window.submitOT=function(){
-  const date=document.getElementById('otDate').value;
-  const hours=parseFloat(document.getElementById('otHours').value||0);
-  const reason=document.getElementById('otReason').value;
-  if(!date){showToast('日付を入力してください','red');return;}
-  sb.from('overtime_requests').insert({user_id:me.id,overtime_date:date,hours,reason,status:'pending'}).then(function(r){
-    if(r.error){showToast('申請失敗: '+r.error.message,'red');return;}
-    showToast('残業申請を提出しました','green');closeModal('otApplyModal');loadOvertimePage();
-  });
-};
-
-// ── My Requests ──
-function loadMyRequests(){
-  if(!me)return;
-  const smap={pending:'badge-amber',approved:'badge-green',rejected:'badge-red'};
-  const slbl={pending:'審査中',approved:'承認済',rejected:'否認'};
-  sb.from('leave_requests').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).then(function(r){
-    const tbody=document.getElementById('myLeaveTbl');
-    if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">なし</td></tr>';return;}
-    tbody.innerHTML=r.data.map(function(req){
-      const days=req.end_date?Math.round((new Date(req.end_date)-new Date(req.start_date))/86400000)+1:1;
-      return '<tr><td>'+req.leave_type+'</td><td>'+req.start_date+'</td><td>'+req.end_date+'</td><td>'+days+'日</td><td><span class="badge '+smap[req.status]+'">'+slbl[req.status]+'</span></td><td>'+req.created_at.slice(0,10)+'</td></tr>';
-    }).join('');
-  });
-  sb.from('overtime_requests').select('*').eq('user_id',me.id).order('created_at',{ascending:false}).then(function(r){
-    const tbody=document.getElementById('myOtTbl');
-    if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">なし</td></tr>';return;}
-    tbody.innerHTML=r.data.map(function(req){
-      return '<tr><td>'+req.overtime_date+'</td><td>'+req.hours+'h</td><td>'+(req.reason||'')+'</td><td><span class="badge '+smap[req.status]+'">'+slbl[req.status]+'</span></td><td>'+req.created_at.slice(0,10)+'</td></tr>';
-    }).join('');
-  });
-  sb.from('punch_records').select('*').eq('user_id',me.id).ilike('note','%申請%').order('created_at',{ascending:false}).then(function(r){
-    const tbody=document.getElementById('myPunchTbl');
-    if(r.error||!r.data||!r.data.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">なし</td></tr>';return;}
-    tbody.innerHTML=r.data.map(function(p){
-      return '<tr><td>'+p.punched_at.slice(0,10)+'</td><td>'+p.punch_type+'</td><td>'+p.punched_at.slice(11,16)+'</td><td>'+(p.note||'')+'</td><td>'+p.created_at.slice(0,10)+'</td></tr>';
-    }).join('');
-  });
-}
-
-// ── Calendar ──
-window.calPrev=function(){if(calMonth===0){calMonth=11;calYear--;}else{calMonth--;}renderCal();}
-window.calNext=function(){if(calMonth===11){calMonth=0;calYear++;}else{calMonth++;}renderCal();}
-window.renderCal=function(){
-  document.getElementById('calLabel').textContent=calYear+'年'+(calMonth+1)+'月';
-  const first=new Date(calYear,calMonth,1).getDay();
-  const total=new Date(calYear,calMonth+1,0).getDate();
-  const today=new Date().toISOString().slice(0,10);
-  const grid=document.getElementById('calGrid');
-  while(grid.children.length>7) grid.removeChild(grid.lastChild);
-  for(let i=0;i<first;i++){const c=document.createElement('div');c.style.cssText='min-height:64px;border:1px solid var(--border);border-radius:6px;opacity:.2';grid.appendChild(c);}
-  let workDays=0;
-  for(let d=1;d<=total;d++){
-    const dt=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const wd=new Date(dt).getDay();
-    const isHol=holidays2026.includes(dt);
-    const isWE=wd===0||wd===6;
-    if(!isHol&&!isWE) workDays++;
-    const c=document.createElement('div');
-    c.style.cssText='min-height:64px;border:1px solid var(--border);border-radius:6px;padding:4px;background:'+(dt===today?'#eef6ff':isHol?'#fef2f2':'#fff');
-    c.innerHTML='<div style="font-weight:700;font-size:11px;color:'+(wd===0||isHol?'var(--red)':wd===6?'var(--blue)':'')+'">'+d+(isHol?' 🎌':'')+'</div>';
-    grid.appendChild(c);
-  }
-  document.getElementById('calWorkDays').textContent=workDays;
-  document.getElementById('calWorkHours').textContent=workDays*8;
-};
-
-// ── Users ──
-function loadAllUsers(){
-  sb.from('employees').select('*').order('name').then(function(r){
-    allUsers=r.data||[];
-    renderUserTable(allUsers);
-  });
-}
-function renderUserTable(users){
-  const tbody=document.getElementById('usersTbl');
-  if(!users||!users.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
-  const rmap={'管理者':'badge-red','部門長':'badge-blue','一般':'badge-gray'};
-  tbody.innerHTML=users.map(function(u){
-    return '<tr><td>'+u.name+'</td><td>'+(u.department||'—')+'</td><td>'+(u.employment_type||'—')+'</td><td><span class="badge '+(rmap[u.role]||'badge-gray')+'">'+u.role+'</span></td><td>'+(u.hire_date||'—')+'</td><td><span class="badge '+(u.is_active?'badge-green':'badge-gray')+'">'+(u.is_active?'有効':'無効')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="openEditUser(\''+u.id+'\')">編集</button></td></tr>';
-  }).join('');
-}
-window.filterUsers=function(){
-  const q=document.getElementById('userSearch').value.toLowerCase();
-  renderUserTable(allUsers.filter(u=>(u.name||'').toLowerCase().includes(q)));
-};
-window.openEditUser=function(id){
-  const u=allUsers.find(x=>x.id===id);if(!u)return;
-  document.getElementById('editUserId').value=id;
-  document.getElementById('editUserName').value=u.name||'';
-  document.getElementById('editUserDept').value=u.department||'';
-  document.getElementById('editUserRole').value=u.role||'一般';
-  document.getElementById('editUserLeave').value=u.paid_leave_remaining||0;
-  document.getElementById('editUserStatus').value=u.is_active?'true':'false';
-  openModal('editUserModal');
-};
-window.saveUser=function(){
-  const id=document.getElementById('editUserId').value;
-  const data={name:document.getElementById('editUserName').value,department:document.getElementById('editUserDept').value,role:document.getElementById('editUserRole').value,paid_leave_remaining:parseInt(document.getElementById('editUserLeave').value)||0,is_active:document.getElementById('editUserStatus').value==='true'};
-  sb.from('employees').update(data).eq('id',id).then(function(r){
-    if(r.error){showToast('更新失敗: '+r.error.message,'red');return;}
-    showToast('更新しました','green');closeModal('editUserModal');loadAllUsers();
-  });
-};
-window.disableUser=function(){
-  const id=document.getElementById('editUserId').value;
-  if(!confirm('このユーザーを無効化しますか？'))return;
-  sb.from('employees').update({is_active:false}).eq('id',id).then(function(r){
-    if(r.error){showToast('失敗','red');return;}
-    showToast('無効化しました','amber');closeModal('editUserModal');loadAllUsers();
-  });
-};
-window.addUser=function(){
-  const name=document.getElementById('newUserName').value.trim();
-  const email=document.getElementById('newUserEmail').value.trim();
-  if(!name||!email){showToast('氏名とメールを入力してください','red');return;}
-  sb.from('employees').insert({name,email,department:document.getElementById('newUserDept').value,employment_type:document.getElementById('newUserEmp').value,role:document.getElementById('newUserRole').value,hire_date:document.getElementById('newUserJoin').value||null,paid_leave_remaining:parseInt(document.getElementById('newUserLeave').value)||10,annual_leave_days:parseInt(document.getElementById('newUserLeave').value)||10,is_active:true}).then(function(r){
-    if(r.error){showToast('追加失敗: '+r.error.message,'red');return;}
-    showToast(name+'を追加しました','green');closeModal('addUserModal');loadAllUsers();
-  });
-};
-
-// ── Modal / Tab / Toast ──
-window.openModal=function(id){document.getElementById(id).classList.add('open');};
-window.closeModal=function(id){document.getElementById(id).classList.remove('open');};
-document.querySelectorAll('.modal-overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});});
-window.switchTab=function(el,target){
-  const parent=el.parentElement;
-  parent.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  const scope=el.closest('.page')||document;
-  scope.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-  const tc=document.getElementById(target);if(tc)tc.classList.add('active');
-};
-window.showToast=function(msg,type){
-  const t=document.getElementById('toast');
-  const c={green:'#16a34a',red:'#dc2626',amber:'#d97706',blue:'#185FA5'};
-  t.style.background=c[type]||'#1e293b';t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
-};
-})();
+// Init
+goScreen('screen-login');
 </script>
 </body>
 </html>
