@@ -96,6 +96,17 @@ tr:hover td{background:#fafafa}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:18px;display:flex;justify-content:space-between}
 .modal-close{cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+/* ── Modal Tabs (職員情報) ── */
+.emp-tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border);overflow-x:auto;flex-shrink:0}
+.emp-tab{padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;flex-shrink:0}
+.emp-tab:hover{color:var(--text)}
+.emp-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.emp-tab-content{display:none}
+.emp-tab-content.active{display:block}
+.info-section-title{font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--border);padding-top:12px}
+.info-section-title:first-child{border-top:none;padding-top:0;margin-top:0}
+.dep-row{display:grid;grid-template-columns:1fr 90px 110px 90px 36px;gap:6px;align-items:center;margin-bottom:6px}
+.dep-row-header{font-size:11px;font-weight:600;color:var(--muted);display:grid;grid-template-columns:1fr 90px 110px 90px 36px;gap:6px;margin-bottom:4px}
 
 /* ── Punch ── */
 .punch-card{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;border-radius:14px;padding:28px;margin-bottom:16px;text-align:center}
@@ -933,51 +944,184 @@ tr:hover td{background:#fafafa}
 
 <!-- Edit User -->
 <div class="modal-overlay" id="editUserModal">
-  <div class="modal" style="width:620px">
-    <div class="modal-title">✏️ ユーザー編集<span class="modal-close" onclick="closeModal('editUserModal')">×</span></div>
+  <div class="modal" style="width:780px">
+    <div class="modal-title">✏️ 職員情報編集 — <span id="editUserNameTitle" style="color:var(--blue)"></span><span class="modal-close" onclick="closeModal('editUserModal')">×</span></div>
     <input type="hidden" id="editUserId">
 
-    <!-- 基本情報 -->
-    <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">基本情報</div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">氏名</div><input class="form-control" id="editUserName"></div>
-      <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">雇用形態</div><select class="form-control" id="editUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option></select></div>
-      <div class="form-group"><div class="form-label">権限</div><select class="form-control" id="editUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">年間付与日数</div><input class="form-control" id="editUserAnnualLeave" type="number" min="0" max="40" value="6"></div>
-      <div class="form-group"><div class="form-label">有給残日数（繰越込）</div><input class="form-control" id="editUserLeave" type="number" min="0"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">繰越日数</div><input class="form-control" id="editUserCarryOver" type="number" min="0" max="40" value="0" placeholder="前年繰越"></div>
-      <div class="form-group"><div class="form-label">入社日（付与基準日）</div><input class="form-control" id="editUserHireDate" type="date"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
-      <div class="form-group"><button class="btn btn-outline btn-sm" onclick="calcGrantForUser()" style="margin-top:20px">📊 勤続年数から付与計算</button></div>
+    <!-- タブナビ -->
+    <div class="emp-tabs">
+      <div class="emp-tab active"  onclick="switchEmpTab(this,'empTab-basic')">🗂 基本情報</div>
+      <div class="emp-tab"         onclick="switchEmpTab(this,'empTab-personal')">👤 個人情報</div>
+      <div class="emp-tab"         onclick="switchEmpTab(this,'empTab-education')">🎓 学歴・職歴</div>
+      <div class="emp-tab"         onclick="switchEmpTab(this,'empTab-dependents')">👨‍👩‍👧 扶養</div>
+      <div class="emp-tab"         onclick="switchEmpTab(this,'empTab-salary')">💴 給与口座</div>
+      <div class="emp-tab"         onclick="switchEmpTab(this,'empTab-auth')">🔐 ログイン</div>
     </div>
 
-    <!-- ログイン情報変更 -->
-    <div style="border:1px solid #b5d4f4;border-radius:8px;padding:14px;background:#e6f1fb;margin-top:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px">🔐 ログイン情報の変更</div>
+    <!-- ── Tab 1: 基本情報 ── -->
+    <div class="emp-tab-content active" id="empTab-basic">
       <div class="form-row">
-        <div class="form-group">
-          <div class="form-label">メールアドレス</div>
-          <input class="form-control" id="editUserEmail" type="email" placeholder="変更する場合は入力">
-        </div>
-        <div class="form-group">
-          <div class="form-label">新しいパスワード</div>
-          <div style="position:relative">
-            <input class="form-control" id="editUserPass" type="password" placeholder="変更する場合のみ入力" style="padding-right:36px">
-            <span onclick="togglePw('editUserPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:14px">👁</span>
-          </div>
+        <div class="form-group"><div class="form-label">氏名</div><input class="form-control" id="editUserName"></div>
+        <div class="form-group"><div class="form-label">フリガナ</div><input class="form-control" id="editUserKana" placeholder="ヤマダ タロウ"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">社員番号</div><input class="form-control" id="editUserEmpNo" placeholder="例: EMP001"></div>
+        <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">雇用形態</div><select class="form-control" id="editUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>業務委託</option></select></div>
+        <div class="form-group"><div class="form-label">権限</div><select class="form-control" id="editUserRole"><option value="一般">一般</option><option value="部門長">部門長</option><option value="管理者">管理者</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="editUserHireDate" type="date"></div>
+        <div class="form-group"><div class="form-label">退職日（在職中は空欄）</div><input class="form-control" id="editUserResignDate" type="date"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">ステータス</div><select class="form-control" id="editUserStatus"><option value="true">有効</option><option value="false">無効</option></select></div>
+        <div class="form-group"><div class="form-label">役職</div><input class="form-control" id="editUserPosition" placeholder="例: 課長"></div>
+      </div>
+      <div class="info-section-title">有給設定</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">年間付与日数</div><input class="form-control" id="editUserAnnualLeave" type="number" min="0" max="40" value="6"></div>
+        <div class="form-group"><div class="form-label">有給残日数（繰越込）</div><input class="form-control" id="editUserLeave" type="number" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">繰越日数</div><input class="form-control" id="editUserCarryOver" type="number" min="0" max="40" value="0"></div>
+        <div class="form-group"><button class="btn btn-outline btn-sm" onclick="calcGrantForUser()" style="margin-top:20px">📊 勤続年数から付与計算</button></div>
+      </div>
+    </div>
+
+    <!-- ── Tab 2: 個人情報 ── -->
+    <div class="emp-tab-content" id="empTab-personal">
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">生年月日</div><input class="form-control" id="editUserBirthDate" type="date"></div>
+        <div class="form-group"><div class="form-label">性別</div>
+          <select class="form-control" id="editUserGender">
+            <option value="">未設定</option><option>男性</option><option>女性</option><option>その他</option>
+          </select>
         </div>
       </div>
-      <div id="editAuthStatus" style="font-size:11px;color:var(--muted);margin-top:6px">
-        メール・パスワードの実際の変更はSupabase Authenticationで行われます。入力した場合は職員テーブルのメモも更新されます。
+      <div class="form-group"><div class="form-label">住所</div><input class="form-control" id="editUserAddress" placeholder="〒000-0000 都道府県市区町村 番地"></div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">電話番号（携帯）</div><input class="form-control" id="editUserPhone" type="tel" placeholder="090-0000-0000"></div>
+        <div class="form-group"><div class="form-label">メールアドレス（個人）</div><input class="form-control" id="editUserPersonalEmail" type="email" placeholder="personal@example.com"></div>
+      </div>
+      <div class="info-section-title">緊急連絡先</div>
+      <div class="form-row3">
+        <div class="form-group"><div class="form-label">氏名</div><input class="form-control" id="editEmergName" placeholder="山田 花子"></div>
+        <div class="form-group"><div class="form-label">続柄</div><input class="form-control" id="editEmergRelation" placeholder="配偶者・母など"></div>
+        <div class="form-group"><div class="form-label">電話番号</div><input class="form-control" id="editEmergPhone" type="tel" placeholder="090-0000-0000"></div>
+      </div>
+      <div class="info-section-title">社会保険</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">健康保険番号</div><input class="form-control" id="editHealthInsNo" placeholder="例: 12345678"></div>
+        <div class="form-group"><div class="form-label">年金番号（基礎年金）</div><input class="form-control" id="editPensionNo" placeholder="例: 1234-567890"></div>
+      </div>
+    </div>
+
+    <!-- ── Tab 3: 学歴・職歴 ── -->
+    <div class="emp-tab-content" id="empTab-education">
+      <div class="info-section-title" style="margin-top:0">最終学歴</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">最終学歴</div>
+          <select class="form-control" id="editEduLevel">
+            <option value="">未設定</option>
+            <option>中学校卒</option><option>高校卒</option><option>専門学校卒</option>
+            <option>短期大学卒</option><option>大学卒</option><option>大学院修士卒</option><option>大学院博士卒</option><option>その他</option>
+          </select>
+        </div>
+        <div class="form-group"><div class="form-label">学校名</div><input class="form-control" id="editEduSchool" placeholder="例: ○○大学 △△学部"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">卒業年月</div><input class="form-control" id="editEduGrad" placeholder="例: 2010-03"></div>
+        <div class="form-group"><div class="form-label">専攻・学科</div><input class="form-control" id="editEduMajor" placeholder="例: 経営学科"></div>
+      </div>
+      <div class="info-section-title">職歴メモ</div>
+      <div class="form-group"><textarea class="form-control" id="editCareerNotes" rows="5" placeholder="前職・職歴の概要をメモ（例: 2010〜2015年 株式会社○○ 営業職）" style="resize:vertical"></textarea></div>
+      <div class="info-section-title">資格・免許</div>
+      <div class="form-group"><textarea class="form-control" id="editCertifications" rows="3" placeholder="例: 普通自動車免許（2010年取得）、簿記2級（2012年取得）" style="resize:vertical"></textarea></div>
+    </div>
+
+    <!-- ── Tab 4: 扶養 ── -->
+    <div class="emp-tab-content" id="empTab-dependents">
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group">
+          <div class="form-label">配偶者</div>
+          <select class="form-control" id="editHasSpouse">
+            <option value="false">なし</option><option value="true">あり（税扶養）</option><option value="social">あり（社会保険のみ）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">扶養親族数（合計）</div>
+          <div style="height:38px;line-height:38px;font-size:16px;font-weight:700;color:var(--blue)" id="depCountDisplay">0人</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">扶養親族一覧</div>
+      <div class="dep-row-header">
+        <span>氏名</span><span>続柄</span><span>生年月日</span><span>種別</span><span></span>
+      </div>
+      <div id="depList"></div>
+      <button class="btn btn-outline btn-sm" onclick="addDepRow()" style="margin-top:8px">＋ 扶養者を追加</button>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.7">
+        ・税扶養: 所得税の扶養控除対象<br>
+        ・社保扶養: 健康保険の被扶養者<br>
+        ・両方: 税・社会保険ともに扶養
+      </div>
+    </div>
+
+    <!-- ── Tab 5: 給与口座 ── -->
+    <div class="emp-tab-content" id="empTab-salary">
+      <div class="info-section-title" style="margin-top:0">通勤情報</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">通勤方法</div>
+          <select class="form-control" id="editCommuteMethod">
+            <option value="">未設定</option><option>電車</option><option>バス</option><option>電車＋バス</option>
+            <option>自家用車</option><option>自転車</option><option>徒歩</option><option>その他</option>
+          </select>
+        </div>
+        <div class="form-group"><div class="form-label">通勤手当（月額 / 円）</div>
+          <input class="form-control" id="editCommuteAllowance" type="number" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="info-section-title">給与振込口座</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">銀行名</div><input class="form-control" id="editBankName" placeholder="例: ○○銀行"></div>
+        <div class="form-group"><div class="form-label">支店名</div><input class="form-control" id="editBankBranch" placeholder="例: △△支店"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">口座種別</div>
+          <select class="form-control" id="editBankType">
+            <option>普通</option><option>当座</option><option>貯蓄</option>
+          </select>
+        </div>
+        <div class="form-group"><div class="form-label">口座番号</div><input class="form-control" id="editBankNumber" placeholder="1234567" maxlength="8"></div>
+      </div>
+      <div class="form-group"><div class="form-label">口座名義（カタカナ）</div><input class="form-control" id="editBankHolder" placeholder="ヤマダ タロウ"></div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400e;margin-top:8px">
+        ⚠️ 口座情報は機密情報です。アクセス権限のある管理者のみが閲覧・編集できることを確認してください。
+      </div>
+    </div>
+
+    <!-- ── Tab 6: ログイン ── -->
+    <div class="emp-tab-content" id="empTab-auth">
+      <div style="border:1px solid #b5d4f4;border-radius:8px;padding:14px;background:#e6f1fb">
+        <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px">🔐 ログイン情報の変更</div>
+        <div class="form-row">
+          <div class="form-group">
+            <div class="form-label">メールアドレス（ログイン用）</div>
+            <input class="form-control" id="editUserEmail" type="email" placeholder="変更する場合は入力">
+          </div>
+          <div class="form-group">
+            <div class="form-label">新しいパスワード</div>
+            <div style="position:relative">
+              <input class="form-control" id="editUserPass" type="password" placeholder="変更する場合のみ入力" style="padding-right:36px">
+              <span onclick="togglePw('editUserPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:14px">👁</span>
+            </div>
+          </div>
+        </div>
+        <div id="editAuthStatus" style="font-size:11px;color:var(--muted);margin-top:6px">
+          メール・パスワードの実際の変更はSupabase Authenticationで行われます。
+        </div>
       </div>
     </div>
 
@@ -1828,60 +1972,153 @@ window.filterUsers = function(){
   const q = document.getElementById('userSearch').value.toLowerCase();
   renderUserTable(allUsers.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.department||'').toLowerCase().includes(q)));
 };
+// ── モーダルタブ切替 ──
+window.switchEmpTab = function(el, tabId){
+  document.querySelectorAll('.emp-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.emp-tab-content').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  var content = document.getElementById(tabId);
+  if(content) content.classList.add('active');
+};
+
+// ── 職員情報モーダルを開く ──
 window.openEditUser = function(id){
   const u = allUsers.find(x=>x.id===id);
   if(!u) return;
+
+  // 先頭タブに戻す
+  document.querySelectorAll('.emp-tab').forEach(function(t,i){ t.classList.toggle('active', i===0); });
+  document.querySelectorAll('.emp-tab-content').forEach(function(c,i){ c.classList.toggle('active', i===0); });
+
   document.getElementById('editUserId').value = id;
+  var nameTitle = document.getElementById('editUserNameTitle');
+  if(nameTitle) nameTitle.textContent = u.name||'';
+
+  // ── Tab1: 基本情報 ──
   document.getElementById('editUserName').value = u.name||'';
+  var kanaEl = document.getElementById('editUserKana'); if(kanaEl) kanaEl.value = u.kana||'';
+  var empNoEl = document.getElementById('editUserEmpNo'); if(empNoEl) empNoEl.value = u.employee_number||'';
   document.getElementById('editUserDept').value = u.department||'';
   document.getElementById('editUserEmp').value = u.employment_type||'正社員';
   document.getElementById('editUserRole').value = u.role||'一般';
+  var posEl = document.getElementById('editUserPosition'); if(posEl) posEl.value = u.position||'';
   document.getElementById('editUserAnnualLeave').value = u.annual_leave_days != null ? u.annual_leave_days : 6;
   document.getElementById('editUserLeave').value = u.paid_leave_remaining||0;
   document.getElementById('editUserCarryOver').value = u.carry_over_days||0;
   var hEl=document.getElementById('editUserHireDate'); if(hEl) hEl.value=u.hire_date||'';
+  var rEl=document.getElementById('editUserResignDate'); if(rEl) rEl.value=u.resignation_date||'';
   document.getElementById('editUserStatus').value = u.is_active?'true':'false';
-  // メール欄に現在値をセット
+
+  // ── Tab2: 個人情報 ──
+  var bdEl=document.getElementById('editUserBirthDate'); if(bdEl) bdEl.value=u.birth_date||'';
+  var genEl=document.getElementById('editUserGender'); if(genEl) genEl.value=u.gender||'';
+  var addrEl=document.getElementById('editUserAddress'); if(addrEl) addrEl.value=u.address||'';
+  var phEl=document.getElementById('editUserPhone'); if(phEl) phEl.value=u.phone||'';
+  var peEl=document.getElementById('editUserPersonalEmail'); if(peEl) peEl.value=u.personal_email||'';
+  var enEl=document.getElementById('editEmergName'); if(enEl) enEl.value=u.emergency_contact_name||'';
+  var erEl=document.getElementById('editEmergRelation'); if(erEl) erEl.value=u.emergency_contact_relation||'';
+  var epEl=document.getElementById('editEmergPhone'); if(epEl) epEl.value=u.emergency_contact_phone||'';
+  var hiEl=document.getElementById('editHealthInsNo'); if(hiEl) hiEl.value=u.health_insurance_no||'';
+  var pnEl=document.getElementById('editPensionNo'); if(pnEl) pnEl.value=u.pension_no||'';
+
+  // ── Tab3: 学歴・職歴 ──
+  var elEl=document.getElementById('editEduLevel'); if(elEl) elEl.value=u.education_level||'';
+  var esEl=document.getElementById('editEduSchool'); if(esEl) esEl.value=u.education_school||'';
+  var egEl=document.getElementById('editEduGrad'); if(egEl) egEl.value=u.education_graduation||'';
+  var emEl=document.getElementById('editEduMajor'); if(emEl) emEl.value=u.education_major||'';
+  var cnEl=document.getElementById('editCareerNotes'); if(cnEl) cnEl.value=u.career_notes||'';
+  var certEl=document.getElementById('editCertifications'); if(certEl) certEl.value=u.certifications||'';
+
+  // ── Tab4: 扶養 ──
+  var hsEl=document.getElementById('editHasSpouse'); if(hsEl) hsEl.value = u.has_spouse ? (u.has_spouse === 'social' ? 'social' : 'true') : 'false';
+  loadDependents(id);
+
+  // ── Tab5: 給与口座 ──
+  var cmEl=document.getElementById('editCommuteMethod'); if(cmEl) cmEl.value=u.commute_method||'';
+  var caEl=document.getElementById('editCommuteAllowance'); if(caEl) caEl.value=u.commute_allowance||0;
+  var bnEl=document.getElementById('editBankName'); if(bnEl) bnEl.value=u.bank_name||'';
+  var bbEl=document.getElementById('editBankBranch'); if(bbEl) bbEl.value=u.bank_branch||'';
+  var btEl=document.getElementById('editBankType'); if(btEl) btEl.value=u.bank_account_type||'普通';
+  var bnoEl=document.getElementById('editBankNumber'); if(bnoEl) bnoEl.value=u.bank_account_number||'';
+  var bhEl=document.getElementById('editBankHolder'); if(bhEl) bhEl.value=u.bank_account_holder||'';
+
+  // ── Tab6: ログイン ──
   document.getElementById('editUserEmail').value = u.email||'';
   document.getElementById('editUserPass').value = '';
-  // 現在のauthステータス表示
   var authEl = document.getElementById('editAuthStatus');
   if(authEl){
-    if(u.email){
-      authEl.innerHTML = '<span style="color:var(--green)">✅ ログインメール: <strong>'+u.email+'</strong></span><br><span style="color:var(--muted);font-size:10px">変更する場合は新しいメールまたはパスワードを入力してください</span>';
-    } else {
-      authEl.innerHTML = '<span style="color:var(--amber)">⚠️ メールアドレス未登録。入力するとemployeesテーブルに保存されます。</span>';
-    }
+    authEl.innerHTML = u.email
+      ? '<span style="color:var(--green)">✅ ログインメール: <strong>'+u.email+'</strong></span>'
+      : '<span style="color:var(--amber)">⚠️ メールアドレス未登録</span>';
   }
+
   openModal('editUserModal');
 };
+
 window.saveUser = function(){
   const id = document.getElementById('editUserId').value;
   const emailVal = document.getElementById('editUserEmail').value.trim();
   const passVal  = document.getElementById('editUserPass').value;
+
+  function g(elId){ var el=document.getElementById(elId); return el?el.value:''; }
+  function gi(elId){ return parseInt(g(elId))||0; }
+  function gf(elId){ return parseFloat(g(elId))||0; }
+
   const data = {
-    name: document.getElementById('editUserName').value,
-    department: document.getElementById('editUserDept').value,
-    employment_type: document.getElementById('editUserEmp').value,
-    role: document.getElementById('editUserRole').value,
-    annual_leave_days: parseInt(document.getElementById('editUserAnnualLeave').value)||6,
-    paid_leave_remaining: parseInt(document.getElementById('editUserLeave').value)||0,
-    carry_over_days: parseFloat(document.getElementById('editUserCarryOver').value)||0,
-    is_active: document.getElementById('editUserStatus').value === 'true'
+    // Tab1
+    name:                   g('editUserName'),
+    kana:                   g('editUserKana'),
+    employee_number:        g('editUserEmpNo'),
+    department:             g('editUserDept'),
+    employment_type:        g('editUserEmp'),
+    role:                   g('editUserRole'),
+    position:               g('editUserPosition'),
+    annual_leave_days:      gi('editUserAnnualLeave')||6,
+    paid_leave_remaining:   gf('editUserLeave'),
+    carry_over_days:        gf('editUserCarryOver'),
+    hire_date:              g('editUserHireDate')||null,
+    resignation_date:       g('editUserResignDate')||null,
+    is_active:              g('editUserStatus') === 'true',
+    // Tab2
+    birth_date:             g('editUserBirthDate')||null,
+    gender:                 g('editUserGender'),
+    address:                g('editUserAddress'),
+    phone:                  g('editUserPhone'),
+    personal_email:         g('editUserPersonalEmail'),
+    emergency_contact_name:     g('editEmergName'),
+    emergency_contact_relation: g('editEmergRelation'),
+    emergency_contact_phone:    g('editEmergPhone'),
+    health_insurance_no:    g('editHealthInsNo'),
+    pension_no:             g('editPensionNo'),
+    // Tab3
+    education_level:        g('editEduLevel'),
+    education_school:       g('editEduSchool'),
+    education_graduation:   g('editEduGrad'),
+    education_major:        g('editEduMajor'),
+    career_notes:           g('editCareerNotes'),
+    certifications:         g('editCertifications'),
+    // Tab4
+    has_spouse:             g('editHasSpouse'),
+    // Tab5
+    commute_method:         g('editCommuteMethod'),
+    commute_allowance:      gi('editCommuteAllowance'),
+    bank_name:              g('editBankName'),
+    bank_branch:            g('editBankBranch'),
+    bank_account_type:      g('editBankType'),
+    bank_account_number:    g('editBankNumber'),
+    bank_account_holder:    g('editBankHolder'),
   };
-  // メールが入力されていれば保存
   if(emailVal) data.email = emailVal;
+
   sb.from('employees').update(data).eq('id',id).then(function(r){
     if(r.error){showToast('更新失敗: '+r.error.message,'red');return;}
-    // パスワードが入力されていればメモとして保存（実際の変更はSupabaseで）
-    if(passVal){
-      showToast('✅ 保存しました（パスワードはSupabase管理画面で変更してください）','green');
-    } else {
-      showToast('✅ 更新しました','green');
-    }
+    // 扶養者保存
+    saveDependents(id);
+    showToast('✅ 職員情報を保存しました','green');
     closeModal('editUserModal'); loadAllUsers();
   });
 };
+
 window.deleteUser = function(){
   const id = document.getElementById('editUserId').value;
   if(!confirm('このユーザーを削除しますか？')) return;
@@ -1890,6 +2127,81 @@ window.deleteUser = function(){
     showToast('無効化しました','amber'); closeModal('editUserModal'); loadAllUsers();
   });
 };
+
+// ── 扶養者管理 ──────────────────────────────
+var _depRows = []; // [{id,name,relation,birth_date,dep_type,isNew}]
+
+function loadDependents(empId){
+  _depRows = [];
+  renderDepList();
+  if(!sb) return;
+  sb.from('employee_dependents').select('*').eq('employee_id', empId).order('created_at')
+    .then(function(res){
+      _depRows = (res.data||[]).map(function(d){
+        return {id:d.id, name:d.name||'', relation:d.relation||'', birth_date:d.birth_date||'', dep_type:d.dep_type||'both', isNew:false};
+      });
+      renderDepList();
+    });
+}
+
+function renderDepList(){
+  var el = document.getElementById('depList');
+  var cntEl = document.getElementById('depCountDisplay');
+  if(!el) return;
+  if(cntEl) cntEl.textContent = _depRows.length + '人';
+  if(!_depRows.length){
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">扶養親族なし</div>';
+    return;
+  }
+  el.innerHTML = _depRows.map(function(d,i){
+    return '<div class="dep-row">'
+      + '<input class="form-control" style="font-size:12px;padding:5px 8px" value="'+escHtml(d.name)+'" oninput="updateDepRow('+i+',\'name\',this.value)" placeholder="氏名">'
+      + '<input class="form-control" style="font-size:12px;padding:5px 8px" value="'+escHtml(d.relation)+'" oninput="updateDepRow('+i+',\'relation\',this.value)" placeholder="続柄">'
+      + '<input class="form-control" style="font-size:12px;padding:5px 8px" type="date" value="'+d.birth_date+'" oninput="updateDepRow('+i+',\'birth_date\',this.value)">'
+      + '<select class="form-control" style="font-size:11px;padding:4px 6px" onchange="updateDepRow('+i+',\'dep_type\',this.value)">'
+        + '<option value="tax"'+(d.dep_type==='tax'?' selected':'')+'>税扶養</option>'
+        + '<option value="social"'+(d.dep_type==='social'?' selected':'')+'>社保扶養</option>'
+        + '<option value="both"'+(d.dep_type==='both'?' selected':'')+'>両方</option>'
+      + '</select>'
+      + '<button onclick="removeDepRow('+i+')" style="background:var(--red);color:#fff;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1">×</button>'
+      + '</div>';
+  }).join('');
+}
+
+window.addDepRow = function(){
+  _depRows.push({id:null, name:'', relation:'', birth_date:'', dep_type:'both', isNew:true});
+  renderDepList();
+};
+window.removeDepRow = function(i){
+  var row = _depRows[i];
+  if(row && row.id && !row.isNew){
+    // DB削除
+    if(sb) sb.from('employee_dependents').delete().eq('id', row.id).then(function(){});
+  }
+  _depRows.splice(i, 1);
+  renderDepList();
+};
+window.updateDepRow = function(i, field, val){
+  if(_depRows[i]) _depRows[i][field] = val;
+};
+
+function saveDependents(empId){
+  if(!sb) return;
+  _depRows.forEach(function(d){
+    if(!d.name) return;
+    if(d.isNew || !d.id){
+      sb.from('employee_dependents').insert({
+        employee_id: empId, name: d.name, relation: d.relation,
+        birth_date: d.birth_date||null, dep_type: d.dep_type
+      }).then(function(){});
+    } else {
+      sb.from('employee_dependents').update({
+        name: d.name, relation: d.relation,
+        birth_date: d.birth_date||null, dep_type: d.dep_type
+      }).eq('id', d.id).then(function(){});
+    }
+  });
+}
 window.addUser = function(){
   const name  = document.getElementById('newUserName').value.trim();
   const email = document.getElementById('newUserEmail').value.trim();
