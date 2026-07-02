@@ -1523,6 +1523,27 @@ function toggleWishDate(ds){
 function wishPrevMonth(){ if(_wishMonth===0){_wishYear--;_wishMonth=11;}else{_wishMonth--;} renderWishCalendar(); }
 function wishNextMonth(){ if(_wishMonth===11){_wishYear++;_wishMonth=0;}else{_wishMonth++;} renderWishCalendar(); }
 
+async function loadSwapEmpList(){
+  var sel = document.getElementById('swapTargetEmp');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">読み込み中...</option>';
+  if(!sb){sel.innerHTML='<option value="">ログインしてください</option>';return;}
+  var {data,error} = await sb.from('employees')
+    .select('id,name,department,role')
+    .eq('is_active',true)
+    .neq('role','管理者')
+    .order('department').order('name');
+  if(error||!data){sel.innerHTML='<option value="">取得エラー</option>';return;}
+  // 自分自身を除外
+  var others = data.filter(function(e){return e.id!==_myEmpId;});
+  if(!others.length){sel.innerHTML='<option value="">対象職員なし</option>';return;}
+  sel.innerHTML='<option value="">選択してください</option>'+
+    others.map(function(e){
+      var dept=e.department?'['+e.department+'] ':'';
+      return '<option value="'+e.id+'">'+dept+e.name+'</option>';
+    }).join('');
+}
+
 async function submitShiftWish(){
   var errEl = document.getElementById('wishReqErr');
   if(errEl) errEl.textContent='';
