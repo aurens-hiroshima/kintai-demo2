@@ -9,6 +9,7 @@
 <title>勤怠管理｜スタッフ</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --pri:#1e40af;--pri-l:#dbeafe;--pri-d:#1e3a8a;
@@ -212,15 +213,16 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     <div class="login-sub">スタッフポータル</div>
     <div style="width:100%;max-width:340px">
       <div class="f-group">
-        <label class="f-label">社員番号 / メールアドレス</label>
-        <input class="f-ctrl" type="text" placeholder="例：EMP001">
+        <label class="f-label">メールアドレス</label>
+        <input class="f-ctrl" type="email" id="staffEmail" placeholder="example@company.jp" autocomplete="email">
       </div>
       <div class="f-group">
         <label class="f-label">パスワード</label>
-        <input class="f-ctrl" type="password" placeholder="••••••••">
+        <input class="f-ctrl" type="password" id="staffPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
+      <div id="loginErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
       <div style="margin-bottom:24px">
-        <button class="btn-app btn-pri" onclick="doLogin()">ログイン</button>
+        <button class="btn-app btn-pri" id="loginBtn" onclick="doLogin()">ログイン</button>
       </div>
       <div style="text-align:center">
         <a href="#" onclick="goScreen('screen-reset-pw');return false" style="font-size:13px;color:var(--pri);text-decoration:none">パスワードを忘れた方はこちら</a>
@@ -531,33 +533,9 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 
 <!-- ⑪ 申請一覧 -->
 <div class="pg" id="screen-apply">
-  <div class="tab-bar">
-    <div class="tab-item on">すべて</div>
-    <div class="tab-item">審査中</div>
-    <div class="tab-item">承認済</div>
-    <div class="tab-item">差戻し</div>
-  </div>
-  <div class="list-wrap">
-    <div class="list-row" onclick="goScreen('screen-apply-detail')">
-      <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div>
-      <div style="flex:1"><div class="list-title">有給休暇</div><div class="list-sub">7月5日（土）　1日</div></div>
-      <span class="badge-app b-pend">審査中</span>
-    </div>
-    <div class="list-row" onclick="goScreen('screen-apply-detail')">
-      <div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-clock-history" style="color:var(--suc)"></i></div>
-      <div style="flex:1"><div class="list-title">残業申請</div><div class="list-sub">6月30日（月）　2時間</div></div>
-      <span class="badge-app b-appr">承認済</span>
-    </div>
-    <div class="list-row" onclick="goScreen('screen-apply-detail')">
-      <div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div>
-      <div style="flex:1"><div class="list-title">打刻修正</div><div class="list-sub">6月25日（水）</div></div>
-      <span class="badge-app b-appr">承認済</span>
-    </div>
-    <div class="list-row" onclick="goScreen('screen-apply-detail')">
-      <div class="list-icon" style="background:var(--dan-l)"><i class="bi bi-x-circle" style="color:var(--dan)"></i></div>
-      <div style="flex:1"><div class="list-title">シフト変更申請</div><div class="list-sub">6月20日（土）</div></div>
-      <span class="badge-app b-rej">差戻し</span>
-    </div>
+  <div class="sec-title">シフト申請・交換履歴</div>
+  <div class="list-wrap" id="myShiftRequestList">
+    <div class="list-row"><div class="list-sub" style="padding:4px 0;color:var(--muted)">読み込み中...</div></div>
   </div>
   <div style="padding:8px 16px">
     <button class="btn-app btn-pri" onclick="goScreen('screen-apply-new')"><i class="bi bi-plus-circle"></i> 新規申請</button>
@@ -579,7 +557,8 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     <div class="list-row" onclick="goScreen('screen-apply-ot')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-moon-stars" style="color:var(--war)"></i></div><div class="list-title">残業申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-holiday-work')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-check" style="color:var(--suc)"></i></div><div class="list-title">休日出勤申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-punch')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div><div class="list-title">打刻修正申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-apply-shift-change')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-arrow-left-right" style="color:var(--suc)"></i></div><div class="list-title">シフト変更申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-shift-change')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-calendar-week" style="color:var(--suc)"></i></div><div class="list-title">シフト変更申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-shift-swap');loadSwapEmpList()"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-arrow-left-right" style="color:var(--pur)"></i></div><div class="list-title">シフト交換申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
   </div>
 </div>
 
@@ -801,25 +780,52 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
   <div style="padding:0 16px">
     <div class="f-group">
       <label class="f-label">変更希望日</label>
-      <input class="f-ctrl" type="date" value="2026-07-10">
+      <input class="f-ctrl" type="date" id="shiftReqDate">
     </div>
     <div class="f-group">
-      <label class="f-label">現在のシフト</label>
-      <div class="card-app" style="padding:12px;margin:0;background:#f8fafc"><div style="font-weight:700">N勤 09:00〜18:00</div></div>
+      <label class="f-label">希望開始時刻</label>
+      <input class="f-ctrl" type="time" id="shiftReqStart" value="09:00">
     </div>
     <div class="f-group">
-      <label class="f-label">希望シフト</label>
-      <select class="f-ctrl"><option>E勤 07:00〜16:00</option><option>L勤 12:00〜21:00</option><option>休日希望</option></select>
+      <label class="f-label">希望終了時刻</label>
+      <input class="f-ctrl" type="time" id="shiftReqEnd" value="18:00">
     </div>
     <div class="f-group">
       <label class="f-label">変更理由</label>
-      <textarea class="f-ctrl" rows="2" placeholder="医療機関受診のため"></textarea>
+      <textarea class="f-ctrl" rows="2" id="shiftReqReason" placeholder="医療機関受診のため"></textarea>
     </div>
-    <button class="btn-app btn-pri" onclick="showToast('申請しました');goScreen('screen-apply')">申請する</button>
+    <div id="shiftReqErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
+    <button class="btn-app btn-pri" onclick="submitShiftRequest()">申請する</button>
   </div>
 </div>
 
-<!-- ㉒ 申請詳細 -->
+<!-- ㉒ シフト交換申請 -->
+<div class="pg" id="screen-apply-shift-swap">
+  <div style="padding:0 16px">
+    <div class="f-group">
+      <label class="f-label">自分のシフト日（交換に出す日）</label>
+      <input class="f-ctrl" type="date" id="swapMyDate">
+    </div>
+    <div class="f-group">
+      <label class="f-label">交換相手</label>
+      <select class="f-ctrl" id="swapTargetEmp">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+    <div class="f-group">
+      <label class="f-label">相手のシフト日（もらいたい日）</label>
+      <input class="f-ctrl" type="date" id="swapTargetDate">
+    </div>
+    <div class="f-group">
+      <label class="f-label">交換理由</label>
+      <textarea class="f-ctrl" rows="2" id="swapReason" placeholder="私用のため"></textarea>
+    </div>
+    <div id="swapReqErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
+    <button class="btn-app btn-pri" onclick="submitShiftSwap()">交換申請する</button>
+  </div>
+</div>
+
+<!-- ㉓ 申請詳細 -->
 <div class="pg" id="screen-apply-detail">
   <div class="card-app">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
@@ -1224,7 +1230,7 @@ var _titles = {
   'screen-apply-hourly-leave':'時間単位休暇申請','screen-apply-ot':'残業申請',
   'screen-apply-holiday-work':'休日出勤申請','screen-apply-absence':'欠勤申請',
   'screen-apply-late-early':'遅刻・早退申請','screen-apply-punch':'打刻修正申請',
-  'screen-apply-shift-change':'シフト変更申請','screen-apply-detail':'申請詳細',
+  'screen-apply-shift-change':'シフト変更申請','screen-apply-shift-swap':'シフト交換申請','screen-apply-detail':'申請詳細',
   'screen-approval-status':'承認状況',
   'screen-notice':'お知らせ','screen-notice-detail':'お知らせ詳細',
   'screen-leave':'有給管理','screen-leave-history':'取得履歴',
@@ -1315,7 +1321,191 @@ function showToast(msg){
   _toastTimer = setTimeout(()=>el.classList.remove('show'),2500);
 }
 
+// ── Supabase 初期化 ──
+var SB_URL = localStorage.getItem('sb_url') || 'https://judzjxzmurlqchmuakod.supabase.co';
+var SB_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+var sb = null;
+var _myEmpId = null;   // employees.id
+var _myAuthId = null;  // auth.users.id
+
+function initSb(){
+  if(window.supabase && SB_URL && SB_KEY){
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+  }
+}
+
+// ── ログイン ──
+async function doLogin(){
+  if(!sb) initSb();
+  if(!sb){ showToast('接続エラー'); return; }
+  var email = (document.getElementById('staffEmail')||{}).value.trim();
+  var pw    = (document.getElementById('staffPassword')||{}).value;
+  var errEl = document.getElementById('loginErr');
+  if(errEl) errEl.textContent = '';
+  if(!email||!pw){ if(errEl) errEl.textContent='メールとパスワードを入力してください'; return; }
+  var btn = document.getElementById('loginBtn');
+  if(btn){ btn.disabled=true; btn.textContent='ログイン中...'; }
+  var {data, error} = await sb.auth.signInWithPassword({email, password:pw});
+  if(btn){ btn.disabled=false; btn.textContent='ログイン'; }
+  if(error){
+    if(errEl) errEl.textContent='メールまたはパスワードが違います';
+    return;
+  }
+  _myAuthId = data.user.id;
+  // employees レコードを取得
+  var {data:emp} = await sb.from('employees').select('id,name,department,role').eq('auth_id',_myAuthId).eq('is_active',true).maybeSingle();
+  if(emp){
+    _myEmpId = emp.id;
+    // ホームの名前を更新
+    var nameEl = document.querySelector('#screen-home .card-hero div[style*="font-size:20px"]');
+    if(nameEl) nameEl.textContent = (emp.name||'')+'さん';
+    var deptEl = document.querySelector('#screen-home .card-hero div[style*="opacity:.75"]');
+    if(deptEl) deptEl.textContent = (emp.department||'')+'／ '+(emp.role||'一般');
+  }
+  showToast('ログインしました');
+  setTimeout(function(){ goScreen('screen-home'); }, 400);
+}
+
+// ── 申請一覧をDBから読み込む ──
+async function loadMyRequests(){
+  if(!sb||!_myEmpId) return;
+  var listEl = document.getElementById('myShiftRequestList');
+  if(!listEl) return;
+  var [r1, r2] = await Promise.all([
+    sb.from('shift_requests').select('*').eq('employee_id',_myEmpId).order('created_at',{ascending:false}).limit(20),
+    sb.from('shift_swap_requests').select('*').or('requester_id.eq.'+_myEmpId+',target_id.eq.'+_myEmpId).order('created_at',{ascending:false}).limit(20)
+  ]);
+  var empIds = new Set();
+  (r2.data||[]).forEach(function(r){ empIds.add(r.requester_id); empIds.add(r.target_id); });
+  var empMap = {};
+  if(empIds.size > 0){
+    var {data:emps} = await sb.from('employees').select('id,name').in('id', Array.from(empIds));
+    (emps||[]).forEach(function(e){ empMap[e.id] = e.name; });
+  }
+  var html = '';
+  (r1.data||[]).forEach(function(r){
+    var badge = r.status==='approved'?'<span class="badge-app b-appr">承認済</span>'
+               :r.status==='rejected'?'<span class="badge-app b-rej">否認</span>'
+               :'<span class="badge-app b-pend">審査中</span>';
+    html += '<div class="list-row">'
+      +'<div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-week" style="color:var(--suc)"></i></div>'
+      +'<div style="flex:1"><div class="list-title">シフト変更申請</div><div class="list-sub">'+r.request_date+'</div></div>'
+      +badge+'</div>';
+  });
+  (r2.data||[]).forEach(function(r){
+    var isReq = r.requester_id === _myEmpId;
+    var badge = r.status==='approved'?'<span class="badge-app b-appr">承認済</span>'
+               :r.status==='rejected'?'<span class="badge-app b-rej">否認</span>'
+               :'<span class="badge-app b-pend">審査中</span>';
+    var other = empMap[isReq?r.target_id:r.requester_id]||'—';
+    var label = isReq?('交換申請 → '+other):('交換依頼 ← '+other);
+    var dates = r.requester_date+' ⇔ '+r.target_date;
+    html += '<div class="list-row">'
+      +'<div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-arrow-left-right" style="color:var(--pur)"></i></div>'
+      +'<div style="flex:1"><div class="list-title">'+label+'</div><div class="list-sub">'+dates+'</div></div>'
+      +badge+'</div>';
+  });
+  if(!html) html = '<div class="list-row"><div class="list-sub" style="color:var(--muted)">申請履歴がありません</div></div>';
+  listEl.innerHTML = html;
+}
+
+// ── シフト変更申請送信 ──
+async function submitShiftRequest(){
+  if(!sb||!_myEmpId){ showToast('ログインしてください'); return; }
+  var date   = (document.getElementById('shiftReqDate')||{}).value;
+  var start  = (document.getElementById('shiftReqStart')||{}).value;
+  var end    = (document.getElementById('shiftReqEnd')||{}).value;
+  var reason = (document.getElementById('shiftReqReason')||{}).value.trim();
+  var errEl  = document.getElementById('shiftReqErr');
+  if(errEl) errEl.textContent='';
+  if(!date){ if(errEl) errEl.textContent='日付を選択してください'; return; }
+  var autoApprove = localStorage.getItem('shift_req_auto_approve')==='true';
+  var status = autoApprove ? 'approved' : 'pending';
+  var payload = {
+    employee_id: _myEmpId,
+    request_date: date,
+    requested_start: start||null,
+    requested_end: end||null,
+    reason: reason||null,
+    status: status
+  };
+  var {error} = await sb.from('shift_requests').insert(payload);
+  if(error){ if(errEl) errEl.textContent='送信エラー: '+error.message; return; }
+  // 自動承認の場合はシフトスケジュールも更新
+  if(autoApprove && start && end){
+    await sb.from('shift_schedules').upsert({
+      employee_id:_myEmpId, date:date,
+      custom_start:start, custom_end:end, pattern_id:'custom'
+    },{onConflict:'employee_id,date'});
+  }
+  showToast(autoApprove?'✅ 申請が自動承認されました':'申請しました');
+  goScreen('screen-apply');
+  setTimeout(loadMyRequests, 300);
+}
+
+// ── 交換相手のプルダウンを作成 ──
+async function loadSwapEmpList(){
+  if(!sb||!_myEmpId) return;
+  var sel = document.getElementById('swapTargetEmp');
+  if(!sel) return;
+  var {data:emps} = await sb.from('employees').select('id,name,department').eq('is_active',true).neq('id',_myEmpId).order('name');
+  sel.innerHTML = '<option value="">選択してください</option>';
+  (emps||[]).forEach(function(e){
+    var opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = (e.name||'—')+(e.department?' ('+e.department+')':'');
+    sel.appendChild(opt);
+  });
+}
+
+// ── シフト交換申請送信 ──
+async function submitShiftSwap(){
+  if(!sb||!_myEmpId){ showToast('ログインしてください'); return; }
+  var myDate     = (document.getElementById('swapMyDate')||{}).value;
+  var targetId   = (document.getElementById('swapTargetEmp')||{}).value;
+  var targetDate = (document.getElementById('swapTargetDate')||{}).value;
+  var reason     = (document.getElementById('swapReason')||{}).value.trim();
+  var errEl      = document.getElementById('swapReqErr');
+  if(errEl) errEl.textContent='';
+  if(!myDate||!targetId||!targetDate){
+    if(errEl) errEl.textContent='すべての項目を入力してください'; return;
+  }
+  var autoApprove = localStorage.getItem('shift_swap_auto_approve')==='true';
+  var status = autoApprove ? 'approved' : 'pending';
+  var {data:inserted, error} = await sb.from('shift_swap_requests').insert({
+    requester_id: _myEmpId,
+    target_id: targetId,
+    requester_date: myDate,
+    target_date: targetDate,
+    reason: reason||null,
+    status: status
+  }).select().single();
+  if(error){ if(errEl) errEl.textContent='送信エラー: '+error.message; return; }
+  // 自動承認の場合はシフトを実際に交換
+  if(autoApprove && inserted){
+    var [s1, s2] = await Promise.all([
+      sb.from('shift_schedules').select('*').eq('employee_id',_myEmpId).eq('date',myDate).maybeSingle(),
+      sb.from('shift_schedules').select('*').eq('employee_id',targetId).eq('date',targetDate).maybeSingle()
+    ]);
+    var ops = [];
+    if(s1.data) ops.push(sb.from('shift_schedules').upsert({employee_id:targetId,date:myDate,pattern_id:s1.data.pattern_id,custom_start:s1.data.custom_start,custom_end:s1.data.custom_end},{onConflict:'employee_id,date'}));
+    if(s2.data) ops.push(sb.from('shift_schedules').upsert({employee_id:_myEmpId,date:targetDate,pattern_id:s2.data.pattern_id,custom_start:s2.data.custom_start,custom_end:s2.data.custom_end},{onConflict:'employee_id,date'}));
+    if(ops.length) await Promise.all(ops);
+  }
+  showToast(autoApprove?'✅ 交換申請が自動承認されました':'交換申請しました');
+  goScreen('screen-apply');
+  setTimeout(loadMyRequests, 300);
+}
+
+// ── 申請画面に遷移したときDB読み込み ──
+var _origGoScreen = goScreen;
+goScreen = function(id){
+  _origGoScreen(id);
+  if(id==='screen-apply') loadMyRequests();
+};
+
 // Init
+initSb();
 goScreen('screen-login');
 </script>
 </body>
