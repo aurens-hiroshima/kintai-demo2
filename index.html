@@ -192,7 +192,7 @@ tr:hover td{background:#fafafa}
     <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:8px">ログインできない場合</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <button onclick="document.getElementById('sbConfigSection').style.display=document.getElementById('sbConfigSection').style.display==='none'?'':'none'" style="width:100%;padding:7px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--muted)">⚙️ Supabase接続設定を変更</button>
+        <button onclick="toggleSbConfig()" style="width:100%;padding:7px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--muted)">⚙️ Supabase接続設定を変更</button>
         <a href="staff.html" style="display:block;text-align:center;font-size:11px;color:var(--blue);padding:4px">職員ログインはこちら →</a>
       </div>
     </div>
@@ -1462,9 +1462,11 @@ tr:hover td{background:#fafafa}
 (function(){
 'use strict';
 // ── CONFIG ──────────────────────────────────────────────────
-// LocalStorageに保存された設定を優先、なければプレースホルダー
-let SB_URL = localStorage.getItem('sb_url') || '';
-let SB_KEY = localStorage.getItem('sb_key') || '';
+// LocalStorageに保存された設定を優先、なければデフォルト値を使用
+const _DEFAULT_SB_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
+const _DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+let SB_URL = localStorage.getItem('sb_url') || _DEFAULT_SB_URL;
+let SB_KEY = localStorage.getItem('sb_key') || _DEFAULT_SB_KEY;
 // ────────────────────────────────────────────────────────────
 
 let sb, me, myProfile;
@@ -1530,6 +1532,17 @@ function initSupabase(){
 }
 
 // ── Auth ──
+window.toggleSbConfig = function(){
+  var el = document.getElementById('sbConfigSection');
+  if(el.style.display === 'none'){
+    el.style.display = '';
+    document.getElementById('cfgUrl').value = SB_URL || _DEFAULT_SB_URL;
+    document.getElementById('cfgKey').value = SB_KEY || _DEFAULT_SB_KEY;
+  } else {
+    el.style.display = 'none';
+  }
+};
+
 window.saveSupabaseConfig = function(){
   const url = document.getElementById('cfgUrl').value.trim();
   const key = document.getElementById('cfgKey').value.trim();
