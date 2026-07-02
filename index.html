@@ -5204,13 +5204,11 @@ async function loadShiftSchedulesFromDB(startDate, endDate){
 }
 async function saveShiftScheduleToDB(empId, date, patternId, customStart, customEnd, note){
   if(!sb) return;
-  var existing = getShiftCell(empId, date);
   var payload = {employee_id:empId, date:date, pattern_id:patternId, custom_start:customStart||null, custom_end:customEnd||null, note:note||''};
   try{
-    var r;
-    if(existing&&existing.id){ r=await sb.from('shift_schedules').update(payload).eq('id',existing.id); }
-    else { r=await sb.from('shift_schedules').insert(payload).select().single(); if(!r.error&&r.data) existing={id:r.data.id}; }
-    if(!r.error){ setShiftCell(empId,date,Object.assign({},payload,{id:existing?existing.id:''})); }
+    // upsert: (employee_id, date) のユニーク制約に対してINSERT OR UPDATE
+    var r = await sb.from('shift_schedules').upsert(payload, {onConflict:'employee_id,date'}).select().single();
+    if(!r.error && r.data){ setShiftCell(empId, date, Object.assign({}, payload, {id:r.data.id})); }
     return r;
   }catch(e){ return {error:e}; }
 }
@@ -5306,7 +5304,7 @@ window.loadShiftDaily = async function(){
       var txt='';
       if(pat) txt=isOff
         ?'<span style="font-size:10px;color:'+pat.color+';font-weight:700">休</span>'
-        :'<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+(pat.code||pat.name.slice(0,4))+'</span>';
+        :'<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+(pat.code||pat.name).slice(0,4)+'</span>';
       return '<td onclick="openCellPicker(event,\x27'+emp.id+'\x27,\x27'+iso+'\x27)" '
         +'style="border:1px solid var(--border);padding:2px;text-align:center;cursor:pointer;width:32px;min-width:32px;height:30px;background:'+bg+'" title="'+iso+(pat?' '+pat.name:'')+'">'+txt+'</td>';
     }).join('');
