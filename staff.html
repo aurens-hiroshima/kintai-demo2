@@ -23,22 +23,23 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
 body{font-family:'Hiragino Sans','Meiryo',sans-serif;background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden;position:relative}
 
-/* ── Header ── */
-.hdr{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--hh);background:var(--pri);color:#fff;display:flex;align-items:center;padding:0 4px 0 8px;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.hdr-back{background:none;border:none;color:#fff;font-size:22px;padding:8px;cursor:pointer;border-radius:8px;line-height:1}
-.hdr h1{font-size:17px;font-weight:700;flex:1;margin:0 4px}
-.hdr-act{background:none;border:none;color:#fff;font-size:20px;padding:8px;cursor:pointer;line-height:1}
-.hdr-badge{background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+/* ── Header（非表示） ── */
+.hdr{display:none !important}
+
+/* ── フローティング戻るボタン ── */
+#floatBack{position:fixed;top:10px;left:10px;z-index:300;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:20px;padding:6px 14px 6px 8px;font-size:13px;font-weight:600;color:var(--pri);display:none;align-items:center;gap:2px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+#floatBack.show{display:flex}
+#floatBack i{font-size:18px}
 
 /* ── Bottom Nav ── */
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nh);background:#fff;border-top:1px solid var(--border);display:flex;z-index:200;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;color:var(--muted);cursor:pointer;padding:6px 0;position:relative;transition:color .15s}
-.bnav-btn i{font-size:24px;line-height:1}
+.bnav-btn i{font-size:22px;line-height:1}
 .bnav-btn.on{color:var(--pri)}
-.bnav-dot{position:absolute;top:8px;right:calc(50% - 16px);width:8px;height:8px;background:var(--dan);border-radius:50%;border:2px solid #fff}
+.bnav-dot{position:absolute;top:6px;right:calc(50% - 14px);width:8px;height:8px;background:var(--dan);border-radius:50%;border:2px solid #fff}
 
 /* ── Page ── */
-.pg{display:none;padding-top:calc(var(--hh)+8px);padding-bottom:calc(var(--nh)+8px);min-height:100vh}
+.pg{display:none;padding-top:8px;padding-bottom:calc(var(--nh)+8px);min-height:100vh}
 .pg.on{display:block}
 .pg.no-hdr{padding-top:0}
 .pg.no-nav{padding-bottom:16px}
@@ -196,12 +197,10 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 </head>
 <body>
 
-<!-- ══════ HEADER ══════ -->
-<div class="hdr" id="hdr">
-  <button class="hdr-back" id="backBtn" onclick="goBack()" style="display:none"><i class="bi bi-chevron-left"></i></button>
-  <h1 id="hdrTitle">ホーム</h1>
-  <button class="hdr-act" onclick="goScreen('screen-notice')"><i class="bi bi-bell"></i><span class="hdr-badge" id="noticeBadge">3</span></button>
-</div>
+<!-- フローティング戻るボタン -->
+<button id="floatBack" onclick="goBack()">
+  <i class="bi bi-chevron-left"></i>戻る
+</button>
 
 <!-- ══════ SCREENS ══════ -->
 
@@ -1198,6 +1197,10 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     <i class="bi bi-file-earmark-text"></i>申請
     <div class="bnav-dot"></div>
   </button>
+  <button class="bnav-btn" id="nav-notice" onclick="navTo('screen-notice','お知らせ','nav-notice')" style="position:relative">
+    <i class="bi bi-bell"></i>お知らせ
+    <div class="bnav-dot" id="noticeDot" style="display:none"></div>
+  </button>
   <button class="bnav-btn" id="nav-menu" onclick="navTo('screen-menu','メニュー','nav-menu')">
     <i class="bi bi-grid-3x3-gap-fill"></i>メニュー
   </button>
@@ -1214,6 +1217,7 @@ var _navScreens = {
   'screen-punch':'nav-punch',
   'screen-shift':'nav-shift',
   'screen-apply':'nav-apply',
+  'screen-notice':'nav-notice',
   'screen-menu':'nav-menu'
 };
 var _navTitles = {
@@ -1244,26 +1248,28 @@ var _titles = {
 function goScreen(id){
   var cur = document.querySelector('.pg.on');
   if(cur) _history.push(cur.id);
-  
+
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
   var pg = document.getElementById(id);
   if(!pg) return;
   pg.classList.add('on');
-  
-  // Update header
+
   var isNavRoot = !!_navScreens[id];
   var isLogin = id==='screen-login'||id==='screen-reset-pw'||id==='screen-punch-confirm';
-  document.getElementById('hdr').style.display = isLogin?'none':'flex';
-  document.getElementById('bnav').style.display = isLogin?'none':'flex';
-  document.getElementById('backBtn').style.display = isNavRoot?'none':'block';
-  document.getElementById('hdrTitle').textContent = _titles[id]||id;
-  
-  // Update nav active
+
+  // ボトムナビ表示制御
+  var bnav = document.getElementById('bnav');
+  if(bnav) bnav.style.display = isLogin ? 'none' : 'flex';
+
+  // フローティング戻るボタン制御
+  var fb = document.getElementById('floatBack');
+  if(fb) fb.classList.toggle('show', !isNavRoot && !isLogin);
+
+  // ナビアクティブ更新
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
   var navId = _navScreens[id];
   if(navId) document.getElementById(navId).classList.add('on');
-  
-  // Scroll to top
+
   window.scrollTo(0,0);
 }
 
@@ -1279,8 +1285,8 @@ function goBack(){
     var pg = document.getElementById(prev);
     if(pg) pg.classList.add('on');
     var isNavRoot = !!_navScreens[prev];
-    document.getElementById('backBtn').style.display = isNavRoot?'none':'block';
-    document.getElementById('hdrTitle').textContent = _titles[prev]||prev;
+    var fb = document.getElementById('floatBack');
+    if(fb) fb.classList.toggle('show', !isNavRoot);
     document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('on'));
     var navId = _navScreens[prev];
     if(navId) document.getElementById(navId).classList.add('on');
