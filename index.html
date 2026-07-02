@@ -5080,7 +5080,7 @@ window.loadShiftDaily = async function(){
   var thB='border:1px solid var(--border);padding:3px 1px;text-align:center;font-size:11px;white-space:nowrap;';
 
   if(head) head.innerHTML='<tr>'
-    +'<th style="'+thB+'min-width:80px;position:sticky;left:0;z-index:2;background:var(--bg);padding:4px 8px">氏名</th>'
+    +'<th style="'+thB+'width:156px;min-width:156px;max-width:156px;position:sticky;left:0;z-index:2;background:var(--bg);padding:4px 6px">氏名</th>'
     +days.map(function(d){
       var dt=new Date(year,month,d), dw=dt.getDay();
       var iso=year+'-'+(month+1).toString().padStart(2,'0')+'-'+d.toString().padStart(2,'0');
@@ -5110,12 +5110,12 @@ window.loadShiftDaily = async function(){
         +'style="border:1px solid var(--border);padding:2px;text-align:center;cursor:pointer;width:32px;min-width:32px;height:30px;background:'+bg+'" title="'+iso+(pat?' '+pat.name:'')+'">'+txt+'</td>';
     }).join('');
     return '<tr>'
-      +'<td style="border:1px solid var(--border);padding:4px 6px;position:sticky;left:0;background:var(--card);white-space:nowrap;font-size:12px"><span style="font-size:10px;color:var(--muted);margin-right:3px">'+(emp.department||'')+'</span>'+emp.name+'</td>'
+      +'<td style="border:1px solid var(--border);padding:4px 6px;position:sticky;left:0;background:var(--card);font-size:12px;width:156px;min-width:156px;max-width:156px;overflow:hidden"><span style="font-size:10px;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(emp.department||'')+'</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block">'+emp.name+'</span></td>'
       +cells+'</tr>';
   }).join('')||'<tr><td colspan="40" style="text-align:center;padding:24px;color:var(--muted)">データなし</td></tr>';
 
   if(foot) foot.innerHTML='<tr style="background:var(--bg);font-size:11px">'
-    +'<td style="border:1px solid var(--border);padding:4px 8px;position:sticky;left:0;background:var(--bg);font-weight:700">出勤予定</td>'
+    +'<td style="border:1px solid var(--border);padding:4px 6px;position:sticky;left:0;background:var(--bg);font-weight:700;width:156px;min-width:156px;max-width:156px">出勤予定</td>'
     +days.map(function(d){
       var n=dayCounts[d];
       return '<td style="border:1px solid var(--border);text-align:center;font-weight:700;color:'+(n>0?'var(--blue)':'var(--muted)')+'">'+n+'</td>';
