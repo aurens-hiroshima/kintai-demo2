@@ -2083,13 +2083,12 @@ function loadDashboard(){
         sb.from('leave_requests').select('user_id,unit')
           .eq('status','approved').lte('start_date',today).gte('end_date',today),
         sb.from('shift_schedules').select('employee_id,pattern_id').eq('date',today),
-        sb.from('shift_patterns').select('id,name,type'),
         sb.from('employees').select('id,auth_id').eq('is_active',true)
       ]);
       var leaves   = rs[0].data||[];
       var shifts   = rs[1].data||[];
-      var patterns = rs[2].data||[];
-      var emps     = rs[3].data||[];
+      var emps     = rs[2].data||[];
+      var patterns = getShiftPatterns(); // localStorageから取得
       var patMap = {};
       patterns.forEach(function(p){ patMap[p.id]=p; });
       var empMap = {}; // employees.id → auth_id
@@ -2106,8 +2105,9 @@ function loadDashboard(){
       shifts.forEach(function(s){
         var sp = patMap[s.pattern_id];
         if(!sp) return;
-        var isOff = (sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))
-                 || (sp.name&&sp.name.includes('公休'));
+        var isOff = sp.type==='all_off'
+                 || (sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))
+                 || (sp.name&&(sp.name.includes('公休')||sp.name==='休'));
         if(!isOff) return;
         var authId = empMap[s.employee_id];
         if(authId) offSet.add(authId);
@@ -2126,7 +2126,7 @@ function loadDashboard(){
     try {
       var results = await Promise.all([
         sb.from('shift_schedules').select('employee_id,custom_start,pattern_id').eq('date',today),
-        sb.from('shift_patterns').select('id,name,type,start_time'),
+        Promise.resolve({data:getShiftPatterns()}), // localStorageから取得
         sb.from('employees').select('id,auth_id').eq('is_active',true),
         sb.from('punch_records').select('user_id,punched_at')
           .gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59')
@@ -2154,8 +2154,7 @@ function loadDashboard(){
         if(!startStr) return; // 開始時刻不明はスキップ
         // 公休・休日パターンはスキップ
         if(sp){
-          if(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日'))) return;
-          if(sp.name&&sp.name.includes('公休')) return;
+          if(sp.type==='all_off'||sp.type==='off'||(sp.type&&(sp.type.includes('公休')||sp.type.includes('休日')))||(sp.name&&(sp.name.includes('公休')||sp.name==='休'))) return;
         }
         var authId = empIdMap[s.employee_id];
         if(!authId||onLeaveSet.has(authId)) return;
@@ -2573,13 +2572,12 @@ function loadLeaveBreakdown(){
     sb.from('leave_requests').select('user_id,leave_type,unit')
       .eq('status','approved').lte('start_date',today).gte('end_date',today),
     sb.from('shift_schedules').select('employee_id,pattern_id').eq('date',today),
-    sb.from('shift_patterns').select('id,name,type'),
     sb.from('employees').select('id,auth_id,name,department').eq('is_active',true)
   ]).then(function(rs){
     var leaves   = rs[0].data||[];
     var shifts   = rs[1].data||[];
-    var patterns = rs[2].data||[];
-    var emps     = rs[3].data||[];
+    var emps     = rs[2].data||[];
+    var patterns = getShiftPatterns(); // localStorageから取得
     var patMap={};  patterns.forEach(function(p){ patMap[p.id]=p; });
     var empByAuth={}; emps.forEach(function(e){ empByAuth[e.auth_id]=e; });
     var empById={};   emps.forEach(function(e){ empById[e.id]=e; });
@@ -2599,7 +2597,7 @@ function loadLeaveBreakdown(){
     var seenAuth=new Set(rows.map(function(r){return r.auth_id;}));
     shifts.forEach(function(s){
       var sp=patMap[s.pattern_id]; if(!sp) return;
-      var isOff=(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))||(sp.name&&sp.name.includes('公休'));
+      var isOff=sp.type==='all_off'||(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))||(sp.name&&(sp.name.includes('公休')||sp.name==='休'));
       if(!isOff) return;
       var emp=empById[s.employee_id]; if(!emp) return;
       if(seenAuth.has(emp.auth_id)) return; // 有休と重複しない
