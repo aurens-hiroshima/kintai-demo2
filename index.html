@@ -44,6 +44,9 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:var(--t
 .card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:16px}
 .card-title{font-size:15px;font-weight:700;margin-bottom:14px}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.dash-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start}
+.dash-2col .dash-col{min-width:0}
+@media(max-width:1100px){.dash-2col{grid-template-columns:1fr}}
 .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px}
 .kpi-label{font-size:12px;color:var(--muted);margin-bottom:6px}
 .kpi-val{font-size:28px;font-weight:700}
@@ -256,7 +259,7 @@ tr:hover td{background:#fafafa}
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
     <div class="kpi"><div class="kpi-label">勤務アラート</div><div class="kpi-val" id="kpi-alert" style="color:var(--red)">—</div><div class="kpi-sub">打刻忘れ・残業超過</div></div>
   </div>
-  <!-- ── お知らせ ── -->
+  <!-- ── お知らせ（全幅） ── -->
   <div class="card" id="dashNoticeCard" style="display:none">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
       📢 お知らせ
@@ -265,61 +268,85 @@ tr:hover td{background:#fafafa}
     <div id="dashNoticeList"></div>
   </div>
 
-  <!-- ── 休暇内訳 ── -->
-  <div class="card" id="dashLeaveBreakCard" style="margin-bottom:16px">
-    <div class="card-title">🏖️ 本日の休暇内訳</div>
-    <div id="dashLeaveBreakList"><div style="color:var(--muted);font-size:13px;text-align:center;padding:14px">読み込み中...</div></div>
-  </div>
+  <!-- ── 2カラムグリッド ── -->
+  <div class="dash-2col">
 
-  <div class="card">
-    <div class="card-title">📋 本日の出退勤状況</div>
-    <table>
-      <thead><tr><th>氏名</th><th>部署</th><th>出勤</th><th>退勤</th><th>状況</th></tr></thead>
-      <tbody id="dashAttendTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
-    </table>
-  </div>
-  <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      🔔 未承認申請
-      <a href="#" onclick="nav('approval');return false;" style="font-size:12px;color:var(--blue);font-weight:400;text-decoration:none">申請承認へ →</a>
+    <!-- 左カラム -->
+    <div class="dash-col">
+      <!-- 本日の出退勤状況 -->
+      <div class="card">
+        <div class="card-title">📋 本日の出退勤状況</div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>氏名</th><th>部署</th><th>出勤</th><th>退勤</th><th>状況</th></tr></thead>
+            <tbody id="dashAttendTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 休暇内訳 -->
+      <div class="card" id="dashLeaveBreakCard">
+        <div class="card-title">🏖️ 本日の休暇内訳</div>
+        <div id="dashLeaveBreakList"><div style="color:var(--muted);font-size:13px;text-align:center;padding:14px">読み込み中...</div></div>
+      </div>
+
+      <!-- 勤務アラート -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          🚨 勤務アラート
+          <span style="font-size:11px;font-weight:400;color:var(--muted)">打刻忘れ・残業超過</span>
+        </div>
+        <div class="tabs" style="margin-bottom:8px">
+          <div class="tab active" id="alertTab1" onclick="switchAlertTab('punch')">⏰ 打刻忘れ</div>
+          <div class="tab" id="alertTab2" onclick="switchAlertTab('ot')">📊 残業超過</div>
+        </div>
+        <div id="alertPunchPanel">
+          <table>
+            <thead><tr><th>氏名</th><th>部署</th><th>状況</th></tr></thead>
+            <tbody id="dashPunchAlertTbl"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+        <div id="alertOtPanel" style="display:none">
+          <table>
+            <thead><tr><th>氏名</th><th>部署</th><th>当月残業</th><th>アラートレベル</th></tr></thead>
+            <tbody id="dashOtAlertTbl"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <table>
-      <thead><tr><th>種類</th><th>申請者</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
-      <tbody id="dashApprovalTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
-    </table>
-  </div>
-  <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      ⚠️ 法定取得未達アラート
-      <span style="font-size:11px;font-weight:400;color:var(--muted)">法定最低取得日数に達していない職員</span>
+
+    <!-- 右カラム -->
+    <div class="dash-col">
+      <!-- 未承認申請 -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          🔔 未承認申請
+          <a href="#" onclick="nav('approval');return false;" style="font-size:12px;color:var(--blue);font-weight:400;text-decoration:none">申請承認へ →</a>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>種類</th><th>申請者</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
+            <tbody id="dashApprovalTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 法定取得未達アラート -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          ⚠️ 法定取得未達アラート
+          <span style="font-size:11px;font-weight:400;color:var(--muted)">最低取得日数に未達</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>氏名</th><th>部署</th><th>付与</th><th>消化済</th><th>残日数</th><th>状態</th></tr></thead>
+            <tbody id="dashLeaveAlertTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <table>
-      <thead><tr><th>氏名</th><th>部署</th><th>付与</th><th>消化済</th><th>残日数</th><th>状態</th></tr></thead>
-      <tbody id="dashLeaveAlertTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody>
-    </table>
-  </div>
-  <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      🚨 勤務アラート
-      <span style="font-size:11px;font-weight:400;color:var(--muted)">打刻忘れ・残業超過の職員</span>
-    </div>
-    <div class="tabs" style="margin-bottom:8px">
-      <div class="tab active" id="alertTab1" onclick="switchAlertTab('punch')">⏰ 打刻忘れ</div>
-      <div class="tab" id="alertTab2" onclick="switchAlertTab('ot')">📊 残業超過</div>
-    </div>
-    <div id="alertPunchPanel">
-      <table>
-        <thead><tr><th>氏名</th><th>部署</th><th>状況</th></tr></thead>
-        <tbody id="dashPunchAlertTbl"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
-      </table>
-    </div>
-    <div id="alertOtPanel" style="display:none">
-      <table>
-        <thead><tr><th>氏名</th><th>部署</th><th>当月残業</th><th>アラートレベル</th></tr></thead>
-        <tbody id="dashOtAlertTbl"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">読み込み中...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
+
+  </div><!-- /.dash-2col -->
 </div>
 
 <!-- ── Punch ── -->
