@@ -250,7 +250,7 @@ tr:hover td{background:#fafafa}
     <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">在籍者数</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
     <div class="kpi"><div class="kpi-label">今月の残業</div><div class="kpi-val" id="kpi-ot" style="color:var(--red)">—</div><div class="kpi-sub">時間</div></div>
-    <div class="kpi"><div class="kpi-label">法定取得済</div><div class="kpi-val" id="kpi-leave" style="color:var(--green)">—</div><div class="kpi-sub">名（法定達成）</div></div>
+    <div class="kpi"><div class="kpi-label">勤務アラート</div><div class="kpi-val" id="kpi-alert" style="color:var(--red)">—</div><div class="kpi-sub">打刻忘れ・残業超過</div></div>
   </div>
   <div class="card">
     <div class="card-title">📋 本日の出退勤状況</div>
@@ -260,7 +260,10 @@ tr:hover td{background:#fafafa}
     </table>
   </div>
   <div class="card">
-    <div class="card-title">🔔 未承認申請</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      🔔 未承認申請
+      <a href="#" onclick="nav('approval');return false;" style="font-size:12px;color:var(--blue);font-weight:400;text-decoration:none">申請承認へ →</a>
+    </div>
     <table>
       <thead><tr><th>種類</th><th>申請者</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
       <tbody id="dashApprovalTbl"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
@@ -357,6 +360,7 @@ tr:hover td{background:#fafafa}
     <div class="tab active" onclick="switchTab(this,'tab-leave-app')">休暇申請</div>
     <div class="tab" onclick="switchTab(this,'tab-ot-app')">残業申請</div>
     <div class="tab" onclick="switchTab(this,'tab-punch-app')">打刻申請</div>
+    <div class="tab" onclick="switchTab(this,'tab-shift-app');loadShiftApprovals()">📋 シフト申請</div>
   </div>
   <div class="tab-content active" id="tab-leave-app">
     <div class="card">
@@ -374,6 +378,28 @@ tr:hover td{background:#fafafa}
     <div class="card">
       <table><thead><tr><th>申請者</th><th>日付</th><th>種別</th><th>時刻</th><th>備考</th><th>操作</th></tr></thead>
       <tbody id="punchAppTbl"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody></table>
+    </div>
+  </div>
+  <div class="tab-content" id="tab-shift-app">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin:0">📋 シフト申請一覧（未承認）</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-control" id="shiftAppKubunFilter" onchange="loadShiftApprovals()" style="width:100px;height:32px;padding:0 8px;font-size:12px">
+            <option value="">全区分</option>
+            <option value="変更">📅 変更</option>
+            <option value="交換">🔄 交換</option>
+            <option value="希望">🌟 希望</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadShiftApprovals()">🔄 更新</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>区分</th><th>申請者</th><th>部署</th><th>対象日</th><th>内容</th><th>申請日</th><th>操作</th></tr></thead>
+          <tbody id="shiftApprovalTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">タブを開くと読み込みます</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1941,7 +1967,7 @@ function loadDashboard(){
 
   // ── KPI（簡易）
   document.getElementById('kpi-ot').textContent='—';
-  document.getElementById('kpi-leave').textContent='—';
+  document.getElementById('kpi-alert').textContent='—';
   loadLeaveAlerts();
   loadWorkAlerts();
 
@@ -2073,7 +2099,94 @@ window.loadAttendance = function(){
 // ── Approvals ──
 function loadApprovals(){
   loadLeaveApprovals(); loadOtApprovals(); loadPunchApprovals();
+  // シフト申請タブが開いている場合は再取得
+  var shiftTab = document.getElementById('tab-shift-app');
+  if(shiftTab && shiftTab.classList.contains('active')) loadShiftApprovals();
 }
+
+// ── シフト申請承認（page-approval） ──
+window.loadShiftApprovals = function(){
+  var tbody = document.getElementById('shiftApprovalTbl');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>';
+  var kubun = (document.getElementById('shiftAppKubunFilter')||{value:''}).value;
+
+  Promise.all([
+    sb.from('shift_requests').select('*').eq('status','pending').order('created_at',{ascending:false}),
+    sb.from('shift_swap_requests').select('*').eq('status','pending').order('created_at',{ascending:false}),
+    sb.from('shift_wish_requests').select('*').eq('status','pending').order('created_at',{ascending:false}),
+    sb.from('employees').select('id,name,department').eq('is_active',true)
+  ]).then(function(rs){
+    var empMap = {};
+    (rs[3].data||[]).forEach(function(e){ empMap[e.id] = e; });
+    var kBadge = {
+      '変更':'<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">📅 変更</span>',
+      '交換':'<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">🔄 交換</span>',
+      '希望':'<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">🌟 希望</span>'
+    };
+    var all = [];
+    (rs[0].data||[]).forEach(function(r){
+      var emp = empMap[r.employee_id]||{name:'—',department:'—'};
+      var detail = (r.requested_start?String(r.requested_start).substr(0,5):'')+(r.requested_end?' 〜 '+String(r.requested_end).substr(0,5):'');
+      all.push({kubun:'変更',id:r.id,tbl:'shift_requests',
+        name:emp.name,dept:emp.department||'—',
+        date:r.request_date||'—',detail:detail||'—',reason:r.reason||'—',created:r.created_at});
+    });
+    (rs[1].data||[]).forEach(function(r){
+      var req = empMap[r.requester_id]||{name:'—',department:'—'};
+      var tgt = empMap[r.target_id]||{name:'—'};
+      all.push({kubun:'交換',id:r.id,tbl:'shift_swap_requests',
+        name:req.name,dept:req.department||'—',
+        date:r.requester_date+' ⇔ '+r.target_date,
+        detail:tgt.name+'と交換',reason:r.reason||'—',created:r.created_at});
+    });
+    (rs[2].data||[]).forEach(function(r){
+      var emp = empMap[r.employee_id]||{name:'—',department:'—'};
+      var dates = [];
+      try{ dates = Array.isArray(r.wish_dates)?r.wish_dates:JSON.parse(r.wish_dates||'[]'); }catch(e){}
+      all.push({kubun:'希望',id:r.id,tbl:'shift_wish_requests',
+        name:emp.name,dept:emp.department||'—',
+        date:r.wish_month+'（'+dates.length+'日）',
+        detail:dates.slice(0,3).map(function(d){return d.substr(8)+'日';}).join('・')+(dates.length>3?'…':''),
+        reason:r.reason||'—',created:r.created_at});
+    });
+    if(kubun) all = all.filter(function(r){ return r.kubun===kubun; });
+    all.sort(function(a,b){return a.created<b.created?1:-1;});
+    if(!all.length){
+      tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">未承認のシフト申請はありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = all.map(function(r){
+      var id=r.id, tbl=r.tbl;
+      return '<tr>'
+        +'<td>'+kBadge[r.kubun]+'</td>'
+        +'<td><strong>'+r.name+'</strong></td>'
+        +'<td>'+r.dept+'</td>'
+        +'<td>'+r.date+'</td>'
+        +'<td style="font-size:12px">'+r.detail+'</td>'
+        +'<td style="font-size:12px;color:var(--muted)">'+r.created.slice(0,10)+'</td>'
+        +'<td style="white-space:nowrap">'
+        +'<button class="btn btn-sm btn-green" onclick="approveShiftApp(\''+id+'\',\''+tbl+'\')">承認</button> '
+        +'<button class="btn btn-sm btn-red" onclick="rejectShiftApp(\''+id+'\',\''+tbl+'\')">否認</button>'
+        +'</td></tr>';
+    }).join('');
+  }).catch(function(e){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">取得エラー</td></tr>';
+  });
+};
+
+window.approveShiftApp = function(id, tbl){
+  sb.from(tbl).update({status:'approved'}).eq('id',id).then(function(r){
+    if(r.error){showToast('エラー','red');return;}
+    showToast('承認しました','green'); loadShiftApprovals();
+  });
+};
+window.rejectShiftApp = function(id, tbl){
+  sb.from(tbl).update({status:'rejected'}).eq('id',id).then(function(r){
+    if(r.error){showToast('エラー','red');return;}
+    showToast('否認しました','amber'); loadShiftApprovals();
+  });
+};
 function loadLeaveApprovals(){
   Promise.all([
     sb.from('leave_requests').select('id,user_id,leave_type,start_date,end_date,reason,created_at').eq('status','pending'),
@@ -3334,8 +3447,6 @@ window.loadLeaveAlerts = function(){
       .sort(function(a,b){return a.used-b.used;});
     var achievedCnt = allEmps.length - alerts.length;
 
-    document.getElementById('kpi-leave').textContent = achievedCnt;
-
     if(!alerts.length){
       tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--green);padding:14px">✅ 全職員が法定日数（'+legalMin+'日以上）を取得済です</td></tr>';
       return;
@@ -3613,6 +3724,14 @@ window.switchAlertTab = function(type){
   }
 };
 
+var _workAlertCount = {punch: null, ot: null};
+function _updateAlertKpi(){
+  var el = document.getElementById('kpi-alert');
+  if(!el) return;
+  var p = _workAlertCount.punch, o = _workAlertCount.ot;
+  el.textContent = (p||0)+(o||0);
+}
+
 window.loadWorkAlerts = function(){
   var showPunch = localStorage.getItem('alert_punch_miss')!=='false';
   var showOt    = localStorage.getItem('alert_ot_enable')!=='false';
@@ -3633,6 +3752,7 @@ window.loadWorkAlerts = function(){
       if(rs[0].error){pTbl.innerHTML='<tr><td colspan="3" style="color:var(--muted);padding:14px">取得エラー</td></tr>';return;}
       var punchedToday = new Set((rs[1].data||[]).map(function(p){return p.user_id;}));
       var missing = (rs[0].data||[]).filter(function(e){return !punchedToday.has(e.auth_id);});
+      _workAlertCount.punch = missing.length; _updateAlertKpi();
       if(!missing.length){
         pTbl.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--green);padding:14px">✅ 本日打刻忘れなし</td></tr>';
         return;
@@ -3645,6 +3765,7 @@ window.loadWorkAlerts = function(){
       pTbl.innerHTML='<tr><td colspan="3" style="color:var(--muted);padding:14px">—</td></tr>';
     });
   } else if(pTbl){
+    _workAlertCount.punch = 0; _updateAlertKpi();
     pTbl.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:14px">アラート無効（設定で有効化）</td></tr>';
   }
 
@@ -3667,6 +3788,7 @@ window.loadWorkAlerts = function(){
           return {name:emp.name||'—',dept:emp.department||'—',hours:e[1]};
         })
         .sort(function(a,b){return b.hours-a.hours;});
+      _workAlertCount.ot = alerts.length; _updateAlertKpi();
       if(!alerts.length){
         otTbl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--green);padding:14px">✅ 残業超過者なし（閾値'+warnH+'h）</td></tr>';
         return;
@@ -3681,6 +3803,7 @@ window.loadWorkAlerts = function(){
       otTbl.innerHTML='<tr><td colspan="4" style="color:var(--muted);padding:14px">—</td></tr>';
     });
   } else if(otTbl){
+    _workAlertCount.ot = 0; _updateAlertKpi();
     otTbl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">アラート無効（設定で有効化）</td></tr>';
   }
 };
