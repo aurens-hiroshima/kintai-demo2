@@ -199,7 +199,7 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 
 <!-- フローティング戻るボタン -->
 <button id="floatBack" onclick="goBack()">
-  <i class="bi bi-chevron-left"></i>戻る
+  <i class="bi bi-chevron-left"></i><span data-i18n="common.back">戻る</span>
 </button>
 
 <!-- ══════ SCREENS ══════ -->
@@ -208,23 +208,23 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 <div class="pg full no-nav on" id="screen-login">
   <div class="login-wrap">
     <div class="login-logo">🕐</div>
-    <div class="login-title">勤怠管理</div>
-    <div class="login-sub">スタッフポータル</div>
+    <div class="login-title" data-i18n="login.title">勤怠管理</div>
+    <div class="login-sub" data-i18n="login.sub">スタッフポータル</div>
     <div style="width:100%;max-width:340px">
       <div class="f-group">
-        <label class="f-label">メールアドレス</label>
+        <label class="f-label" data-i18n="login.email">メールアドレス</label>
         <input class="f-ctrl" type="email" id="staffEmail" placeholder="example@company.jp" autocomplete="email">
       </div>
       <div class="f-group">
-        <label class="f-label">パスワード</label>
+        <label class="f-label" data-i18n="login.pw">パスワード</label>
         <input class="f-ctrl" type="password" id="staffPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div id="loginErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
       <div style="margin-bottom:24px">
-        <button class="btn-app btn-pri" id="loginBtn" onclick="doLogin()">ログイン</button>
+        <button class="btn-app btn-pri" id="loginBtn" onclick="doLogin()" data-i18n="login.btn">ログイン</button>
       </div>
       <div style="text-align:center">
-        <a href="#" onclick="goScreen('screen-reset-pw');return false" style="font-size:13px;color:var(--pri);text-decoration:none">パスワードを忘れた方はこちら</a>
+        <a href="#" onclick="goScreen('screen-reset-pw');return false" style="font-size:13px;color:var(--pri);text-decoration:none" data-i18n="login.forgot">パスワードを忘れた方はこちら</a>
       </div>
     </div>
   </div>
@@ -257,7 +257,7 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     </div>
   </div>
   <!-- 打刻状況 -->
-  <div class="sec-title">打刻状況</div>
+  <div class="sec-title" data-i18n="home.punch_status">打刻状況</div>
   <div class="card-app">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div style="font-size:13px;color:var(--muted)">2026年7月1日（水）</div>
@@ -278,35 +278,16 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
       <button class="btn-app btn-out" style="padding:12px;font-size:14px" onclick="goScreen('screen-punch-history')"><i class="bi bi-clock-history"></i> 履歴</button>
     </div>
   </div>
-  <!-- 今月サマリ -->
-  <div class="sec-title">今月の勤務</div>
-  <div class="card-app">
-    <div class="stat-row">
-      <div class="stat-card"><div class="stat-val" style="color:var(--pri)">18.5<span style="font-size:14px">h</span></div><div class="stat-lbl">今月勤務時間</div></div>
-      <div class="stat-card"><div class="stat-val" style="color:var(--war)">2.0<span style="font-size:14px">h</span></div><div class="stat-lbl">残業時間</div></div>
-    </div>
-    <div style="margin-top:10px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px"><span>出勤日数</span><span style="font-weight:700;color:var(--text)">3 / 22日</span></div>
-      <div class="prog-bar"><div class="prog-fill" style="width:14%"></div></div>
-    </div>
-  </div>
   <!-- お知らせ -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin:0 16px 8px">
-    <div class="sec-title" style="margin:0">お知らせ</div>
+    <div class="sec-title" style="margin:0">📢 お知らせ</div>
     <a href="#" onclick="goScreen('screen-notice');return false" style="font-size:12px;color:var(--pri);text-decoration:none">すべて見る</a>
   </div>
-  <div class="list-wrap">
-    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">【重要】7月の就業規則改訂について</div>
-      <div class="notice-meta"><span class="unread-dot"></span><span>管理部</span><span>2026/07/01</span></div>
-    </div>
-    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">6月シフト確定のお知らせ</div>
-      <div class="notice-meta"><span>管理部</span><span>2026/06/25</span></div>
-    </div>
+  <div class="list-wrap" id="homeNoticeList">
+    <div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">読み込み中...</div>
   </div>
   <!-- 申請状況 -->
-  <div class="sec-title">申請状況</div>
+  <div class="sec-title" data-i18n="home.apply_status">申請状況</div>
   <div class="list-wrap">
     <div class="list-row" onclick="goScreen('screen-apply-detail')">
       <div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-file-text" style="color:var(--pri)"></i></div>
@@ -928,57 +909,52 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 
 <!-- ㉔ お知らせ一覧 -->
 <div class="pg" id="screen-notice">
-  <div class="list-wrap" style="margin-top:8px">
-    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">【重要】7月の就業規則改訂について</div>
-      <div class="notice-meta"><span class="unread-dot"></span><span class="badge-app b-rej" style="font-size:10px">重要</span><span>管理部</span><span>2026/07/01</span></div>
-    </div>
-    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">7月シフトが確定しました</div>
-      <div class="notice-meta"><span class="unread-dot"></span><span>人事部</span><span>2026/06/28</span></div>
-    </div>
-    <div class="notice-row unread" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">夏季休暇の取得について（申請期限：7月15日）</div>
-      <div class="notice-meta"><span class="unread-dot"></span><span>人事部</span><span>2026/06/25</span></div>
-    </div>
-    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">社内システムメンテナンスのお知らせ</div>
-      <div class="notice-meta"><span>システム部</span><span>2026/06/20</span></div>
-    </div>
-    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">健康診断日程のご案内（PDF添付）</div>
-      <div class="notice-meta"><span><i class="bi bi-paperclip"></i> 添付あり</span><span>総務部</span><span>2026/06/15</span></div>
-    </div>
-    <div class="notice-row" onclick="goScreen('screen-notice-detail')">
-      <div class="notice-title">6月度給与明細の確認について</div>
-      <div class="notice-meta"><span>経理部</span><span>2026/06/10</span></div>
-    </div>
+  <div style="padding:0 16px 8px;display:flex;justify-content:flex-end">
+    <button class="btn-app btn-pri" style="padding:8px 16px;font-size:13px" onclick="goScreen('screen-notice-post')">✏️ 投稿する</button>
+  </div>
+  <div class="list-wrap" id="noticeFullList">
+    <div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">読み込み中...</div>
   </div>
 </div>
 
 <!-- ㉕ お知らせ詳細 -->
 <div class="pg" id="screen-notice-detail">
-  <div class="card-app">
-    <div class="badge-app b-rej" style="margin-bottom:8px">重要</div>
-    <div style="font-size:18px;font-weight:800;margin-bottom:8px">7月の就業規則改訂について</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;display:flex;gap:8px">
-      <span>管理部</span><span>2026年7月1日</span>
-    </div>
-    <div style="font-size:14px;line-height:1.8;color:var(--text)">
-      <p>スタッフの皆様へ</p>
-      <p style="margin-top:12px">2026年7月1日より、就業規則の一部が改訂されます。主な変更点は以下の通りです。</p>
-      <p style="margin-top:12px"><strong>【変更点】</strong><br>
-      1. 有給休暇の時間単位取得が可能になります（最大8時間/年）<br>
-      2. フレックスタイム制のコアタイムが10:00〜15:00に変更されます<br>
-      3. 育児・介護休業の申請期限が30日前から14日前に変更されます</p>
-      <p style="margin-top:12px">詳細は添付の改訂版就業規則をご確認ください。</p>
-      <p style="margin-top:12px">ご不明な点は人事部までお問い合わせください。</p>
-    </div>
-    <!-- 添付ファイル -->
-    <div style="margin-top:16px;padding:12px 14px;background:#f8fafc;border-radius:12px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="showToast('PDFを開きます')">
-      <i class="bi bi-file-pdf" style="font-size:24px;color:var(--dan)"></i>
-      <div><div style="font-size:13px;font-weight:700">就業規則改訂版_2026年7月.pdf</div><div style="font-size:11px;color:var(--muted)">245 KB</div></div>
-      <i class="bi bi-download ms-auto" style="color:var(--pri)"></i>
+  <div class="card-app" id="noticeDetailCard">
+    <div style="text-align:center;color:var(--muted);padding:24px">読み込み中...</div>
+  </div>
+</div>
+
+<!-- お知らせ投稿 -->
+<div class="pg" id="screen-notice-post">
+  <div style="padding:0 16px">
+    <div style="display:grid;gap:14px">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">カテゴリ</div>
+        <select class="form-control" id="staffNoticeCat" style="height:44px;font-size:14px">
+          <option value="お知らせ">📢 お知らせ</option>
+          <option value="連絡事項">📝 連絡事項</option>
+          <option value="引継ぎ">🔁 引継ぎ</option>
+          <option value="重要">🚨 重要</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">タイトル <span style="color:var(--dan)">*</span></div>
+        <input type="text" class="form-control" id="staffNoticeTitle" placeholder="タイトルを入力" style="height:44px;font-size:14px">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">本文</div>
+        <textarea class="form-control" id="staffNoticeBody" rows="5" placeholder="内容を入力（任意）" style="font-size:14px;resize:none"></textarea>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">📷 写真添付（任意）</div>
+        <input type="file" id="staffNoticeImg" accept="image/*" onchange="staffPreviewImg(this)" style="display:none">
+        <button class="btn-app" style="background:#f1f5f9;color:var(--text);border:1px dashed var(--border);width:100%;padding:12px" onclick="document.getElementById('staffNoticeImg').click()">
+          <i class="bi bi-camera"></i> 写真を選択
+        </button>
+        <div id="staffImgPreview" style="margin-top:8px;text-align:center"></div>
+      </div>
+      <div id="staffNoticeErr" style="color:var(--dan);font-size:13px"></div>
+      <button class="btn-app btn-pri" style="padding:14px;font-size:15px;font-weight:700" onclick="submitStaffNotice()">📢 投稿する</button>
     </div>
   </div>
 </div>
@@ -1066,18 +1042,18 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     </div>
   </div>
   <div class="list-wrap">
-    <div class="list-row" onclick="goScreen('screen-timecard')"><div class="list-icon" style="background:#f0f9ff"><i class="bi bi-table" style="color:var(--pri)"></i></div><div class="list-title">勤務実績</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-approval-status')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-check2-all" style="color:var(--war)"></i></div><div class="list-title">承認状況</div><span class="badge-app b-pend ms-auto">2件</span><i class="bi bi-chevron-right list-chev"></i></div>
-    <div class="list-row" onclick="goScreen('screen-leave')"><div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div><div class="list-title">有給管理</div><div class="list-right"><span style="font-size:12px;font-weight:700;color:var(--pri)">残12.5日</span><i class="bi bi-chevron-right list-chev"></i></div></div>
+    <div class="list-row" onclick="goScreen('screen-timecard')"><div class="list-icon" style="background:#f0f9ff"><i class="bi bi-table" style="color:var(--pri)"></i></div><div class="list-title" data-i18n="menu.timecard">勤務実績</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-approval-status')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-check2-all" style="color:var(--war)"></i></div><div class="list-title" data-i18n="menu.approval">承認状況</div><span class="badge-app b-pend ms-auto">2件</span><i class="bi bi-chevron-right list-chev"></i></div>
+    <div class="list-row" onclick="goScreen('screen-leave')"><div class="list-icon" style="background:var(--pri-l)"><i class="bi bi-umbrella" style="color:var(--pri)"></i></div><div class="list-title" data-i18n="menu.leave">有給管理</div><div class="list-right"><span style="font-size:12px;font-weight:700;color:var(--pri)">残12.5日</span><i class="bi bi-chevron-right list-chev"></i></div></div>
   </div>
   <div class="list-wrap">
-    <div class="list-row" onclick="goScreen('screen-mypage')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-person-circle" style="color:var(--muted)"></i></div><div class="list-title">マイページ</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-qualification')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-award" style="color:var(--suc)"></i></div><div class="list-title">資格・スキル</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-settings')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-gear" style="color:var(--muted)"></i></div><div class="list-title">設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-mypage')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-person-circle" style="color:var(--muted)"></i></div><div class="list-title" data-i18n="menu.mypage">マイページ</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-qualification')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-award" style="color:var(--suc)"></i></div><div class="list-title" data-i18n="menu.skill">資格・スキル</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title" data-i18n="menu.notif">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-settings')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-gear" style="color:var(--muted)"></i></div><div class="list-title" data-i18n="menu.settings">Setting</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
   </div>
   <div style="padding:8px 16px">
-    <button class="btn-app" style="background:#f1f5f9;color:var(--dan);font-weight:700" onclick="goScreen('screen-login')"><i class="bi bi-box-arrow-right"></i> ログアウト</button>
+    <button class="btn-app" style="background:#f1f5f9;color:var(--dan);font-weight:700" onclick="goScreen('screen-login')" data-i18n="menu.logout"><i class="bi bi-box-arrow-right"></i> ログアウト</button>
   </div>
 </div>
 
@@ -1162,21 +1138,31 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 <!-- ㉟ 設定 -->
 <div class="pg" id="screen-settings">
   <div class="list-wrap">
-    <div class="list-row" onclick="goScreen('screen-password')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-key" style="color:var(--muted)"></i></div><div class="list-title">パスワード変更</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
-    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-password')"><div class="list-icon" style="background:#f1f5f9"><i class="bi bi-key" style="color:var(--muted)"></i></div><div class="list-title" data-i18n="settings.pw">パスワード変更</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-notif-settings')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-bell" style="color:var(--pur)"></i></div><div class="list-title" data-i18n="settings.notif">通知設定</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+  </div>
+  <!-- 言語設定 -->
+  <div class="list-wrap">
+    <div style="padding:12px 16px 6px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em" data-i18n="settings.lang">言語設定 / Language</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 12px">
+      <button onclick="setLang('ja')" id="langBtn-ja" class="btn-app" style="font-size:14px;font-weight:700;padding:12px 8px;border:2px solid var(--pri);background:var(--pri-l);color:var(--pri)">🇯🇵 日本語</button>
+      <button onclick="setLang('en')" id="langBtn-en" class="btn-app" style="font-size:14px;font-weight:700;padding:12px 8px;border:2px solid var(--border);background:#fff;color:var(--text)">🇺🇸 English</button>
+      <button onclick="setLang('vi')" id="langBtn-vi" class="btn-app" style="font-size:14px;font-weight:700;padding:12px 8px;border:2px solid var(--border);background:#fff;color:var(--text)">🇻🇳 Tiếng Việt</button>
+      <button onclick="setLang('zh')" id="langBtn-zh" class="btn-app" style="font-size:14px;font-weight:700;padding:12px 8px;border:2px solid var(--border);background:#fff;color:var(--text)">🇨🇳 中文</button>
+    </div>
   </div>
   <div class="list-wrap">
     <div class="list-row" style="cursor:default">
-      <div style="flex:1"><div class="list-title">ダークモード</div></div>
+      <div style="flex:1"><div class="list-title" data-i18n="settings.dark">ダークモード</div></div>
       <input type="checkbox" style="width:44px;height:24px;appearance:none;background:var(--border);border-radius:20px;cursor:pointer;flex-shrink:0">
     </div>
     <div class="list-row" style="cursor:default">
-      <div style="flex:1"><div class="list-title">バイオメトリクス認証</div><div class="list-sub">Face ID / 指紋でログイン</div></div>
+      <div style="flex:1"><div class="list-title" data-i18n="settings.bio">バイオメトリクス認証</div><div class="list-sub">Face ID / 指紋でログイン</div></div>
       <input type="checkbox" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;flex-shrink:0">
     </div>
   </div>
   <div style="padding:8px 16px;text-align:center">
-    <div style="font-size:12px;color:var(--muted)">バージョン 1.0.0</div>
+    <div style="font-size:12px;color:var(--muted)" data-i18n="settings.ver">バージョン 1.0.0</div>
     <div style="font-size:12px;color:var(--muted);margin-top:2px">© 2026 Company Inc.</div>
   </div>
 </div>
@@ -1231,24 +1217,24 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 <!-- ══════ BOTTOM NAV ══════ -->
 <div class="bnav" id="bnav">
   <button class="bnav-btn on" id="nav-home" onclick="navTo('screen-home','ホーム','nav-home')">
-    <i class="bi bi-house-fill"></i>ホーム
+    <i class="bi bi-house-fill"></i><span data-i18n="nav.home">ホーム</span>
   </button>
   <button class="bnav-btn" id="nav-punch" onclick="navTo('screen-punch','打刻','nav-punch')">
-    <i class="bi bi-fingerprint"></i>打刻
+    <i class="bi bi-fingerprint"></i><span data-i18n="nav.punch">打刻</span>
   </button>
   <button class="bnav-btn" id="nav-shift" onclick="navTo('screen-shift','シフト','nav-shift')">
-    <i class="bi bi-calendar3"></i>シフト
+    <i class="bi bi-calendar3"></i><span data-i18n="nav.shift">シフト</span>
   </button>
   <button class="bnav-btn" id="nav-apply" onclick="navTo('screen-apply','申請','nav-apply')" style="position:relative">
-    <i class="bi bi-file-earmark-text"></i>申請
+    <i class="bi bi-file-earmark-text"></i><span data-i18n="nav.apply">申請</span>
     <div class="bnav-dot"></div>
   </button>
   <button class="bnav-btn" id="nav-notice" onclick="navTo('screen-notice','お知らせ','nav-notice')" style="position:relative">
-    <i class="bi bi-bell"></i>お知らせ
+    <i class="bi bi-bell"></i><span data-i18n="nav.notice">お知らせ</span>
     <div class="bnav-dot" id="noticeDot" style="display:none"></div>
   </button>
   <button class="bnav-btn" id="nav-menu" onclick="navTo('screen-menu','メニュー','nav-menu')">
-    <i class="bi bi-grid-3x3-gap-fill"></i>メニュー
+    <i class="bi bi-grid-3x3-gap-fill"></i><span data-i18n="nav.menu">メニュー</span>
   </button>
 </div>
 
@@ -1282,7 +1268,7 @@ var _titles = {
   'screen-apply-late-early':'遅刻・早退申請','screen-apply-punch':'打刻修正申請',
   'screen-apply-shift-wish':'シフト・休暇希望申請','screen-apply-shift-change':'シフト変更申請','screen-apply-shift-swap':'シフト交換申請','screen-apply-detail':'申請詳細',
   'screen-approval-status':'承認状況',
-  'screen-notice':'お知らせ','screen-notice-detail':'お知らせ詳細',
+  'screen-notice':'お知らせ','screen-notice-detail':'お知らせ詳細','screen-notice-post':'お知らせ投稿',
   'screen-leave':'有給管理','screen-leave-history':'取得履歴',
   'screen-leave-grant':'付与履歴','screen-leave-expire':'消滅予定',
   'screen-menu':'メニュー','screen-mypage':'マイページ',
@@ -1635,16 +1621,250 @@ async function submitShiftSwap(){
   setTimeout(loadMyRequests, 300);
 }
 
-// ── 申請画面に遷移したときDB読み込み ──
+// ══════════════════════════════════════════════
+// お知らせ
+// ══════════════════════════════════════════════
+var _staffNoticeImgB64 = null;
+var _currentNotice = null;
+
+var _staffNoticeCatColor = {
+  'お知らせ':'var(--pri-l);color:var(--pri)',
+  '連絡事項':'var(--suc-l);color:var(--suc)',
+  '引継ぎ'  :'var(--pur-l);color:var(--pur)',
+  '重要'    :'#fee2e2;color:#dc2626'
+};
+
+function loadHomeNotices(){
+  var el = document.getElementById('homeNoticeList');
+  if(!el||!sb) return;
+  sb.from('notices').select('id,category,title,author_name,is_pinned,created_at').order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(3).then(function(r){
+    if(r.error||!r.data||!r.data.length){
+      el.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">お知らせはありません</div>';
+      return;
+    }
+    el.innerHTML = r.data.map(function(n){
+      var pin = n.is_pinned?'<span style="color:var(--war);margin-right:4px">📌</span>':'';
+      return '<div class="notice-row" onclick="openNoticeDetail(\''+n.id+'\')" style="cursor:pointer">'
+        +'<div class="notice-title">'+pin+n.title+'</div>'
+        +'<div class="notice-meta"><span class="badge-app" style="font-size:10px;background:var(--pri-l);color:var(--pri)">'+n.category+'</span>'
+        +'<span>'+n.author_name+'</span><span>'+n.created_at.slice(0,10)+'</span></div></div>';
+    }).join('');
+  }).catch(function(){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">—</div>';
+  });
+}
+
+function loadAllNotices(){
+  var el = document.getElementById('noticeFullList');
+  if(!el||!sb) return;
+  sb.from('notices').select('*').order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(50).then(function(r){
+    if(r.error||!r.data||!r.data.length){
+      el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">お知らせはありません</div>';
+      return;
+    }
+    el.innerHTML = r.data.map(function(n){
+      var pin = n.is_pinned?'<span style="color:var(--war);margin-right:4px">📌</span>':'';
+      var img = n.image_url?'<i class="bi bi-image" style="color:var(--pri);margin-left:4px"></i>':'';
+      return '<div class="notice-row" onclick="openNoticeDetail(\''+n.id+'\')" style="cursor:pointer'+(n.is_pinned?';border-left:3px solid var(--war)':'')+'">'
+        +'<div class="notice-title">'+pin+n.title+img+'</div>'
+        +'<div class="notice-meta"><span class="badge-app" style="font-size:10px;background:var(--pri-l);color:var(--pri)">'+n.category+'</span>'
+        +'<span>'+n.author_name+'</span><span>'+n.created_at.slice(0,10)+'</span></div></div>';
+    }).join('');
+  }).catch(function(){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">取得エラー</div>';
+  });
+}
+
+function openNoticeDetail(id){
+  sb.from('notices').select('*').eq('id',id).single().then(function(r){
+    if(r.error||!r.data){ showToast('取得エラー'); return; }
+    _currentNotice = r.data;
+    var n = r.data;
+    var catCol = _staffNoticeCatColor[n.category]||'var(--pri-l);color:var(--pri)';
+    var img = n.image_url?'<img src="'+n.image_url+'" style="width:100%;border-radius:10px;margin-top:12px;object-fit:cover">':'';
+    var card = document.getElementById('noticeDetailCard');
+    if(card) card.innerHTML =
+      '<span class="badge-app" style="background:'+catCol.split(';')[0]+';'+catCol.split(';')[1]+';margin-bottom:10px;display:inline-block">'+n.category+'</span>'
+      +'<div style="font-size:18px;font-weight:800;margin-bottom:8px;line-height:1.4">'+(n.is_pinned?'📌 ':'')+n.title+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:16px">'+n.author_name+' ・ '+n.created_at.slice(0,10)+'</div>'
+      +(n.body?'<div style="font-size:14px;line-height:1.8;color:var(--text);white-space:pre-wrap">'+n.body+'</div>':'')
+      +img;
+    goScreen('screen-notice-detail');
+  });
+}
+
+function staffPreviewImg(input){
+  var prev = document.getElementById('staffImgPreview');
+  if(!input.files||!input.files[0]){_staffNoticeImgB64=null;if(prev)prev.innerHTML='';return;}
+  var file = input.files[0];
+  if(file.size>5*1024*1024){showToast('5MB以下の画像を選択してください');input.value='';return;}
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img2 = new Image();
+    img2.onload = function(){
+      var MAX=800,cv=document.createElement('canvas');
+      var sc=Math.min(1,MAX/Math.max(img2.width,img2.height));
+      cv.width=Math.round(img2.width*sc); cv.height=Math.round(img2.height*sc);
+      cv.getContext('2d').drawImage(img2,0,0,cv.width,cv.height);
+      _staffNoticeImgB64 = cv.toDataURL('image/jpeg',0.82);
+      if(prev) prev.innerHTML='<img src="'+_staffNoticeImgB64+'" style="max-height:140px;border-radius:8px;border:1px solid var(--border)">';
+    };
+    img2.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitStaffNotice(){
+  var errEl = document.getElementById('staffNoticeErr');
+  if(errEl) errEl.textContent='';
+  if(!sb||!_myAuthId){showToast('ログインしてください');return;}
+  var title = (document.getElementById('staffNoticeTitle')||{}).value||'';
+  var body  = (document.getElementById('staffNoticeBody')||{}).value||'';
+  var cat   = (document.getElementById('staffNoticeCat')||{}).value||'お知らせ';
+  if(!title.trim()){if(errEl)errEl.textContent='タイトルは必須です';return;}
+  var {data:empData} = await sb.from('employees').select('name').eq('auth_id',_myAuthId).single();
+  var authorName = (empData&&empData.name)||'スタッフ';
+  var {error} = await sb.from('notices').insert({
+    author_id:_myAuthId, author_name:authorName,
+    category:cat, title:title.trim(), body:body||null,
+    image_url:_staffNoticeImgB64||null
+  });
+  if(error){if(errEl)errEl.textContent='投稿エラー: '+error.message;return;}
+  showToast('投稿しました！');
+  document.getElementById('staffNoticeTitle').value='';
+  document.getElementById('staffNoticeBody').value='';
+  document.getElementById('staffNoticeImg').value='';
+  document.getElementById('staffImgPreview').innerHTML='';
+  _staffNoticeImgB64=null;
+  goScreen('screen-notice');
+  setTimeout(loadAllNotices,300);
+}
+
+// ── 画面遷移フック ──
 var _origGoScreen = goScreen;
 goScreen = function(id){
   _origGoScreen(id);
   if(id==='screen-apply') loadMyRequests();
   if(id==='screen-apply-shift-wish') initWishCalendar();
+  if(id==='screen-home') loadHomeNotices();
+  if(id==='screen-notice') loadAllNotices();
 };
+
+// ══════════════════════════════════════════════
+// 多言語対応 (i18n)
+// ══════════════════════════════════════════════
+var _i18n = {
+  ja:{
+    'common.back':'戻る',
+    'login.title':'勤怠管理','login.sub':'スタッフポータル',
+    'login.email':'メールアドレス','login.pw':'パスワード',
+    'login.btn':'ログイン','login.forgot':'パスワードを忘れた方はこちら',
+    'nav.home':'ホーム','nav.punch':'打刻','nav.shift':'シフト',
+    'nav.apply':'申請','nav.notice':'お知らせ','nav.menu':'メニュー',
+    'home.punch_status':'打刻状況','home.notice':'📢 お知らせ','home.apply_status':'申請状況',
+    'menu.timecard':'勤務実績','menu.approval':'承認状況','menu.leave':'有給管理',
+    'menu.mypage':'マイページ','menu.skill':'資格・スキル',
+    'menu.notif':'通知設定','menu.settings':'Setting','menu.logout':'ログアウト',
+    'settings.pw':'パスワード変更','settings.notif':'通知設定',
+    'settings.lang':'言語設定 / Language',
+    'settings.dark':'ダークモード','settings.bio':'バイオメトリクス認証',
+    'settings.ver':'バージョン 1.0.0'
+  },
+  en:{
+    'common.back':'Back',
+    'login.title':'Attendance','login.sub':'Staff Portal',
+    'login.email':'Email','login.pw':'Password',
+    'login.btn':'Log In','login.forgot':'Forgot your password?',
+    'nav.home':'Home','nav.punch':'Punch','nav.shift':'Shift',
+    'nav.apply':'Apply','nav.notice':'Notice','nav.menu':'Menu',
+    'home.punch_status':'Punch Status','home.notice':'📢 Notice','home.apply_status':'Applications',
+    'menu.timecard':'Attendance','menu.approval':'Approvals','menu.leave':'Leave',
+    'menu.mypage':'My Page','menu.skill':'Skills',
+    'menu.notif':'Notifications','menu.settings':'Setting','menu.logout':'Log Out',
+    'settings.pw':'Change Password','settings.notif':'Notifications',
+    'settings.lang':'Language Setting',
+    'settings.dark':'Dark Mode','settings.bio':'Biometric Auth',
+    'settings.ver':'Version 1.0.0'
+  },
+  vi:{
+    'common.back':'Quay lại',
+    'login.title':'Chấm công','login.sub':'Cổng nhân viên',
+    'login.email':'Email','login.pw':'Mật khẩu',
+    'login.btn':'Đăng nhập','login.forgot':'Quên mật khẩu?',
+    'nav.home':'Trang chủ','nav.punch':'Chấm công','nav.shift':'Ca làm',
+    'nav.apply':'Đơn xin','nav.notice':'Thông báo','nav.menu':'Menu',
+    'home.punch_status':'Trạng thái chấm công','home.notice':'📢 Thông báo','home.apply_status':'Đơn xin việc',
+    'menu.timecard':'Chấm công','menu.approval':'Phê duyệt','menu.leave':'Nghỉ phép',
+    'menu.mypage':'Trang của tôi','menu.skill':'Kỹ năng',
+    'menu.notif':'Thông báo','menu.settings':'Setting','menu.logout':'Đăng xuất',
+    'settings.pw':'Đổi mật khẩu','settings.notif':'Thông báo',
+    'settings.lang':'Cài đặt ngôn ngữ',
+    'settings.dark':'Chế độ tối','settings.bio':'Xác thực sinh trắc',
+    'settings.ver':'Phiên bản 1.0.0'
+  },
+  zh:{
+    'common.back':'返回',
+    'login.title':'考勤管理','login.sub':'员工门户',
+    'login.email':'邮箱','login.pw':'密码',
+    'login.btn':'登录','login.forgot':'忘记密码？',
+    'nav.home':'首页','nav.punch':'打卡','nav.shift':'班次',
+    'nav.apply':'申请','nav.notice':'通知','nav.menu':'菜单',
+    'home.punch_status':'打卡状态','home.notice':'📢 通知','home.apply_status':'申请状态',
+    'menu.timecard':'考勤记录','menu.approval':'审批状态','menu.leave':'假期管理',
+    'menu.mypage':'我的页面','menu.skill':'资质技能',
+    'menu.notif':'通知设置','menu.settings':'Setting','menu.logout':'退出登录',
+    'settings.pw':'修改密码','settings.notif':'通知设置',
+    'settings.lang':'语言设置',
+    'settings.dark':'深色模式','settings.bio':'生物识别认证',
+    'settings.ver':'版本 1.0.0'
+  }
+};
+
+var _currentLang = localStorage.getItem('staff_lang')||'ja';
+
+function applyLang(lang){
+  var dict = _i18n[lang]||_i18n['ja'];
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var key = el.getAttribute('data-i18n');
+    if(dict[key]!==undefined){
+      // ボタンでアイコンがある場合は最初の子TextNodeだけ置換
+      if(el.tagName==='BUTTON'&&el.querySelector('i')){
+        var icon = el.querySelector('i');
+        el.innerHTML='';
+        el.appendChild(icon);
+        el.appendChild(document.createTextNode(' '+dict[key]));
+      } else {
+        el.textContent = dict[key];
+      }
+    }
+  });
+  // 言語ボタンのアクティブ状態
+  ['ja','en','vi','zh'].forEach(function(l){
+    var btn = document.getElementById('langBtn-'+l);
+    if(!btn) return;
+    if(l===lang){
+      btn.style.border='2px solid var(--pri)';
+      btn.style.background='var(--pri-l)';
+      btn.style.color='var(--pri)';
+    } else {
+      btn.style.border='2px solid var(--border)';
+      btn.style.background='#fff';
+      btn.style.color='var(--text)';
+    }
+  });
+}
+
+function setLang(lang){
+  _currentLang = lang;
+  localStorage.setItem('staff_lang', lang);
+  applyLang(lang);
+  var names = {ja:'日本語',en:'English',vi:'Tiếng Việt',zh:'中文'};
+  showToast('🌐 '+names[lang]);
+}
 
 // Init
 initSb();
+applyLang(_currentLang);
 goScreen('screen-login');
 </script>
 </body>
