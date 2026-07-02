@@ -251,6 +251,8 @@ tr:hover td{background:#fafafa}
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">出勤者数</div></div>
     <div class="kpi"><div class="kpi-label">本日の休暇者</div><div class="kpi-val" id="kpi-on-leave" style="color:var(--green)">—</div><div class="kpi-sub">休暇取得中</div></div>
+    <div class="kpi"><div class="kpi-label">遅刻</div><div class="kpi-val" id="kpi-late" style="color:var(--amber)">—</div><div class="kpi-sub">遅刻者数</div></div>
+    <div class="kpi"><div class="kpi-label">欠勤</div><div class="kpi-val" id="kpi-absent" style="color:var(--red)">—</div><div class="kpi-sub">未打刻（シフトあり）</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
     <div class="kpi"><div class="kpi-label">勤務アラート</div><div class="kpi-val" id="kpi-alert" style="color:var(--red)">—</div><div class="kpi-sub">打刻忘れ・残業超過</div></div>
   </div>
@@ -261,6 +263,29 @@ tr:hover td{background:#fafafa}
       <a href="#" onclick="nav('notice');return false;" style="font-size:12px;color:var(--blue);font-weight:400;text-decoration:none">すべて見る →</a>
     </div>
     <div id="dashNoticeList"></div>
+  </div>
+
+  <!-- ── 休暇内訳 ── -->
+  <div class="card" id="dashLeaveBreakCard" style="margin-bottom:16px">
+    <div class="card-title">🏖️ 本日の休暇内訳</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">
+      <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">有休</div>
+        <div style="font-size:26px;font-weight:700;color:var(--blue)" id="lb-paid">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">公休</div>
+        <div style="font-size:26px;font-weight:700;color:var(--green)" id="lb-holiday">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">午前休</div>
+        <div style="font-size:26px;font-weight:700;color:var(--amber)" id="lb-am">—</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">午後休</div>
+        <div style="font-size:26px;font-weight:700;color:var(--purple)" id="lb-pm">—</div>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -2060,6 +2085,62 @@ function loadDashboard(){
     else kpiLeave.textContent = '—';
   })();
 
+  // ── 遅刻・欠勤カウント
+  (async function(){
+    var today = new Date().toISOString().slice(0,10);
+    var kpiLate = document.getElementById('kpi-late');
+    var kpiAbsent = document.getElementById('kpi-absent');
+    try {
+      var results = await Promise.all([
+        sb.from('shift_schedules')
+          .select('employee_id,custom_start,shift_patterns(start_time,type,name)')
+          .eq('date', today),
+        sb.from('employees').select('id,auth_id').eq('is_active',true),
+        sb.from('punch_records').select('user_id,punched_at')
+          .gte('punched_at', today+'T00:00:00').lte('punched_at', today+'T23:59:59')
+          .eq('punch_type','出勤').order('punched_at',{ascending:true}),
+        sb.from('leave_requests').select('user_id')
+          .eq('status','approved').lte('start_date',today).gte('end_date',today)
+      ]);
+      var shifts    = results[0].data||[];
+      var emps      = results[1].data||[];
+      var punches   = results[2].data||[];
+      var onLeaves  = results[3].data||[];
+      var empIdMap  = {};
+      emps.forEach(function(e){ empIdMap[e.id]=e.auth_id; });
+      var onLeaveSet = new Set(onLeaves.map(function(l){ return l.user_id; }));
+      var firstPunch = {};
+      punches.forEach(function(p){
+        if(!firstPunch[p.user_id]) firstPunch[p.user_id]=p.punched_at;
+      });
+      var lateCount=0, absentCount=0;
+      shifts.forEach(function(s){
+        var sp = s.shift_patterns;
+        if(!sp) return;
+        if(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日'))) return;
+        if(sp.name&&sp.name.includes('公休')) return;
+        var authId = empIdMap[s.employee_id];
+        if(!authId||onLeaveSet.has(authId)) return;
+        var startStr = s.custom_start||sp.start_time;
+        if(!startStr) return;
+        if(!firstPunch[authId]){
+          absentCount++;
+        } else {
+          var punchDt = new Date(firstPunch[authId]);
+          var shiftDt = new Date(today+'T'+startStr.slice(0,5)+':00');
+          if(punchDt > new Date(shiftDt.getTime()+60000)) lateCount++;
+        }
+      });
+      kpiLate.textContent   = lateCount;
+      kpiAbsent.textContent = absentCount;
+    } catch(e) {
+      kpiLate.textContent='—'; kpiAbsent.textContent='—';
+    }
+  })();
+
+  // ── 休暇内訳（有休/公休/午前休/午後休）
+  loadLeaveBreakdown();
+
   // ── ダッシュボードお知らせ
   loadDashNotices();
 
@@ -2281,6 +2362,43 @@ window.rejectShiftApp = function(id, tbl){
 };
 
 // ══════════════════════════════════════════════
+// ── 休暇内訳
+function loadLeaveBreakdown(){
+  if(!sb) return;
+  var today = new Date().toISOString().slice(0,10);
+  Promise.all([
+    sb.from('leave_requests').select('user_id,leave_type,unit')
+      .eq('status','approved').lte('start_date',today).gte('end_date',today),
+    sb.from('shift_schedules')
+      .select('employee_id,shift_patterns(type,name)').eq('date',today)
+  ]).then(function(rs){
+    var leaves = rs[0].data||[];
+    var shifts  = rs[1].data||[];
+    var paid=0, holiday=0, amLeave=0, pmLeave=0;
+    leaves.forEach(function(l){
+      var u  = l.unit||'day';
+      var lt = l.leave_type||'';
+      if(u==='half_am'){ amLeave++; return; }
+      if(u==='half_pm'){ pmLeave++; return; }
+      if(lt.includes('有給')||lt.includes('年次')||lt.includes('有休')) paid++;
+    });
+    shifts.forEach(function(s){
+      var sp = s.shift_patterns;
+      if(!sp) return;
+      if((sp.type&&(sp.type==='off'||sp.type.includes('公休')))||(sp.name&&sp.name.includes('公休'))) holiday++;
+    });
+    document.getElementById('lb-paid').textContent    = paid;
+    document.getElementById('lb-holiday').textContent = holiday;
+    document.getElementById('lb-am').textContent      = amLeave;
+    document.getElementById('lb-pm').textContent      = pmLeave;
+  }).catch(function(){
+    ['lb-paid','lb-holiday','lb-am','lb-pm'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.textContent='—';
+    });
+  });
+}
+
 // ── ダッシュボード お知らせ
 function loadDashNotices(){
   if(!sb) return;
@@ -2290,12 +2408,9 @@ function loadDashNotices(){
   sb.from('notices').select('id,title,category,is_pinned,author_name,created_at')
     .order('is_pinned',{ascending:false})
     .order('created_at',{ascending:false})
-    .limit(5)
+    .limit(200)
     .then(function(res){
-      if(res.error||!res.data||!res.data.length){
-        card.style.display='none';
-        return;
-      }
+      if(res.error||!res.data||!res.data.length){ card.style.display='none'; return; }
       card.style.display='';
       var catStyle={
         'お知らせ':'background:#dbeafe;color:#1e40af',
@@ -2308,18 +2423,31 @@ function loadDashNotices(){
         'handover':'background:#fef9c3;color:#854d0e'
       };
       var catLabel={'general':'お知らせ','important':'重要','info':'情報','handover':'引継ぎ'};
-      list.innerHTML = res.data.map(function(n){
+      function renderRow(n){
         var cat = catLabel[n.category]||n.category;
         var cs  = catStyle[n.category]||catStyle['お知らせ'];
         var dt  = n.created_at ? new Date(n.created_at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '';
         return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
-          +(n.is_pinned?'<span style="font-size:16px">📌</span>':'')
-          +'<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;'+cs+'">'+cat+'</span>'
-          +'<span style="font-size:14px;font-weight:500;flex:1">'+esc(n.title)+'</span>'
-          +'<span style="font-size:11px;color:var(--muted)">'+esc(n.author_name||'')+'</span>'
-          +'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+dt+'</span>'
+          +(n.is_pinned?'<span style="font-size:15px">📌</span>':'<span style="font-size:15px;opacity:0;pointer-events:none">📌</span>')
+          +'<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;'+cs+'">'+cat+'</span>'
+          +'<span style="font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(n.title)+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+esc(n.author_name||'')+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);margin-left:8px;white-space:nowrap">'+dt+'</span>'
           +'</div>';
-      }).join('');
+      }
+      var pinned  = res.data.filter(function(n){ return n.is_pinned; });
+      var regular = res.data.filter(function(n){ return !n.is_pinned; });
+      var visible = regular.slice(0,5);
+      var hidden  = regular.slice(5);
+      var html = pinned.map(renderRow).join('') + visible.map(renderRow).join('');
+      if(hidden.length){
+        html += '<div id="dashMoreNotices" style="display:none">'+hidden.map(renderRow).join('')+'</div>';
+        html += '<div style="text-align:center;padding:10px 0">'
+          +'<button onclick="document.getElementById(\'dashMoreNotices\').style.display=\'\';this.parentElement.style.display=\'none\'" '
+          +'style="background:none;border:1px solid var(--border);border-radius:20px;padding:5px 20px;font-size:12px;color:var(--blue);cursor:pointer;font-family:inherit">'
+          +'さらに表示（'+hidden.length+'件）</button></div>';
+      }
+      list.innerHTML = html;
     });
 }
 
