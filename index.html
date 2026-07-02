@@ -249,11 +249,20 @@ tr:hover td{background:#fafafa}
 <!-- ── Dashboard ── -->
 <div class="page active" id="page-dashboard">
   <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">在籍者数</div></div>
+    <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">出勤者数</div></div>
+    <div class="kpi"><div class="kpi-label">本日の休暇者</div><div class="kpi-val" id="kpi-on-leave" style="color:var(--green)">—</div><div class="kpi-sub">休暇取得中</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
-    <div class="kpi"><div class="kpi-label">今月の残業</div><div class="kpi-val" id="kpi-ot" style="color:var(--red)">—</div><div class="kpi-sub">時間</div></div>
     <div class="kpi"><div class="kpi-label">勤務アラート</div><div class="kpi-val" id="kpi-alert" style="color:var(--red)">—</div><div class="kpi-sub">打刻忘れ・残業超過</div></div>
   </div>
+  <!-- ── お知らせ ── -->
+  <div class="card" id="dashNoticeCard" style="display:none">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      📢 お知らせ
+      <a href="#" onclick="nav('notice');return false;" style="font-size:12px;color:var(--blue);font-weight:400;text-decoration:none">すべて見る →</a>
+    </div>
+    <div id="dashNoticeList"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">📋 本日の出退勤状況</div>
     <table>
@@ -2035,11 +2044,24 @@ function loadDashboard(){
     kpiPend.textContent = counts[0]+counts[1];
   }).catch(function(){ kpiPend.textContent='—'; });
 
-  // ── KPI（簡易）
-  document.getElementById('kpi-ot').textContent='—';
+  // ── 今月の残業（kpi-otは残存KPI枠のため維持、今回は非表示にしない）
   document.getElementById('kpi-alert').textContent='—';
   loadLeaveAlerts();
   loadWorkAlerts();
+
+  // ── 本日の休暇者数
+  (async function(){
+    var kpiLeave = document.getElementById('kpi-on-leave');
+    var t = new Date().toISOString().slice(0,10);
+    var {data, error} = await sb.from('leave_requests')
+      .select('id').eq('status','approved')
+      .lte('start_date', t).gte('end_date', t);
+    if(!error && data) kpiLeave.textContent = data.length;
+    else kpiLeave.textContent = '—';
+  })();
+
+  // ── ダッシュボードお知らせ
+  loadDashNotices();
 
   // ── 未承認申請リスト（FK不要：employees別取得してマージ）
   Promise.all([
@@ -2259,6 +2281,48 @@ window.rejectShiftApp = function(id, tbl){
 };
 
 // ══════════════════════════════════════════════
+// ── ダッシュボード お知らせ
+function loadDashNotices(){
+  if(!sb) return;
+  var card = document.getElementById('dashNoticeCard');
+  var list = document.getElementById('dashNoticeList');
+  if(!card||!list) return;
+  sb.from('notices').select('id,title,category,is_pinned,author_name,created_at')
+    .order('is_pinned',{ascending:false})
+    .order('created_at',{ascending:false})
+    .limit(5)
+    .then(function(res){
+      if(res.error||!res.data||!res.data.length){
+        card.style.display='none';
+        return;
+      }
+      card.style.display='';
+      var catStyle={
+        'お知らせ':'background:#dbeafe;color:#1e40af',
+        '重要':'background:#fee2e2;color:#b91c1c',
+        '情報':'background:#dcfce7;color:#15803d',
+        '引継ぎ':'background:#fef9c3;color:#854d0e',
+        'general':'background:#dbeafe;color:#1e40af',
+        'important':'background:#fee2e2;color:#b91c1c',
+        'info':'background:#dcfce7;color:#15803d',
+        'handover':'background:#fef9c3;color:#854d0e'
+      };
+      var catLabel={'general':'お知らせ','important':'重要','info':'情報','handover':'引継ぎ'};
+      list.innerHTML = res.data.map(function(n){
+        var cat = catLabel[n.category]||n.category;
+        var cs  = catStyle[n.category]||catStyle['お知らせ'];
+        var dt  = n.created_at ? new Date(n.created_at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+          +(n.is_pinned?'<span style="font-size:16px">📌</span>':'')
+          +'<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;'+cs+'">'+cat+'</span>'
+          +'<span style="font-size:14px;font-weight:500;flex:1">'+esc(n.title)+'</span>'
+          +'<span style="font-size:11px;color:var(--muted)">'+esc(n.author_name||'')+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+dt+'</span>'
+          +'</div>';
+      }).join('');
+    });
+}
+
 // お知らせ
 // ══════════════════════════════════════════════
 var _noticeImgB64 = null;
