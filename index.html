@@ -2334,7 +2334,7 @@ window.submitNotice = function(){
   var pinned = (document.getElementById('noticePostPin')||{}).checked||false;
   if(!title.trim()){if(errEl)errEl.textContent='タイトルは必須です';return;}
   if(!me){if(errEl)errEl.textContent='ログインが必要です';return;}
-  var authorName = (currentEmployee&&currentEmployee.name)||me.email||'管理者';
+  var authorName = (myProfile&&myProfile.name)||me.email||'管理者';
   sb.from('notices').insert({
     author_id:me.id, author_name:authorName,
     category:cat, title:title.trim(), body:body||null,
