@@ -5188,9 +5188,16 @@ window.deleteShiftPattern = function(){
 
 // ── シフトデータ（localStorage + Supabase） ──
 var _shiftSchedules = {}; // {empId_date: {pattern_id, custom_start, custom_end, note}}
+var _dirtyCells = new Set(); // ユーザー操作で変更されたがDB未保存なセル
 function _shiftKey(empId, date){ return empId+'|'+date; }
 function getShiftCell(empId, date){ return _shiftSchedules[_shiftKey(empId,date)]||null; }
-function setShiftCell(empId, date, data){ _shiftSchedules[_shiftKey(empId,date)]=data; }
+// ユーザー操作由来の変更（dirty）
+function setShiftCell(empId, date, data){
+  _shiftSchedules[_shiftKey(empId,date)]=data;
+  _dirtyCells.add(_shiftKey(empId,date));
+}
+// DBロード・DB保存後のキャッシュ更新（clean: dirtyにしない）
+function _setShiftCellClean(empId, date, data){ _shiftSchedules[_shiftKey(empId,date)]=data; }
 
 async function loadShiftSchedulesFromDB(startDate, endDate){
   if(!sb) return;
@@ -5198,7 +5205,7 @@ async function loadShiftSchedulesFromDB(startDate, endDate){
     var r = await sb.from('shift_schedules').select('*').gte('date',startDate).lte('date',endDate);
     if(r.error) return; // table may not exist yet
     (r.data||[]).forEach(function(row){
-      setShiftCell(row.employee_id, row.date, {pattern_id:row.pattern_id, custom_start:row.custom_start, custom_end:row.custom_end, note:row.note||'', id:row.id});
+      _setShiftCellClean(row.employee_id, row.date, {pattern_id:row.pattern_id, custom_start:row.custom_start, custom_end:row.custom_end, note:row.note||'', id:row.id});
     });
   }catch(e){ /* table not yet created */ }
 }
@@ -5208,7 +5215,10 @@ async function saveShiftScheduleToDB(empId, date, patternId, customStart, custom
   try{
     // upsert: (employee_id, date) のユニーク制約に対してINSERT OR UPDATE
     var r = await sb.from('shift_schedules').upsert(payload, {onConflict:'employee_id,date'}).select().single();
-    if(!r.error && r.data){ setShiftCell(empId, date, Object.assign({}, payload, {id:r.data.id})); }
+    if(!r.error && r.data){
+      _setShiftCellClean(empId, date, Object.assign({}, payload, {id:r.data.id}));
+      _dirtyCells.delete(_shiftKey(empId, date)); // DB保存済み → clean
+    }
     return r;
   }catch(e){ return {error:e}; }
 }
@@ -5302,9 +5312,14 @@ window.loadShiftDaily = async function(){
       if(pat&&!isOff) dayCounts[d]++;
       var bg=isToday?'var(--lblue)':((dw===0||dw===6)&&!pat)?'#f8fafc':'';
       var txt='';
-      if(pat) txt=isOff
-        ?'<span style="font-size:10px;color:'+pat.color+';font-weight:700">休</span>'
-        :'<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+(pat.code||pat.name).slice(0,4)+'</span>';
+      if(pat){
+        if(isOff){
+          var offLbl=(pat.name.includes('有給')||pat.name.includes('有休'))?'有休':pat.name.includes('公休')?'公休':(pat.code||pat.name).slice(0,2);
+          txt='<span style="font-size:10px;color:'+pat.color+';font-weight:700">'+offLbl+'</span>';
+        } else {
+          txt='<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+(pat.code||pat.name).slice(0,4)+'</span>';
+        }
+      }
       return '<td onclick="openCellPicker(event,\x27'+emp.id+'\x27,\x27'+iso+'\x27)" '
         +'style="border:1px solid var(--border);padding:2px;text-align:center;cursor:pointer;width:32px;min-width:32px;height:30px;background:'+bg+'" title="'+iso+(pat?' '+pat.name:'')+'">'+txt+'</td>';
     }).join('');
@@ -5397,25 +5412,20 @@ window.onDailyTimeChange = function(inp, empId, date, field){
   setShiftCell(empId,date,cur);
 };
 window.saveShiftDaily = async function(){
-  // カレンダー月の全スケジュールを一括保存
-  var year=_shiftCalMonth.getFullYear(), month=_shiftCalMonth.getMonth();
-  var daysInMonth=new Date(year,month+1,0).getDate();
-  var dept=(document.getElementById('shiftDailyDept')||{value:''}).value;
-  var emps=dept?_shiftEmployees.filter(function(e){return (e.department||'—')===dept;}):_shiftEmployees;
+  // 変更されたセルのみ保存（差分保存）
+  if(!_dirtyCells.size){ showToast('変更はありません','amber'); return; }
   var errors=[], saved=0;
-  for(var d=1;d<=daysInMonth;d++){
-    var iso=year+'-'+(month+1).toString().padStart(2,'0')+'-'+d.toString().padStart(2,'0');
-    for(var i=0;i<emps.length;i++){
-      var emp=emps[i];
-      var cell=getShiftCell(emp.id,iso);
-      if(!cell||!cell.pattern_id) continue;
-      var r=await saveShiftScheduleToDB(emp.id,iso,cell.pattern_id,cell.custom_start,cell.custom_end,cell.note||'');
-      if(r&&r.error) errors.push(emp.name+' '+iso);
-      else saved++;
-    }
+  var keys=[..._dirtyCells];
+  for(var i=0;i<keys.length;i++){
+    var key=keys[i]; var parts=key.split('|'); var empId=parts[0], date=parts[1];
+    var cell=_shiftSchedules[key];
+    if(!cell||!cell.pattern_id){ _dirtyCells.delete(key); continue; }
+    var r=await saveShiftScheduleToDB(empId,date,cell.pattern_id,cell.custom_start,cell.custom_end,cell.note||'');
+    if(r&&r.error) errors.push(date+': '+(r.error.message||'error'));
+    else saved++;
   }
-  if(errors.length) showToast('一部保存失敗('+errors.length+'件)','red');
-  else showToast('✅ '+saved+'件のシフトを保存しました','green');
+  if(errors.length) showToast('保存失敗('+errors.length+'件): '+errors[0],'red');
+  else showToast('✅ '+saved+'件を保存しました','green');
 };
 
 // ── スケジュール登録（月次カレンダー） ──
