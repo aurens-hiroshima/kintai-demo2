@@ -5024,10 +5024,24 @@ function renderShiftPatternTable(){
 
 function populatePatternSelects(){
   var pats=getShiftPatterns();
-  ['autoShiftSat','autoShiftSun','autoShiftWeekday'].forEach(function(sid){
+  var workPats=pats.filter(function(p){return p.type!=='all_off';});
+  var offPats=pats.filter(function(p){return p.type==='all_off';});
+  // 土日セレクト: 公休（off）系を先頭に
+  ['autoShiftSat','autoShiftSun'].forEach(function(sid){
     var sel=document.getElementById(sid); if(!sel) return;
-    sel.innerHTML='<option value="sp_koukyu">公休</option>'+pats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+    var prev=sel.value;
+    sel.innerHTML='<option value="sp_koukyu">公休</option>'
+      +offPats.filter(function(p){return p.id!=='sp_koukyu';}).map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('')
+      +workPats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+    if(prev) sel.value=prev;
   });
+  // 平日セレクト: 勤務パターンを先頭に
+  var wkSel=document.getElementById('autoShiftWeekday'); if(wkSel){
+    var prev=wkSel.value;
+    wkSel.innerHTML=workPats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('')
+      +offPats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+    if(prev) wkSel.value=prev;
+  }
   var scm=document.getElementById('scmPattern'); if(!scm) return;
   scm.innerHTML=pats.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
 }
@@ -5584,9 +5598,11 @@ window.previewAutoShift = async function(){
   var start=document.getElementById('autoShiftStart').value;
   var end=document.getElementById('autoShiftEnd').value;
   var dept=(document.getElementById('autoShiftDept')||{value:''}).value;
-  var satPat=document.getElementById('autoShiftSat').value||'sp_koukyu';
-  var sunPat=document.getElementById('autoShiftSun').value||'sp_koukyu';
-  var wishPriority=(document.getElementById('autoShiftWishPriority')||{checked:false}).checked;
+  var satPat=(document.getElementById('autoShiftSat')||{value:''}).value||'sp_koukyu';
+  var sunPat=(document.getElementById('autoShiftSun')||{value:''}).value||'sp_koukyu';
+  var weekdayPatEl=document.getElementById('autoShiftWeekday');
+  var weekdayPat=weekdayPatEl&&weekdayPatEl.value?weekdayPatEl.value:'';
+  var wishPriority=(document.getElementById('autoShiftWishPriority')||{checked:true}).checked;
   var equalDist=(document.getElementById('autoShiftEqualDist')||{checked:false}).checked;
   if(!start||!end){showToast('期間を指定してください','red');return;}
   var diffMs=new Date(end)-new Date(start);
@@ -5624,16 +5640,15 @@ window.previewAutoShift = async function(){
 
   var pats=getShiftPatterns();
   var offPat=pats.find(function(p){return p.type==='all_off'||(p.name&&p.name.includes('公休'));})||pats.find(function(p){return p.id===sunPat;})||pats[0];
-  var defPats=pats.filter(function(p){return p.type==='work'||p.type==='normal';});
-  var defPat=defPats[0]||pats[0];
+  var workPats=pats.filter(function(p){return p.type!=='all_off'&&p.type!=='half_am'&&p.type!=='half_pm'&&p.type!=='hourly_off';});
+  // autoShiftWeekday の選択値を優先、未設定なら先頭の勤務パターン
+  var defPat=(weekdayPat?pats.find(function(p){return p.id===weekdayPat;}):null)||workPats[0]||pats[0];
+  var defPats=weekdayPat?[defPat]:workPats; // equalDist時のローテーション対象
 
   var days=[];
   var cur=new Date(start); var endD=new Date(end);
   while(cur<=endD){days.push(fmtDateISO(new Date(cur)));cur.setDate(cur.getDate()+1);}
   var workDays=days.filter(function(d){var dw=new Date(d).getDay();return dw!==0&&dw!==6;});
-
-  // 均等配分: 勤務日数のターゲット算出
-  var targetWorkDays=equalDist&&workDays.length?workDays.length:null;
 
   _autoShiftPreviewData=[];
   var warnings=[];
@@ -5655,13 +5670,7 @@ window.previewAutoShift = async function(){
       } else if(isWeekend){
         patId=dw===0?sunPat:satPat;
       } else {
-        // 均等配分: defPatsが複数あれば順番に割り当て
-        if(equalDist&&defPats.length>1){
-          var idx=assignedWork%defPats.length;
-          patId=defPats[idx].id;
-        } else {
-          patId=defPat.id;
-        }
+        patId=defPat.id; // weekdayPat で選択したパターンを使用
         assignedWork++;
       }
       _autoShiftPreviewData.push({employee_id:emp.id,empName:emp.name,date:dateStr,pattern_id:patId,onLeave:onLeave,onWish:onWish});
@@ -5709,9 +5718,14 @@ window.previewAutoShift = async function(){
   });
   table+='</tbody></table>';
   if(emps.length>5||days.length>pLimit) table+='<div style="margin-top:6px;font-size:11px;color:var(--muted)">全'+emps.length+'名 × '+days.length+'日 = '+_autoShiftPreviewData.length+'件</div>';
-  prev.innerHTML=warnHtml+table;
+  // 一括登録ボタンをプレビューエリア下部に表示
+  var regHtml='<div style="margin-top:14px;display:flex;gap:10px;align-items:center">'
+    +'<button class="btn btn-primary" onclick="registerAutoShift()" id="registerAutoShiftBtnPrev" style="padding:8px 24px;font-size:13px">⚡ 一括登録</button>'
+    +'<span style="font-size:11px;color:var(--muted)">全'+emps.length+'名 × '+days.length+'日 = '+_autoShiftPreviewData.length+'件</span>'
+    +'</div>';
+  prev.innerHTML=warnHtml+table+regHtml;
   if(statusEl)statusEl.style.display='none';
-  var btn=document.getElementById('registerAutoShiftBtn'); if(btn) btn.disabled=false;
+  var btn=document.getElementById('registerAutoShiftBtn'); if(btn) btn.disabled=false; // 元のボタンも有効化
 };
 window.registerAutoShift = async function(){
   if(!_autoShiftPreviewData.length){showToast('先にプレビューを実行してください','amber');return;}
