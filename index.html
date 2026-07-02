@@ -222,6 +222,8 @@ tr:hover td{background:#fafafa}
   <div class="nav-item" onclick="nav('leave')"><span class="icon">🌴</span>休暇管理</div>
   <div class="nav-item" onclick="nav('overtime')"><span class="icon">⏰</span>残業管理</div>
   <div class="nav-item" onclick="nav('reports')"><span class="icon">📈</span>集計・レポート</div>
+  <div class="sidebar-section">コミュニケーション</div>
+  <div class="nav-item" onclick="nav('notice')"><span class="icon">📢</span>お知らせ</div>
   <div class="sidebar-section">システム</div>
   <div class="nav-item" onclick="nav('users')"><span class="icon">👤</span>ユーザー管理</div>
   <div class="nav-item" onclick="nav('settings')"><span class="icon">⚙️</span>システム設定</div>
@@ -714,6 +716,73 @@ tr:hover td{background:#fafafa}
       <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
       <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ── Notice ── -->
+<div class="page" id="page-notice">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-notice-list');loadNotices()">📋 一覧</div>
+    <div class="tab" onclick="switchTab(this,'tab-notice-post')">✏️ 投稿</div>
+  </div>
+
+  <!-- 一覧タブ -->
+  <div class="tab-content active" id="tab-notice-list">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin:0">📢 お知らせ一覧</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-control" id="noticeCatFilter" onchange="loadNotices()" style="width:110px;height:32px;padding:0 8px;font-size:12px">
+            <option value="">全カテゴリ</option>
+            <option value="お知らせ">お知らせ</option>
+            <option value="連絡事項">連絡事項</option>
+            <option value="引継ぎ">引継ぎ</option>
+            <option value="重要">重要</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadNotices()">🔄 更新</button>
+        </div>
+      </div>
+      <div id="noticeListWrap">
+        <div style="text-align:center;color:var(--muted);padding:24px">読み込み中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 投稿タブ -->
+  <div class="tab-content" id="tab-notice-post">
+    <div class="card" style="max-width:640px">
+      <div class="card-title">✏️ お知らせを投稿</div>
+      <div style="display:grid;gap:14px">
+        <div>
+          <label class="form-label">カテゴリ</label>
+          <select class="form-control" id="noticePostCat">
+            <option value="お知らせ">お知らせ</option>
+            <option value="連絡事項">連絡事項</option>
+            <option value="引継ぎ">引継ぎ</option>
+            <option value="重要">重要</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">タイトル <span style="color:var(--red)">*</span></label>
+          <input type="text" class="form-control" id="noticePostTitle" placeholder="タイトルを入力">
+        </div>
+        <div>
+          <label class="form-label">本文</label>
+          <textarea class="form-control" id="noticePostBody" rows="6" placeholder="内容を入力" style="resize:vertical"></textarea>
+        </div>
+        <div>
+          <label class="form-label">画像添付（任意）</label>
+          <input type="file" id="noticePostImg" accept="image/*" class="form-control" onchange="previewNoticeImg(this)" style="padding:6px">
+          <div id="noticeImgPreview" style="margin-top:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="noticePostPin" style="width:16px;height:16px">
+          <label for="noticePostPin" style="font-size:13px;cursor:pointer">📌 ピン留め（上部固定）</label>
+        </div>
+        <div id="noticePostErr" style="color:var(--red);font-size:13px"></div>
+        <button class="btn btn-primary" onclick="submitNotice()">📢 投稿する</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1893,6 +1962,7 @@ window.nav = function(id){
   if(id==='users') loadAllUsers();
   if(id==='shift') loadShiftPage();
   if(id==='face') loadFacePage();
+  if(id==='notice') loadNotices();
 };
 
 // ── Clock ──
@@ -2187,6 +2257,116 @@ window.rejectShiftApp = function(id, tbl){
     showToast('否認しました','amber'); loadShiftApprovals();
   });
 };
+
+// ══════════════════════════════════════════════
+// お知らせ
+// ══════════════════════════════════════════════
+var _noticeImgB64 = null;
+
+var _noticeCatStyle = {
+  'お知らせ':'background:#dbeafe;color:#1e40af',
+  '連絡事項':'background:#dcfce7;color:#16a34a',
+  '引継ぎ'  :'background:#ede9fe;color:#7c3aed',
+  '重要'    :'background:#fee2e2;color:#dc2626'
+};
+
+window.loadNotices = function(){
+  var wrap = document.getElementById('noticeListWrap');
+  if(!wrap) return;
+  wrap.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">読み込み中...</div>';
+  var cat = (document.getElementById('noticeCatFilter')||{value:''}).value;
+  var q = sb.from('notices').select('*').order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(50);
+  if(cat) q = q.eq('category',cat);
+  q.then(function(r){
+    if(r.error||!r.data||!r.data.length){
+      wrap.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">お知らせはありません</div>';
+      return;
+    }
+    wrap.innerHTML = r.data.map(function(n){
+      var catS = _noticeCatStyle[n.category]||'background:#f1f5f9;color:#475569';
+      var pin  = n.is_pinned?'<span style="color:var(--amber);margin-right:4px">📌</span>':'';
+      var img  = n.image_url?'<div style="margin-top:10px"><img src="'+n.image_url+'" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:cover"></div>':'';
+      var del  = me&&me.id===n.author_id?'<button class="btn btn-sm btn-red" style="margin-left:8px;padding:2px 8px;font-size:11px" onclick="deleteNotice(\''+n.id+'\')">削除</button>':'';
+      return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px'+(n.is_pinned?';border-left:4px solid var(--amber)':'')+'">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'+
+        pin+'<span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;'+catS+'">'+n.category+'</span>'+
+        '<span style="font-size:12px;color:var(--muted)">'+n.author_name+'</span>'+
+        '<span style="font-size:12px;color:var(--muted);margin-left:auto">'+n.created_at.slice(0,10)+del+'</span></div>'+
+        '<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+n.title+'</div>'+
+        (n.body?'<div style="font-size:13px;color:var(--text);white-space:pre-wrap;line-height:1.7">'+n.body+'</div>':'')+
+        img+'</div>';
+    }).join('');
+  }).catch(function(){
+    wrap.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">取得エラー</div>';
+  });
+};
+
+window.previewNoticeImg = function(input){
+  var prev = document.getElementById('noticeImgPreview');
+  if(!input.files||!input.files[0]){_noticeImgB64=null;if(prev)prev.innerHTML='';return;}
+  var file = input.files[0];
+  if(file.size > 5*1024*1024){showToast('5MB以下の画像を選択してください','red');input.value='';_noticeImgB64=null;return;}
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _noticeImgB64 = e.target.result;
+    if(prev) prev.innerHTML='<img src="'+_noticeImgB64+'" style="max-height:160px;border-radius:8px;border:1px solid var(--border)">';
+    // 圧縮リサイズ
+    var img2 = new Image();
+    img2.onload = function(){
+      var MAX=800, cv=document.createElement('canvas');
+      var sc=Math.min(1,MAX/Math.max(img2.width,img2.height));
+      cv.width=Math.round(img2.width*sc); cv.height=Math.round(img2.height*sc);
+      cv.getContext('2d').drawImage(img2,0,0,cv.width,cv.height);
+      _noticeImgB64 = cv.toDataURL('image/jpeg',0.82);
+      if(prev) prev.innerHTML='<img src="'+_noticeImgB64+'" style="max-height:160px;border-radius:8px;border:1px solid var(--border)">';
+    };
+    img2.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.submitNotice = function(){
+  var errEl = document.getElementById('noticePostErr');
+  if(errEl) errEl.textContent='';
+  var title  = (document.getElementById('noticePostTitle')||{}).value||'';
+  var body   = (document.getElementById('noticePostBody')||{}).value||'';
+  var cat    = (document.getElementById('noticePostCat')||{}).value||'お知らせ';
+  var pinned = (document.getElementById('noticePostPin')||{}).checked||false;
+  if(!title.trim()){if(errEl)errEl.textContent='タイトルは必須です';return;}
+  if(!me){if(errEl)errEl.textContent='ログインが必要です';return;}
+  var authorName = (currentEmployee&&currentEmployee.name)||me.email||'管理者';
+  sb.from('notices').insert({
+    author_id:me.id, author_name:authorName,
+    category:cat, title:title.trim(), body:body||null,
+    image_url:_noticeImgB64||null, is_pinned:pinned
+  }).then(function(r){
+    if(r.error){if(errEl)errEl.textContent='投稿エラー: '+r.error.message;return;}
+    showToast('投稿しました','green');
+    document.getElementById('noticePostTitle').value='';
+    document.getElementById('noticePostBody').value='';
+    document.getElementById('noticePostImg').value='';
+    document.getElementById('noticeImgPreview').innerHTML='';
+    document.getElementById('noticePostPin').checked=false;
+    _noticeImgB64=null;
+    // 一覧タブに切り替え
+    var tabs=document.querySelectorAll('#page-notice .tab');
+    var contents=document.querySelectorAll('#page-notice .tab-content');
+    tabs.forEach(function(t){t.classList.remove('active');});
+    contents.forEach(function(c){c.classList.remove('active');});
+    tabs[0].classList.add('active');
+    document.getElementById('tab-notice-list').classList.add('active');
+    loadNotices();
+  });
+};
+
+window.deleteNotice = function(id){
+  if(!confirm('このお知らせを削除しますか？')) return;
+  sb.from('notices').delete().eq('id',id).then(function(r){
+    if(r.error){showToast('削除エラー','red');return;}
+    showToast('削除しました','amber'); loadNotices();
+  });
+};
+
 function loadLeaveApprovals(){
   Promise.all([
     sb.from('leave_requests').select('id,user_id,leave_type,start_date,end_date,reason,created_at').eq('status','pending'),
