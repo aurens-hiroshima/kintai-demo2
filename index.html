@@ -867,8 +867,7 @@ tr:hover td{background:#fafafa}
     <div class="tab" onclick="switchTab(this,'tab-shift-monthly');loadShiftMonthly()">📆 スケジュール登録</div>
     <div class="tab" onclick="switchTab(this,'tab-shift-auto');renderShiftAuto()">🤖 シフト自動作成</div>
     <div class="tab" onclick="switchTab(this,'tab-shift-pattern');loadPatternSettings()">⚙️ パターン設定</div>
-    <div class="tab" onclick="switchTab(this,'tab-shift-requests');loadShiftRequests()">📋 シフト申請</div>
-    <div class="tab" onclick="switchTab(this,'tab-shift-swap');loadShiftSwapRequests()">🔄 シフト交換</div>
+    <div class="tab" onclick="switchTab(this,'tab-shift-requests');loadShiftAllRequests()">📋 申請一覧</div>
   </div>
 
   <!-- ── シフト表（月次カレンダー） ── -->
@@ -1055,60 +1054,43 @@ tr:hover td{background:#fafafa}
     </div>
   </div>
 
-  <!-- ── シフト申請一覧 ── -->
+  <!-- ── シフト申請一覧（統合） ── -->
   <div class="tab-content" id="tab-shift-requests">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div class="card-title" style="margin:0">📋 シフト申請一覧</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="form-control" id="shiftReqStatusFilter" onchange="loadShiftRequests()" style="width:120px;height:32px;padding:0 8px;font-size:12px">
+          <select class="form-control" id="shiftAllKubunFilter" onchange="loadShiftAllRequests()" style="width:100px;height:32px;padding:0 8px;font-size:12px">
+            <option value="">全区分</option>
+            <option value="変更">📅 変更</option>
+            <option value="交換">🔄 交換</option>
+            <option value="希望">🌟 希望</option>
+          </select>
+          <select class="form-control" id="shiftAllStatusFilter" onchange="loadShiftAllRequests()" style="width:100px;height:32px;padding:0 8px;font-size:12px">
             <option value="pending" selected>申請中</option>
             <option value="approved">承認済</option>
             <option value="rejected">否認</option>
             <option value="">全て</option>
           </select>
-          <button class="btn btn-outline btn-sm" onclick="loadShiftRequests()">🔄 更新</button>
+          <button class="btn btn-outline btn-sm" onclick="loadShiftAllRequests()">🔄 更新</button>
         </div>
       </div>
       <div style="overflow-x:auto">
         <table>
           <thead>
             <tr>
-              <th>氏名</th><th>部署</th><th>申請日</th><th>希望日</th>
-              <th>希望パターン</th><th>開始</th><th>終了</th><th>理由</th>
-              <th>ステータス</th><th>操作</th>
+              <th style="min-width:70px">区分</th>
+              <th style="min-width:80px">氏名</th>
+              <th style="min-width:70px">部署</th>
+              <th style="min-width:80px">対象日・期間</th>
+              <th style="min-width:100px">内容</th>
+              <th style="min-width:100px">理由</th>
+              <th style="min-width:60px">申請日</th>
+              <th style="min-width:80px">ステータス</th>
+              <th style="min-width:110px">操作</th>
             </tr>
           </thead>
-          <tbody id="shiftReqTbl"><tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px">タブを開くと読み込みます</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── シフト交換申請一覧 ── -->
-  <div class="tab-content" id="tab-shift-swap">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="card-title" style="margin:0">🔄 シフト交換申請一覧</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="form-control" id="shiftSwapStatusFilter" onchange="loadShiftSwapRequests()" style="width:120px;height:32px;padding:0 8px;font-size:12px">
-            <option value="pending" selected>申請中</option>
-            <option value="approved">承認済</option>
-            <option value="rejected">否認</option>
-            <option value="">全て</option>
-          </select>
-          <button class="btn btn-outline btn-sm" onclick="loadShiftSwapRequests()">🔄 更新</button>
-        </div>
-      </div>
-      <div style="overflow-x:auto">
-        <table>
-          <thead>
-            <tr>
-              <th>申請者</th><th>申請者シフト日</th><th>交換相手</th><th>相手シフト日</th>
-              <th>理由</th><th>申請日</th><th>ステータス</th><th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="shiftSwapTbl"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">タブを開くと読み込みます</td></tr></tbody>
+          <tbody id="shiftAllTbl"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">タブを開くと読み込みます</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1609,6 +1591,114 @@ function initSupabase(){
     document.getElementById('sbConfigSection').style.display = '';
   });
 }
+
+// ══════════════════════════════════════════════
+// シフト申請一覧（統合: 変更・交換・希望）
+// ══════════════════════════════════════════════
+window.loadShiftAllRequests = function(){
+  var kubunFilter  = (document.getElementById('shiftAllKubunFilter')||{value:''}).value;
+  var statusFilter = (document.getElementById('shiftAllStatusFilter')||{value:'pending'}).value;
+  Promise.all([
+    sb.from('shift_requests').select('*').order('created_at',{ascending:false}),
+    sb.from('shift_swap_requests').select('*').order('created_at',{ascending:false}),
+    sb.from('shift_wish_requests').select('*').order('created_at',{ascending:false}),
+    sb.from('employees').select('id,name,department').eq('is_active',true)
+  ]).then(function(rs){
+    var empMap = {};
+    (rs[3].data||[]).forEach(function(e){ empMap[e.id] = e; });
+    var all = [];
+    // 変更申請
+    (rs[0].data||[]).forEach(function(r){
+      var emp = empMap[r.employee_id]||{name:'—',department:'—'};
+      var detail = (r.requested_start?String(r.requested_start).substr(0,5):'')+(r.requested_end?' 〜 '+String(r.requested_end).substr(0,5):'');
+      all.push({kubun:'変更',id:r.id,tbl:'shift_requests',
+        name:emp.name,dept:emp.department||'—',
+        date:r.request_date||'—',detail:detail||'—',
+        reason:r.reason||'—',status:r.status,created:r.created_at});
+    });
+    // 交換申請
+    (rs[1].data||[]).forEach(function(r){
+      var req = empMap[r.requester_id]||{name:'—',department:'—'};
+      var tgt = empMap[r.target_id]||{name:'—'};
+      all.push({kubun:'交換',id:r.id,tbl:'shift_swap_requests',
+        name:req.name,dept:req.department||'—',
+        date:r.requester_date+' ⇔ '+r.target_date,
+        detail:tgt.name+'と交換',
+        reason:r.reason||'—',status:r.status,created:r.created_at});
+    });
+    // 希望申請
+    (rs[2].data||[]).forEach(function(r){
+      var emp = empMap[r.employee_id]||{name:'—',department:'—'};
+      var dates = [];
+      try{ dates = Array.isArray(r.wish_dates)?r.wish_dates:JSON.parse(r.wish_dates||'[]'); }catch(e){}
+      all.push({kubun:'希望',id:r.id,tbl:'shift_wish_requests',
+        name:emp.name,dept:emp.department||'—',
+        date:r.wish_month+'（'+dates.length+'日）',
+        detail:dates.slice(0,3).map(function(d){return d.substr(8)+'日';}).join('・')+(dates.length>3?'…':''),
+        reason:r.reason||'—',status:r.status,created:r.created_at});
+    });
+    // ソート
+    all.sort(function(a,b){ return (b.created||'')>(a.created||'')?1:-1; });
+    // フィルタ
+    if(kubunFilter)  all = all.filter(function(r){ return r.kubun===kubunFilter; });
+    if(statusFilter) all = all.filter(function(r){ return r.status===statusFilter; });
+    var kBadge = {
+      '変更':'<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">📅 変更</span>',
+      '交換':'<span style="background:#ede9fe;color:#7c3aed;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔄 交換</span>',
+      '希望':'<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🌟 希望</span>'
+    };
+    var html = '';
+    if(!all.length){
+      html = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">申請データがありません</td></tr>';
+    } else {
+      all.forEach(function(r){
+        var badge = r.status==='approved'
+          ? '<span style="color:green;font-weight:700">✅ 承認済</span>'
+          : r.status==='rejected'
+          ? '<span style="color:red;font-weight:700">❌ 否認</span>'
+          : '<span style="color:orange;font-weight:700">⏳ 申請中</span>';
+        var ops = r.status==='pending'
+          ? '<button class="btn btn-sm btn-primary" onclick="approveShiftAllReq(\''+r.id+'\',\''+r.tbl+'\')">承認</button>'
+            +' <button class="btn btn-sm btn-outline" style="color:red;border-color:red;margin-left:4px" onclick="rejectShiftAllReq(\''+r.id+'\',\''+r.tbl+'\')">否認</button>'
+          : '—';
+        html += '<tr>'
+          +'<td>'+(kBadge[r.kubun]||r.kubun)+'</td>'
+          +'<td><strong>'+r.name+'</strong></td>'
+          +'<td>'+r.dept+'</td>'
+          +'<td style="font-size:12px">'+r.date+'</td>'
+          +'<td style="font-size:12px">'+r.detail+'</td>'
+          +'<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="'+r.reason+'">'+r.reason+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+(r.created?r.created.substr(0,10):'')+'</td>'
+          +'<td>'+badge+'</td>'
+          +'<td style="white-space:nowrap">'+ops+'</td>'
+          +'</tr>';
+      });
+    }
+    var el = document.getElementById('shiftAllTbl');
+    if(el) el.innerHTML = html;
+  }).catch(function(e){
+    var el = document.getElementById('shiftAllTbl');
+    if(el) el.innerHTML = '<tr><td colspan="9" style="color:red;text-align:center;padding:20px">読み込みエラー: '+(e.message||e)+'</td></tr>';
+  });
+};
+
+window.approveShiftAllReq = function(id, tbl){
+  if(!confirm('この申請を承認しますか？')) return;
+  sb.from(tbl).update({status:'approved',updated_at:new Date().toISOString()}).eq('id',id).then(function(r){
+    if(r.error){ showToast('エラー: '+r.error.message,'red'); return; }
+    showToast('✅ 承認しました','green');
+    loadShiftAllRequests();
+  });
+};
+
+window.rejectShiftAllReq = function(id, tbl){
+  if(!confirm('この申請を否認しますか？')) return;
+  sb.from(tbl).update({status:'rejected',updated_at:new Date().toISOString()}).eq('id',id).then(function(r){
+    if(r.error){ showToast('エラー: '+r.error.message,'red'); return; }
+    showToast('否認しました','red');
+    loadShiftAllRequests();
+  });
+};
 
 // ── Auth ──
 window.toggleSbConfig = function(){
