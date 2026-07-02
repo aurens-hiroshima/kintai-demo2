@@ -2,359 +2,699 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>打刻専用端末</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>打刻キオスク</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Meiryo,sans-serif;background:#1a3a5c;color:#fff;min-height:100vh;display:flex;flex-direction:column}
-.header{background:rgba(0,0,0,.3);padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
-.header-title{font-size:20px;font-weight:700}
-.clock{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
-.date-text{font-size:13px;color:rgba(255,255,255,.5);text-align:right;margin-top:2px}
-.main{flex:1;display:flex;gap:0;overflow:hidden}
-/* Left: employee list */
-.emp-panel{width:280px;background:rgba(0,0,0,.2);border-right:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;flex-shrink:0}
-.emp-panel-title{padding:16px;font-size:14px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
-.emp-search{padding:10px 12px}
-.emp-search input{width:100%;padding:10px 14px;border-radius:10px;border:none;font-size:14px;background:rgba(255,255,255,.12);color:#fff;outline:none}
-.emp-search input::placeholder{color:rgba(255,255,255,.35)}
-.emp-list{flex:1;overflow-y:auto;padding:4px 8px}
-.emp-btn{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;border-radius:12px;background:transparent;color:#fff;cursor:pointer;text-align:left;transition:all .15s;font-size:14px;font-family:inherit;margin-bottom:4px}
-.emp-btn:hover{background:rgba(255,255,255,.12)}
-.emp-btn.selected{background:rgba(24,95,165,.5);border:1px solid rgba(24,95,165,.8)}
-.emp-avatar-sm{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0}
-.emp-info{flex:1;min-width:0}
-.emp-info-name{font-weight:700;font-size:14px}
-.emp-info-dept{font-size:11px;color:rgba(255,255,255,.5)}
-.emp-status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-/* Right: punch area */
-.punch-panel{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.punch-empty{text-align:center;color:rgba(255,255,255,.4)}
-.punch-empty-icon{font-size:48px;margin-bottom:12px}
-.punch-empty-text{font-size:18px}
-.punch-content{width:100%;max-width:600px}
-.punch-user-card{background:rgba(255,255,255,.08);border-radius:20px;padding:28px;text-align:center;margin-bottom:24px}
-.punch-user-avatar{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;margin:0 auto 12px}
-.punch-user-name{font-size:28px;font-weight:700;margin-bottom:4px}
-.punch-user-dept{font-size:14px;color:rgba(255,255,255,.5)}
-.punch-user-status{display:inline-block;padding:5px 16px;border-radius:99px;font-size:13px;font-weight:700;margin-top:10px}
-.punch-btns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
-.punch-btn{padding:28px 16px;border:none;border-radius:16px;font-size:22px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s}
-.punch-btn:active{transform:scale(.96)}
-.punch-btn-sm{padding:20px 16px;font-size:16px}
-/* Punch log */
-.punch-log{background:rgba(0,0,0,.2);border-radius:16px;padding:16px 20px}
-.punch-log-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:12px}
-.punch-log-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px}
-.punch-log-item:last-child{border-bottom:none}
-.punch-log-time{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;width:60px}
-.punch-log-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.punch-log-empty{text-align:center;color:rgba(255,255,255,.3);font-size:13px;padding:16px 0}
-/* Success */
-.success-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);align-items:center;justify-content:center;flex-direction:column;z-index:100}
-.success-icon{font-size:100px;margin-bottom:16px}
-.success-msg{font-size:32px;font-weight:700;margin-bottom:8px;text-align:center}
-.success-time{font-size:22px;color:rgba(255,255,255,.7)}
-/* Responsive */
-@media(max-width:768px){
-  .main{flex-direction:column}
-  .emp-panel{width:100%;height:auto;max-height:35vh;border-right:none;border-bottom:1px solid rgba(255,255,255,.1)}
-  .punch-panel{padding:16px}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#60a5fa;--cyan:#06b6d4;
+  --bg:#0f172a;--sidebar:#0d1526;--card:rgba(255,255,255,.06);--border:rgba(255,255,255,.1);
+  --muted:rgba(255,255,255,.4);
 }
+body{font-family:'Hiragino Sans','Yu Gothic',sans-serif;background:var(--bg);color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── Header ── */
+.header{display:flex;align-items:center;padding:0 20px;height:56px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);flex-shrink:0;gap:16px}
+.header-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.header-sub{font-size:11px;color:var(--muted);flex:1}
+.clock-time{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--blue);line-height:1}
+.clock-date{font-size:11px;color:var(--muted);text-align:right}
+
+/* ── Layout ── */
+.body-wrap{flex:1;display:flex;min-height:0}
+
+/* ── Left Sidebar (always accessible) ── */
+.sidebar{width:256px;flex-shrink:0;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sb-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.sb-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+
+/* 打刻種別 */
+.ptype-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ptype-btn{padding:9px 4px;border:1.5px solid rgba(255,255,255,.15);border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;background:transparent;color:rgba(255,255,255,.6);transition:.15s;text-align:center;width:100%}
+.ptype-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.ptype-btn.in.active{background:rgba(34,197,94,.2);border-color:var(--green);color:var(--green)}
+.ptype-btn.out.active{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red)}
+.ptype-btn.br.active{background:rgba(245,158,11,.2);border-color:var(--amber);color:var(--amber)}
+.ptype-btn.br2.active{background:rgba(6,182,212,.2);border-color:var(--cyan);color:var(--cyan)}
+
+/* 手動打刻 */
+.manual-section{}
+.emp-search{width:100%;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;outline:none;margin-bottom:8px}
+.emp-search::placeholder{color:var(--muted)}
+.emp-search:focus{border-color:var(--blue)}
+.emp-list{max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,.2)}
+.emp-item{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);transition:background .1s}
+.emp-item:last-child{border-bottom:none}
+.emp-item:hover{background:rgba(255,255,255,.06)}
+.emp-item.selected{background:rgba(96,165,250,.15);color:var(--blue)}
+.emp-dept{font-size:10px;color:var(--muted);margin-top:1px}
+.emp-none{padding:12px;text-align:center;font-size:12px;color:var(--muted)}
+.manual-punch-btn{width:100%;margin-top:10px;padding:11px;border:none;border-radius:10px;background:var(--blue);color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+.manual-punch-btn:hover{filter:brightness(1.1)}
+.manual-punch-btn:disabled{opacity:.4;cursor:not-allowed}
+.manual-err{font-size:11px;color:var(--red);margin-top:6px;min-height:14px}
+
+/* Log */
+.log-list{display:flex;flex-direction:column;gap:4px}
+.log-item{display:flex;align-items:center;padding:6px 8px;border-radius:7px;font-size:12px;background:rgba(255,255,255,.03);gap:6px}
+.log-name{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-type{padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;flex-shrink:0}
+.log-type.in{background:rgba(34,197,94,.2);color:var(--green)}
+.log-type.out{background:rgba(239,68,68,.2);color:var(--red)}
+.log-type.br{background:rgba(245,158,11,.2);color:var(--amber)}
+.log-type.br2{background:rgba(6,182,212,.2);color:var(--cyan)}
+.log-time{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* Footer links */
+.sb-footer{margin-top:auto;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.sb-link{display:block;padding:8px 12px;border-radius:8px;font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer;background:transparent;border:none;text-align:left;width:100%;transition:.1s}
+.sb-link:hover{background:rgba(255,255,255,.06);color:#fff}
+
+/* ── Main Camera Area ── */
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;min-width:0}
+.camera-wrap{position:relative;width:480px;max-width:100%;aspect-ratio:4/3;background:#1e293b;border-radius:18px;overflow:hidden;border:2px solid var(--border)}
+#video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;transform:scaleX(-1)}
+.face-guide{position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);width:180px;height:220px;border:2px dashed rgba(255,255,255,.2);border-radius:50%;pointer-events:none;transition:border-color .3s,border-style .3s}
+.face-guide.detecting{border-color:var(--amber);border-style:solid;animation:glow-amber 1s ease-in-out infinite alternate}
+.face-guide.recognized{border-color:var(--green);border-style:solid;animation:glow-green .5s ease-in-out infinite alternate}
+@keyframes glow-amber{from{box-shadow:0 0 0 rgba(245,158,11,0)}to{box-shadow:0 0 16px rgba(245,158,11,.4)}}
+@keyframes glow-green{from{box-shadow:0 0 0 rgba(34,197,94,0)}to{box-shadow:0 0 20px rgba(34,197,94,.5)}}
+.guide-label{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:var(--muted)}
+
+/* Status bar */
+.status-bar{width:480px;max-width:100%;background:var(--card);border-radius:10px;border:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.cam-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.cam-dot.ok{background:var(--green)}
+.cam-dot.off{background:rgba(255,255,255,.25);animation:none}
+#camStatusTxt{font-size:13px;color:rgba(255,255,255,.8);flex:1}
+.conf-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;width:80px}
+.conf-fill{height:100%;border-radius:2px;transition:width .2s,background .2s;width:0}
+#confPct{font-size:11px;color:var(--muted);width:36px;text-align:right}
+
+/* Result overlay */
+.result-overlay{position:absolute;inset:0;background:rgba(15,23,42,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;border-radius:18px}
+.result-overlay.show{opacity:1;pointer-events:auto}
+.result-icon{font-size:60px;line-height:1;margin-bottom:12px}
+.result-name{font-size:28px;font-weight:800;margin-bottom:6px}
+.result-type{font-size:18px;margin-bottom:4px}
+.result-time{font-size:14px;color:var(--muted)}
+.result-overlay.success .result-icon-wrap{color:var(--green)}
+
+/* Loading overlay */
+#loadingOverlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.spinner{width:44px;height:44px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadMsg{font-size:16px;color:rgba(255,255,255,.8)}
+#loadSub{font-size:12px;color:var(--muted);margin-top:-10px}
+.load-bar{width:260px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.load-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .5s;width:0}
+
+/* Config modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-box{background:#1e293b;border-radius:16px;border:1px solid var(--border);padding:28px;width:400px}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px}
+.cfg-row{margin-bottom:12px}
+.cfg-lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+.cfg-inp{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;padding:8px 12px;font-size:13px;outline:none}
+.cfg-btns{display:flex;gap:8px;margin-top:18px}
+.cfg-btn{flex:1;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+.cfg-save{background:var(--blue);color:#fff}
+.cfg-cancel{background:rgba(255,255,255,.08);color:#fff}
+.cfg-err{color:var(--red);font-size:11px;margin-top:6px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e293b;border:1px solid var(--border);color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:all .3s;z-index:2000;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
+<!-- Loading Overlay -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loadMsg">顔認証システムを起動中...</div>
+  <div id="loadSub">初回は30秒ほどかかる場合があります</div>
+  <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+</div>
+
+<!-- Config Modal -->
+<div class="modal-bg" id="cfgModal">
+  <div class="modal-box">
+    <div class="modal-title">⚙️ Supabase 接続設定</div>
+    <div class="cfg-row">
+      <div class="cfg-lbl">Supabase URL</div>
+      <input class="cfg-inp" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+    </div>
+    <div class="cfg-row">
+      <div class="cfg-lbl">Anon Key</div>
+      <input class="cfg-inp" id="cfgKey" placeholder="eyJhbGciOi...">
+    </div>
+    <div class="cfg-err" id="cfgErr"></div>
+    <div class="cfg-btns">
+      <button class="cfg-btn cfg-cancel" onclick="closeCfg()">キャンセル</button>
+      <button class="cfg-btn cfg-save" onclick="saveCfg()">保存して接続</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Header -->
 <div class="header">
-  <div class="header-title">⏰ 打刻専用端末</div>
+  <div class="header-title">🤖 顔認証打刻キオスク</div>
+  <div class="header-sub" id="headerSub">起動中...</div>
   <div>
-    <div class="clock" id="mainClock">--:--:--</div>
-    <div class="date-text" id="mainDate"></div>
+    <div class="clock-time" id="clockTime">--:--:--</div>
+    <div class="clock-date" id="clockDate"></div>
   </div>
 </div>
 
-<div class="main">
-  <!-- Left: Employee list -->
-  <div class="emp-panel">
-    <div class="emp-panel-title">職員一覧 <span id="empCount" style="font-weight:400;color:rgba(255,255,255,.4)"></span></div>
-    <div class="emp-search"><input id="searchInput" type="text" placeholder="名前で検索..." oninput="filterList()"></div>
-    <div class="emp-list" id="empList"></div>
-  </div>
+<!-- Body -->
+<div class="body-wrap">
 
-  <!-- Right: Punch area -->
-  <div class="punch-panel">
-    <!-- 未選択 -->
-    <div class="punch-empty" id="emptyState">
-      <div class="punch-empty-icon">👈</div>
-      <div class="punch-empty-text">左の一覧から職員を選んでください</div>
-    </div>
+  <!-- ═══ Left Sidebar (always accessible) ═══ -->
+  <div class="sidebar">
 
-    <!-- 選択後 -->
-    <div class="punch-content" id="punchContent" style="display:none">
-      <div class="punch-user-card">
-        <div class="punch-user-avatar" id="puAvatar" style="background:#185FA5">?</div>
-        <div class="punch-user-name" id="puName">---</div>
-        <div class="punch-user-dept" id="puDept">---</div>
-        <div id="puStatusArea"></div>
-      </div>
-
-      <div class="punch-btns">
-        <button class="punch-btn" style="background:#22c55e" onclick="doPunch('出勤')">🟢 出 勤</button>
-        <button class="punch-btn" style="background:#ef4444" onclick="doPunch('退勤')">🔴 退 勤</button>
-        <button class="punch-btn punch-btn-sm" style="background:#f59e0b" onclick="doPunch('休憩開始')">🟡 休憩開始</button>
-        <button class="punch-btn punch-btn-sm" style="background:#8b5cf6" onclick="doPunch('休憩終了')">🟣 休憩終了</button>
-      </div>
-
-      <div class="punch-log">
-        <div class="punch-log-title">📋 本日の打刻ログ</div>
-        <div id="punchLogArea">
-          <div class="punch-log-empty">打刻データなし</div>
-        </div>
+    <!-- 打刻種別 -->
+    <div class="sb-section">
+      <div class="sb-label">打刻種別</div>
+      <div class="ptype-grid">
+        <button class="ptype-btn in active" id="pBtn-出勤"    onclick="setPunchType('出勤')">🟢 出勤</button>
+        <button class="ptype-btn out"       id="pBtn-退勤"    onclick="setPunchType('退勤')">🔴 退勤</button>
+        <button class="ptype-btn br"        id="pBtn-休憩開始" onclick="setPunchType('休憩開始')">⏸ 休憩開始</button>
+        <button class="ptype-btn br2"       id="pBtn-休憩終了" onclick="setPunchType('休憩終了')">▶ 休憩終了</button>
       </div>
     </div>
+
+    <!-- 手動打刻 -->
+    <div class="sb-section manual-section">
+      <div class="sb-label">手動打刻</div>
+      <input class="emp-search" id="empSearch" placeholder="氏名・部署で検索..." oninput="filterEmps()" autocomplete="off">
+      <div class="emp-list" id="empList">
+        <div class="emp-none">読み込み中...</div>
+      </div>
+      <div class="manual-err" id="manualErr"></div>
+      <button class="manual-punch-btn" id="manualPunchBtn" onclick="doManualPunch()" disabled>打刻する</button>
+    </div>
+
+    <!-- 直近の打刻 -->
+    <div class="sb-section" style="flex:1">
+      <div class="sb-label">直近の打刻</div>
+      <div class="log-list" id="logList">
+        <div class="emp-none">まだ打刻はありません</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="sb-footer">
+      <button class="sb-link" onclick="reloadFaces()">🔄 顔データを更新</button>
+      <button class="sb-link" onclick="openCfg()">⚙️ Supabase 設定</button>
+      <a class="sb-link" href="index_leave.html">🖥 管理画面へ</a>
+    </div>
   </div>
-</div>
 
-<!-- Success overlay -->
-<div class="success-overlay" id="successOverlay">
-  <div class="success-icon" id="sucIcon">✅</div>
-  <div class="success-msg" id="sucMsg">打刻しました</div>
-  <div class="success-time" id="sucTime"></div>
-</div>
+  <!-- ═══ Main Camera Area ═══ -->
+  <div class="main">
+    <div class="camera-wrap">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div class="face-guide" id="faceGuide">
+        <div class="guide-label">顔をここに合わせてください</div>
+      </div>
+      <!-- Recognition result overlay -->
+      <div class="result-overlay" id="resultOverlay">
+        <div class="result-icon" id="resultIcon">📷</div>
+        <div class="result-name" id="resultName"></div>
+        <div class="result-type" id="resultType"></div>
+        <div class="result-time" id="resultTime"></div>
+      </div>
+    </div>
 
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="cam-dot off" id="camDot"></div>
+      <div id="camStatusTxt">初期化中...</div>
+      <div class="conf-bar"><div class="conf-fill" id="confFill"></div></div>
+      <div id="confPct">0%</div>
+    </div>
+  </div>
+
+</div><!-- /body-wrap -->
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
-var SB_URL = 'https://judzjxzmurlqchmuakod.supabase.co';
-var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+'use strict';
+var MODEL_URL  = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+var SB_URL     = 'https://judzjxzmurlqchmuakod.supabase.co';
+var SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1ZHpqeHptdXJscWNobXVha29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3Mjg1NTYsImV4cCI6MjA5NzMwNDU1Nn0.uFcLqB9UVhTx3eAebSPjWw0Tdlt5ZHSloYxjcLLVdMs';
+var THRESHOLD  = 0.45;
+var COOLDOWN   = 8000;
+var CONFIRM_N  = 3;
+var DETECT_INT = 250;
+
 var sb = null;
-var allEmps = [];
-var selUser = null;
-var todayPunches = {};
+var faceMatcher = null;
+var empMap = {};        // { employees.id: { name, auth_id, department } }
+var allEmps = [];       // 全従業員リスト for manual punch
+var selectedEmpId = null;
+var currentType = '出勤';
+var lastPunch = {};
+var confirmCnt = {};
+var recentLog = [];
+var processing = false;
+var detectTimeout = null;
 
-function p2(n){ return String(n).padStart(2,'0'); }
-function jstToday(){
-  var d = new Date(Date.now() + 9*3600000);
-  return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());
+// ── 時計 ──────────────────────────────────
+function updateClock(){
+  var now = new Date();
+  document.getElementById('clockTime').textContent = now.toLocaleTimeString('ja-JP',{hour12:false});
+  document.getElementById('clockDate').textContent = now.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
 }
-function jstTime(iso){
-  var d = new Date(new Date(iso).getTime() + 9*3600000);
-  return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes());
-}
-function jstTimeFull(iso){
-  var d = new Date(new Date(iso).getTime() + 9*3600000);
-  return p2(d.getUTCHours())+':'+p2(d.getUTCMinutes())+':'+p2(d.getUTCSeconds());
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Toast ──────────────────────────────────
+function showToast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2800);
 }
 
-// Clock
-function tickClock(){
-  var n = new Date();
-  var days = ['日','月','火','水','木','金','土'];
-  document.getElementById('mainClock').textContent = p2(n.getHours())+':'+p2(n.getMinutes())+':'+p2(n.getSeconds());
-  document.getElementById('mainDate').textContent = n.getFullYear()+'年'+(n.getMonth()+1)+'月'+n.getDate()+'日（'+days[n.getDay()]+'）';
+// ── 打刻種別 ──────────────────────────────
+function setPunchType(type){
+  currentType = type;
+  var clsMap = {出勤:'in',退勤:'out',休憩開始:'br',休憩終了:'br2'};
+  ['出勤','退勤','休憩開始','休憩終了'].forEach(function(t){
+    var btn = document.getElementById('pBtn-'+t);
+    if(!btn) return;
+    btn.classList.remove('active','in','out','br','br2');
+    btn.classList.add(clsMap[t]);
+  });
+  var active = document.getElementById('pBtn-'+type);
+  if(active) active.classList.add('active');
 }
-setInterval(tickClock, 1000);
-tickClock();
 
-// Init
-window.addEventListener('DOMContentLoaded', function(){
-  setTimeout(function(){
-    if (!window.supabase) { alert('Supabase SDKの読み込みに失敗しました'); return; }
-    sb = window.supabase.createClient(SB_URL, SB_KEY);
-    loadEmps();
-  }, 300);
-});
+// ── Config ────────────────────────────────
+function openCfg(){
+  document.getElementById('cfgUrl').value = localStorage.getItem('sb_url') || SB_URL;
+  document.getElementById('cfgKey').value = localStorage.getItem('sb_key') || SB_KEY;
+  document.getElementById('cfgErr').textContent = '';
+  document.getElementById('cfgModal').classList.add('open');
+}
+function closeCfg(){ document.getElementById('cfgModal').classList.remove('open'); }
+function saveCfg(){
+  var url = document.getElementById('cfgUrl').value.trim();
+  var key = document.getElementById('cfgKey').value.trim();
+  if(!url||!key){ document.getElementById('cfgErr').textContent='URLとKeyを入力してください'; return; }
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  closeCfg();
+  location.reload();
+}
 
-// Load employees (exclude admin)
-function loadEmps(){
-  sb.from('employees').select('id,auth_id,name,department,employee_no,role')
+// ── Supabase 初期化 ───────────────────────
+function initSb(){
+  var url = localStorage.getItem('sb_url') || SB_URL;
+  var key = localStorage.getItem('sb_key') || SB_KEY;
+  sb = window.supabase.createClient(url, key);
+  return true;
+}
+
+// ── 読み込み進捗 ─────────────────────────
+function setLoad(msg, sub){
+  document.getElementById('loadMsg').textContent = msg;
+  document.getElementById('loadSub').textContent = sub || '';
+}
+function setProgress(pct){ document.getElementById('loadFill').style.width = pct + '%'; }
+
+// ── メイン初期化 ──────────────────────────
+async function init(){
+  setLoad('🧠 AIモデルを読み込み中...', '初回起動はキャッシュ後に速くなります');
+  setProgress(10);
+  initSb();
+
+  try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+  } catch(e){
+    setLoad('❌ モデル読み込みエラー', e.message);
+    hideLoading();
+    return;
+  }
+  setProgress(55);
+
+  setLoad('📋 従業員データを取得中...', '');
+  await Promise.all([loadFaces(), loadAllEmps()]);
+  setProgress(80);
+
+  setLoad('📷 カメラを起動中...', '');
+  await startCamera();
+  setProgress(100);
+
+  hideLoading();
+  document.getElementById('headerSub').textContent =
+    Object.keys(empMap).length + '名の顔データをロード済み ／ 手動打刻も左メニューから可能';
+}
+
+function hideLoading(){
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ── 顔データ読み込み ─────────────────────
+async function loadFaces(){
+  if(!sb) return;
+  var res = await sb.from('employees')
+    .select('id,auth_id,name,face_descriptor')
     .eq('is_active', true)
-    .order('department', {ascending:true})
-    .then(function(r){
-      // Filter out admin users
-      allEmps = (r.data||[]).filter(function(e){
-        return e.role !== '管理者';
-      });
-      // Get today's punch status for all
-      loadTodayStatus();
-    });
+    .not('face_descriptor', 'is', null);
+
+  if(res.error || !res.data || !res.data.length){
+    setStatus('⚠️ 顔登録データなし — 管理画面で登録してください（手動打刻は左メニューから）');
+    faceMatcher = null;
+    return;
+  }
+  empMap = {};
+  var labeled = [];
+  res.data.forEach(function(e){
+    if(!e.face_descriptor) return;
+    empMap[e.id] = { name: e.name, auth_id: e.auth_id };
+    var raw = e.face_descriptor;
+    var descs = Array.isArray(raw[0]) ? raw.map(function(d){ return new Float32Array(d); }) : [new Float32Array(raw)];
+    labeled.push(new faceapi.LabeledFaceDescriptors(e.id, descs));
+  });
+  faceMatcher = labeled.length ? new faceapi.FaceMatcher(labeled, THRESHOLD) : null;
 }
 
-function loadTodayStatus(){
-  var today = jstToday();
-  sb.from('punch_records').select('user_id,punch_type,punched_at')
-    .gte('punched_at', today+'T00:00:00+09:00')
-    .order('punched_at', {ascending:false})
-    .then(function(r){
-      todayPunches = {};
-      (r.data||[]).forEach(function(p){
-        if (!todayPunches[p.user_id]) todayPunches[p.user_id] = [];
-        todayPunches[p.user_id].push(p);
-      });
-      renderEmpList(allEmps);
-    });
+window.reloadFaces = async function(){
+  setStatus('🔄 顔データを再読み込み中...');
+  await loadFaces();
+  document.getElementById('headerSub').textContent = Object.keys(empMap).length + '名の顔データをロード済み';
+  showToast('顔データを更新しました');
+};
+
+// ── 全従業員を手動打刻用に読み込む ────────
+async function loadAllEmps(){
+  if(!sb) return;
+  var {data, error} = await sb.from('employees')
+    .select('id,auth_id,name,department')
+    .eq('is_active', true)
+    .order('department')
+    .order('name');
+  if(error || !data) return;
+  allEmps = data;
+  renderEmpList(allEmps);
 }
 
-function renderEmpList(emps){
-  var list = document.getElementById('empList');
-  var colors = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556','#3B6D11','#993C1D'];
-  var countEl = document.getElementById('empCount');
-  if (countEl) countEl.textContent = '（' + emps.length + '名）';
-
-  // Group by department
-  var deptMap = {};
-  emps.forEach(function(e){
-    var dept = e.department || '未設定';
-    if (!deptMap[dept]) deptMap[dept] = [];
-    deptMap[dept].push(e);
-  });
-
-  var html = '';
-  Object.keys(deptMap).forEach(function(dept){
-    html += '<div style="font-size:11px;color:rgba(255,255,255,.35);padding:12px 14px 4px;font-weight:700;letter-spacing:.05em">'+dept+'</div>';
-    deptMap[dept].forEach(function(e){
-      var c = colors[e.name.charCodeAt(0) % colors.length];
-      var isSelected = selUser && selUser.auth === e.auth_id;
-      var punches = todayPunches[e.auth_id] || [];
-      var latestPunch = punches.length > 0 ? punches[0].punch_type : null;
-      var dotColor = 'rgba(255,255,255,.2)';
-      var statusLabel = '';
-      if (latestPunch === '出勤' || latestPunch === '休憩終了') { dotColor = '#22c55e'; statusLabel = '出勤中'; }
-      else if (latestPunch === '退勤') { dotColor = 'rgba(255,255,255,.2)'; statusLabel = '退勤済'; }
-      else if (latestPunch === '休憩開始') { dotColor = '#f59e0b'; statusLabel = '休憩中'; }
-
-      html += '<button class="emp-btn'+(isSelected?' selected':'')+'" data-auth="'+e.auth_id+'" data-name="'+e.name+'" data-dept="'+(e.department||'')+'" onclick="selectEmp(this)">'+
-        '<div class="emp-avatar-sm" style="background:'+c+'">'+e.name[0]+'</div>'+
-        '<div class="emp-info">'+
-          '<div class="emp-info-name">'+e.name+'</div>'+
-          '<div class="emp-info-dept">'+(statusLabel?statusLabel:'未打刻')+'</div>'+
-        '</div>'+
-        '<div class="emp-status-dot" style="background:'+dotColor+'"></div>'+
-      '</button>';
-    });
-  });
-  list.innerHTML = html || '<div style="text-align:center;padding:20px;color:rgba(255,255,255,.3);font-size:13px">職員がいません</div>';
-}
-
-function filterList(){
-  var q = document.getElementById('searchInput').value.toLowerCase();
-  var filtered = allEmps.filter(function(e){
-    return e.name.toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q);
-  });
+function filterEmps(){
+  var q = (document.getElementById('empSearch').value || '').trim().toLowerCase();
+  var filtered = q ? allEmps.filter(function(e){
+    return (e.name||'').toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q);
+  }) : allEmps;
   renderEmpList(filtered);
 }
 
-// Select employee
-function selectEmp(btn){
-  var authId = btn.getAttribute('data-auth');
-  var name   = btn.getAttribute('data-name');
-  var dept   = btn.getAttribute('data-dept');
-
-  selUser = { auth: authId, name: name, dept: dept };
-
-  // Highlight selected
-  document.querySelectorAll('.emp-btn').forEach(function(b){ b.classList.remove('selected'); });
-  btn.classList.add('selected');
-
-  // Show punch area
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('punchContent').style.display = 'block';
-
-  // User info
-  var colors = ['#185FA5','#0F6E56','#854F0B','#534AB7','#A32D2D','#993556','#3B6D11','#993C1D'];
-  var c = colors[name.charCodeAt(0) % colors.length];
-  document.getElementById('puAvatar').style.background = c;
-  document.getElementById('puAvatar').textContent = name[0];
-  document.getElementById('puName').textContent = name;
-  document.getElementById('puDept').textContent = dept;
-
-  // Status badge
-  var punches = todayPunches[authId] || [];
-  var latest = punches.length > 0 ? punches[0].punch_type : null;
-  var statusHTML = '';
-  if (latest === '出勤' || latest === '休憩終了') {
-    statusHTML = '<div class="punch-user-status" style="background:rgba(34,197,94,.25);color:#86efac">出勤中</div>';
-  } else if (latest === '退勤') {
-    statusHTML = '<div class="punch-user-status" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)">退勤済み</div>';
-  } else if (latest === '休憩開始') {
-    statusHTML = '<div class="punch-user-status" style="background:rgba(245,158,11,.25);color:#fcd34d">休憩中</div>';
-  } else {
-    statusHTML = '<div class="punch-user-status" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">未打刻</div>';
+function renderEmpList(list){
+  var el = document.getElementById('empList');
+  if(!list || !list.length){
+    el.innerHTML = '<div class="emp-none">該当なし</div>';
+    return;
   }
-  document.getElementById('puStatusArea').innerHTML = statusHTML;
-
-  // Load punch log
-  loadPunchLog(authId);
+  el.innerHTML = list.map(function(e){
+    var sel = e.id === selectedEmpId ? ' selected' : '';
+    return '<div class="emp-item'+sel+'" onclick="selectEmp(\''+e.id+'\',\''+esc(e.name)+'\',\''+esc(e.auth_id||'')+'\')"><div>'+esc(e.name)+'</div><div class="emp-dept">'+esc(e.department||'')+'</div></div>';
+  }).join('');
 }
 
-// Load punch log for selected user
-function loadPunchLog(authId){
-  var today = jstToday();
-  sb.from('punch_records').select('punch_type,punched_at')
-    .eq('user_id', authId)
-    .gte('punched_at', today+'T00:00:00+09:00')
-    .lte('punched_at', today+'T23:59:59+09:00')
-    .order('punched_at', {ascending:true})
-    .then(function(r){
-      var area = document.getElementById('punchLogArea');
-      var data = r.data || [];
-      if (data.length === 0) {
-        area.innerHTML = '<div class="punch-log-empty">本日の打刻はまだありません</div>';
-        return;
-      }
-      var dotColors = { '出勤':'#22c55e', '退勤':'#ef4444', '休憩開始':'#f59e0b', '休憩終了':'#8b5cf6' };
-      area.innerHTML = data.map(function(p){
-        var time = jstTimeFull(p.punched_at);
-        var dot  = dotColors[p.punch_type] || '#888';
-        return '<div class="punch-log-item">'+
-          '<div class="punch-log-time">'+time+'</div>'+
-          '<div class="punch-log-dot" style="background:'+dot+'"></div>'+
-          '<div>'+p.punch_type+'</div>'+
-        '</div>';
-      }).join('');
+function selectEmp(id, name, authId){
+  selectedEmpId = id;
+  // store auth_id for punch
+  allEmps.forEach(function(e){ if(e.id===id){ e._authId=authId; } });
+  renderEmpList(allEmps.filter(function(e){
+    var q = (document.getElementById('empSearch').value||'').trim().toLowerCase();
+    return !q || (e.name||'').toLowerCase().includes(q) || (e.department||'').toLowerCase().includes(q);
+  }));
+  document.getElementById('manualErr').textContent = '';
+  document.getElementById('manualPunchBtn').disabled = false;
+}
+
+async function doManualPunch(){
+  var errEl = document.getElementById('manualErr');
+  errEl.textContent = '';
+  if(!selectedEmpId){ errEl.textContent = '従業員を選択してください'; return; }
+  var emp = allEmps.find(function(e){ return e.id === selectedEmpId; });
+  if(!emp){ errEl.textContent = '従業員が見つかりません'; return; }
+
+  var now = new Date();
+  var timeStr = now.toLocaleTimeString('ja-JP', {hour12:false});
+
+  // Show result overlay
+  showResultOverlay('✅', emp.name, currentType, timeStr, true);
+  setStatus('✅ ' + emp.name + ' — ' + currentType + '（手動打刻）');
+
+  // Save to Supabase
+  if(sb && (emp.auth_id || emp._authId)){
+    var {error} = await sb.from('punch_records').insert({
+      user_id:    emp.auth_id || emp._authId,
+      punch_type: currentType,
+      punched_at: now.toISOString(),
+      note:       '手動打刻'
     });
+    if(error){ errEl.textContent = '保存エラー: ' + error.message; }
+  }
+
+  addLog(emp.name, currentType, timeStr);
+  showToast(emp.name + ' — ' + currentType + ' ✅');
+
+  // Reset selection
+  selectedEmpId = null;
+  document.getElementById('manualPunchBtn').disabled = true;
+  renderEmpList(allEmps);
+
+  setTimeout(hideResultOverlay, 3500);
 }
 
-// Do punch
-function doPunch(type){
-  if (!selUser || !sb) return;
-  // Disable buttons briefly
-  var btns = document.querySelectorAll('.punch-btn');
-  btns.forEach(function(b){ b.disabled = true; b.style.opacity = '.5'; });
+// ── カメラ起動 ────────────────────────────
+async function startCamera(){
+  var video = document.getElementById('video');
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width:{ideal:640}, height:{ideal:480} }
+    });
+    video.srcObject = stream;
+    await new Promise(function(r){ video.onloadedmetadata = r; });
+    await video.play();
+    var dot = document.getElementById('camDot');
+    dot.classList.remove('off');
+    dot.classList.add('ok');
+    setStatus('📷 スタンバイ中...');
+    scheduleDetect();
+  } catch(e){
+    setStatus('❌ カメラ起動失敗: ' + e.message + '（手動打刻は左メニューから）');
+    var dot = document.getElementById('camDot');
+    dot.classList.remove('ok');
+    dot.classList.add('off');
+  }
+}
 
-  sb.from('punch_records').insert({
-    user_id: selUser.auth,
-    punch_type: type,
-    punched_at: new Date().toISOString()
-  }).then(function(r){
-    btns.forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
+// ── 検出ループ ────────────────────────────
+function scheduleDetect(){
+  if(detectTimeout) clearTimeout(detectTimeout);
+  detectTimeout = setTimeout(detectFrame, DETECT_INT);
+}
 
-    if (r.error) {
-      alert('打刻に失敗しました: ' + r.error.message);
-      return;
+async function detectFrame(){
+  var video = document.getElementById('video');
+  if(!video.srcObject || video.paused || video.ended){ scheduleDetect(); return; }
+
+  var overlay = document.getElementById('overlay');
+  overlay.width  = video.videoWidth  || 480;
+  overlay.height = video.videoHeight || 360;
+  var ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  var guide = document.getElementById('faceGuide');
+
+  if(!faceMatcher){
+    guide.className = 'face-guide';
+    updateConf(0);
+    scheduleDetect();
+    return;
+  }
+
+  var detection;
+  try {
+    detection = await faceapi
+      .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({minConfidence:0.5}))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+  } catch(e){ scheduleDetect(); return; }
+
+  if(!detection){
+    guide.className = 'face-guide';
+    if(!processing) setStatus('📷 スタンバイ中...');
+    updateConf(0);
+    Object.keys(confirmCnt).forEach(function(k){ confirmCnt[k]=0; });
+    scheduleDetect();
+    return;
+  }
+
+  // Draw bounding box (mirrored)
+  var box = detection.detection.box;
+  var mX = overlay.width - box.x - box.width;
+  ctx.strokeStyle = 'rgba(96,165,250,.6)';
+  ctx.lineWidth = 2;
+  roundRect(ctx, mX, box.y, box.width, box.height, 8);
+
+  var match = faceMatcher.findBestMatch(detection.descriptor);
+  var conf  = Math.round((1 - match.distance) * 100);
+  updateConf(conf);
+
+  if(match.label === 'unknown' || processing){
+    guide.className = 'face-guide detecting';
+    if(!processing) setStatus('👤 顔を検出中... (' + conf + '%)');
+    Object.keys(confirmCnt).forEach(function(k){ confirmCnt[k]=0; });
+    scheduleDetect();
+    return;
+  }
+
+  var empId = match.label;
+  var now   = Date.now();
+  var coolOk = !lastPunch[empId] || (now - lastPunch[empId]) > COOLDOWN;
+
+  if(!coolOk){
+    var remain = Math.ceil((COOLDOWN - (now - lastPunch[empId])) / 1000);
+    guide.className = 'face-guide detecting';
+    setStatus('⏳ ' + (empMap[empId]?empMap[empId].name:'') + ' — ' + remain + '秒後に再打刻可能');
+    ctx.strokeStyle = 'rgba(245,158,11,.8)';
+    ctx.lineWidth = 3;
+    roundRect(ctx, mX, box.y, box.width, box.height, 8);
+    Object.keys(confirmCnt).forEach(function(k){ confirmCnt[k]=0; });
+    scheduleDetect();
+    return;
+  }
+
+  confirmCnt[empId] = (confirmCnt[empId] || 0) + 1;
+  var info = empMap[empId] || { name:'不明', auth_id:null };
+
+  ctx.strokeStyle = 'rgba(34,197,94,.9)';
+  ctx.lineWidth = 3;
+  roundRect(ctx, mX, box.y, box.width, box.height, 8);
+  setStatus('🔍 認識中: ' + info.name + ' (' + conf + '%)  ' + confirmCnt[empId] + '/' + CONFIRM_N);
+  guide.className = 'face-guide detecting';
+
+  if(confirmCnt[empId] >= CONFIRM_N){
+    confirmCnt[empId] = 0;
+    guide.className = 'face-guide recognized';
+    processing = true;
+    await doPunchFace(empId, info, conf);
+  }
+
+  scheduleDetect();
+}
+
+// ── 顔認証打刻 ────────────────────────────
+async function doPunchFace(empId, info, conf){
+  lastPunch[empId] = Date.now();
+  var now     = new Date();
+  var timeStr = now.toLocaleTimeString('ja-JP', {hour12:false});
+
+  showResultOverlay(getTypeIcon(currentType), info.name, currentType, timeStr, false);
+  setStatus('✅ ' + info.name + ' — ' + currentType + ' 完了（顔認証）');
+
+  if(sb && info.auth_id){
+    try {
+      await sb.from('punch_records').insert({
+        user_id:    info.auth_id,
+        punch_type: currentType,
+        punched_at: now.toISOString(),
+        note:       '顔認証 (' + conf + '%)'
+      });
+    } catch(e){ console.error('打刻保存エラー:', e); }
+  }
+
+  addLog(info.name, currentType, timeStr);
+
+  // 次の種別を自動提案
+  if(currentType === '出勤')      setTimeout(function(){ setPunchType('退勤'); }, 4200);
+  else if(currentType === '休憩開始') setTimeout(function(){ setPunchType('休憩終了'); }, 4200);
+
+  setTimeout(function(){
+    processing = false;
+    hideResultOverlay();
+    setStatus('📷 スタンバイ中...');
+    updateConf(0);
+    document.getElementById('faceGuide').className = 'face-guide';
+  }, 4000);
+}
+
+// ── Result Overlay ─────────────────────────
+function showResultOverlay(icon, name, type, time, isManual){
+  var ov = document.getElementById('resultOverlay');
+  document.getElementById('resultIcon').textContent  = icon;
+  document.getElementById('resultName').textContent  = name;
+  document.getElementById('resultType').textContent  = type + (isManual ? '（手動）' : '（顔認証）');
+  document.getElementById('resultTime').textContent  = time;
+  ov.classList.add('show');
+}
+function hideResultOverlay(){
+  document.getElementById('resultOverlay').classList.remove('show');
+}
+
+// ── Log ───────────────────────────────────
+function addLog(name, type, time){
+  recentLog.unshift({ name:name, type:type, time:time });
+  if(recentLog.length > 12) recentLog.pop();
+  renderLog();
+}
+
+function renderLog(){
+  var el = document.getElementById('logList');
+  if(!recentLog.length){
+    el.innerHTML = '<div class="emp-none">まだ打刻はありません</div>';
+    return;
+  }
+  var cls = {出勤:'in',退勤:'out',休憩開始:'br',休憩終了:'br2'};
+  el.innerHTML = recentLog.map(function(r){
+    return '<div class="log-item">'
+      +'<span class="log-name">'+esc(r.name)+'</span>'
+      +'<span class="log-type '+(cls[r.type]||'in')+'">'+esc(r.type)+'</span>'
+      +'<span class="log-time">'+esc(r.time)+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────
+function setStatus(msg){ var el=document.getElementById('camStatusTxt'); if(el) el.textContent=msg; }
+function updateConf(pct){
+  var fill=document.getElementById('confFill'); var pEl=document.getElementById('confPct');
+  if(fill){ fill.style.width=pct+'%'; fill.style.background=pct>70?'var(--green)':pct>45?'var(--amber)':'var(--red)'; }
+  if(pEl) pEl.textContent=pct+'%';
+}
+function getTypeIcon(type){ return {出勤:'✅',退勤:'👋',休憩開始:'⏸',休憩終了:'▶️'}[type]||'✅'; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.stroke();
+}
+
+// ── Start ────────────────────────────────
+window.addEventListener('load', function(){
+  var check = setInterval(function(){
+    if(typeof faceapi !== 'undefined'){
+      clearInterval(check);
+      init();
     }
-
-    // Show success
-    var icons = { '出勤':'🟢', '退勤':'🔴', '休憩開始':'🟡', '休憩終了':'🟣' };
-    document.getElementById('sucIcon').textContent = icons[type] || '✅';
-    document.getElementById('sucMsg').textContent = selUser.name + ' さんが' + type + 'しました';
-    var n = new Date();
-    document.getElementById('sucTime').textContent = p2(n.getHours())+':'+p2(n.getMinutes())+':'+p2(n.getSeconds());
-    document.getElementById('successOverlay').style.display = 'flex';
-
-    // 3 seconds then refresh
-    setTimeout(function(){
-      document.getElementById('successOverlay').style.display = 'none';
-      // Refresh status and log
-      loadTodayStatus();
-      loadPunchLog(selUser.auth);
-      // Re-select to update status badge
-      setTimeout(function(){
-        var btn = document.querySelector('.emp-btn[data-auth="'+selUser.auth+'"]');
-        if (btn) selectEmp(btn);
-      }, 500);
-    }, 2500);
-  });
-}
+  }, 100);
+});
 </script>
 </body>
 </html>
