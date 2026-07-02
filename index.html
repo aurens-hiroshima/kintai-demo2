@@ -2085,49 +2085,52 @@ function loadDashboard(){
     else kpiLeave.textContent = '—';
   })();
 
-  // ── 遅刻・欠勤カウント
+  // ── 遅刻・欠勤カウント（pattern_id はFKなしtextのため別途取得してJSマージ）
   (async function(){
     var today = new Date().toISOString().slice(0,10);
-    var kpiLate = document.getElementById('kpi-late');
+    var kpiLate   = document.getElementById('kpi-late');
     var kpiAbsent = document.getElementById('kpi-absent');
     try {
       var results = await Promise.all([
-        sb.from('shift_schedules')
-          .select('employee_id,custom_start,shift_patterns(start_time,type,name)')
-          .eq('date', today),
+        sb.from('shift_schedules').select('employee_id,custom_start,pattern_id').eq('date',today),
+        sb.from('shift_patterns').select('id,name,type,start_time'),
         sb.from('employees').select('id,auth_id').eq('is_active',true),
         sb.from('punch_records').select('user_id,punched_at')
-          .gte('punched_at', today+'T00:00:00').lte('punched_at', today+'T23:59:59')
+          .gte('punched_at',today+'T00:00:00').lte('punched_at',today+'T23:59:59')
           .eq('punch_type','出勤').order('punched_at',{ascending:true}),
         sb.from('leave_requests').select('user_id')
           .eq('status','approved').lte('start_date',today).gte('end_date',today)
       ]);
       var shifts    = results[0].data||[];
-      var emps      = results[1].data||[];
-      var punches   = results[2].data||[];
-      var onLeaves  = results[3].data||[];
-      var empIdMap  = {};
+      var patterns  = results[1].data||[];
+      var emps      = results[2].data||[];
+      var punches   = results[3].data||[];
+      var onLeaves  = results[4].data||[];
+      var patMap = {};
+      patterns.forEach(function(p){ patMap[p.id]=p; });
+      var empIdMap = {};
       emps.forEach(function(e){ empIdMap[e.id]=e.auth_id; });
       var onLeaveSet = new Set(onLeaves.map(function(l){ return l.user_id; }));
       var firstPunch = {};
-      punches.forEach(function(p){
-        if(!firstPunch[p.user_id]) firstPunch[p.user_id]=p.punched_at;
-      });
+      punches.forEach(function(p){ if(!firstPunch[p.user_id]) firstPunch[p.user_id]=p.punched_at; });
       var lateCount=0, absentCount=0;
       shifts.forEach(function(s){
-        var sp = s.shift_patterns;
-        if(!sp) return;
-        if(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日'))) return;
-        if(sp.name&&sp.name.includes('公休')) return;
+        var sp = patMap[s.pattern_id];
+        // パターンなし or custom_start のみの場合でも処理
+        var startStr = s.custom_start || (sp&&sp.start_time);
+        if(!startStr) return; // 開始時刻不明はスキップ
+        // 公休・休日パターンはスキップ
+        if(sp){
+          if(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日'))) return;
+          if(sp.name&&sp.name.includes('公休')) return;
+        }
         var authId = empIdMap[s.employee_id];
         if(!authId||onLeaveSet.has(authId)) return;
-        var startStr = s.custom_start||sp.start_time;
-        if(!startStr) return;
         if(!firstPunch[authId]){
           absentCount++;
         } else {
           var punchDt = new Date(firstPunch[authId]);
-          var shiftDt = new Date(today+'T'+startStr.slice(0,5)+':00');
+          var shiftDt = new Date(today+'T'+String(startStr).slice(0,5)+':00');
           if(punchDt > new Date(shiftDt.getTime()+60000)) lateCount++;
         }
       });
@@ -2369,11 +2372,14 @@ function loadLeaveBreakdown(){
   Promise.all([
     sb.from('leave_requests').select('user_id,leave_type,unit')
       .eq('status','approved').lte('start_date',today).gte('end_date',today),
-    sb.from('shift_schedules')
-      .select('employee_id,shift_patterns(type,name)').eq('date',today)
+    sb.from('shift_schedules').select('employee_id,pattern_id').eq('date',today),
+    sb.from('shift_patterns').select('id,name,type')
   ]).then(function(rs){
-    var leaves = rs[0].data||[];
-    var shifts  = rs[1].data||[];
+    var leaves   = rs[0].data||[];
+    var shifts   = rs[1].data||[];
+    var patterns = rs[2].data||[];
+    var patMap = {};
+    patterns.forEach(function(p){ patMap[p.id]=p; });
     var paid=0, holiday=0, amLeave=0, pmLeave=0;
     leaves.forEach(function(l){
       var u  = l.unit||'day';
@@ -2383,7 +2389,7 @@ function loadLeaveBreakdown(){
       if(lt.includes('有給')||lt.includes('年次')||lt.includes('有休')) paid++;
     });
     shifts.forEach(function(s){
-      var sp = s.shift_patterns;
+      var sp = patMap[s.pattern_id];
       if(!sp) return;
       if((sp.type&&(sp.type==='off'||sp.type.includes('公休')))||(sp.name&&sp.name.includes('公休'))) holiday++;
     });
@@ -2424,14 +2430,16 @@ function loadDashNotices(){
       };
       var catLabel={'general':'お知らせ','important':'重要','info':'情報','handover':'引継ぎ'};
       function renderRow(n){
-        var cat = catLabel[n.category]||n.category;
-        var cs  = catStyle[n.category]||catStyle['お知らせ'];
-        var dt  = n.created_at ? new Date(n.created_at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '';
+        var cat   = catLabel[n.category]||n.category;
+        var cs    = catStyle[n.category]||catStyle['お知らせ'];
+        var dt    = n.created_at ? new Date(n.created_at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}) : '';
+        var title = (n.title||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var auth  = (n.author_name||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
           +(n.is_pinned?'<span style="font-size:15px">📌</span>':'<span style="font-size:15px;opacity:0;pointer-events:none">📌</span>')
           +'<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;'+cs+'">'+cat+'</span>'
-          +'<span style="font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(n.title)+'</span>'
-          +'<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+esc(n.author_name||'')+'</span>'
+          +'<span style="font-size:14px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+title+'</span>'
+          +'<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+auth+'</span>'
           +'<span style="font-size:11px;color:var(--muted);margin-left:8px;white-space:nowrap">'+dt+'</span>'
           +'</div>';
       }
