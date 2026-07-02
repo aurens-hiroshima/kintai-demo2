@@ -2091,26 +2091,29 @@ function loadDashboard(){
       var patterns = getShiftPatterns(); // localStorageから取得
       var patMap = {};
       patterns.forEach(function(p){ patMap[p.id]=p; });
-      var empMap = {}; // employees.id → auth_id
-      emps.forEach(function(e){ empMap[e.id]=e.auth_id; });
-      var offSet = new Set(); // auth_id のユニーク集合
-      // leave_requests ベース
+      // employee_id ↔ auth_id 双方向マップ
+      var authToEmpId = {}, empIdToAuthId = {};
+      emps.forEach(function(e){
+        if(e.auth_id) authToEmpId[e.auth_id] = e.id;
+        empIdToAuthId[e.id] = e.auth_id;
+      });
+      var offSet = new Set(); // employees.id ベースで重複排除（auth_id null でも漏れない）
+      // leave_requests: user_id=auth_id → employees.id に変換
       leaves.forEach(function(l){
         var u = l.unit||'day';
-        if(u==='half_am' && !isMorning) return; // 午後は午前休を除外
-        if(u==='half_pm' && !isAfter)   return; // 午前は午後休を除外
-        offSet.add(l.user_id);
+        if(u==='half_am' && !isMorning) return;
+        if(u==='half_pm' && !isAfter)   return;
+        var empId = authToEmpId[l.user_id]||('auth_'+l.user_id);
+        offSet.add(empId);
       });
-      // 公休シフトベース
+      // シフトベース（公休・有休・半日休パターン）
       shifts.forEach(function(s){
-        var sp = patMap[s.pattern_id];
-        if(!sp) return;
-        var isOff = sp.type==='all_off'
-                 || (sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))
-                 || (sp.name&&(sp.name.includes('公休')||sp.name==='休'));
-        if(!isOff) return;
-        var authId = empMap[s.employee_id];
-        if(authId) offSet.add(authId);
+        var sp = patMap[s.pattern_id]; if(!sp) return;
+        var t = sp.type||'';
+        var isFullOff = t==='all_off'||t==='off'||(sp.name&&(sp.name.includes('公休')||sp.name==='休'));
+        var isHalfOff = (t==='half_am'&&isMorning)||(t==='half_pm'&&isAfter);
+        if(!isFullOff && !isHalfOff) return;
+        offSet.add(s.employee_id);
       });
       kpiLeave.textContent = offSet.size;
     } catch(e) {
@@ -2579,30 +2582,36 @@ function loadLeaveBreakdown(){
     var emps     = rs[2].data||[];
     var patterns = getShiftPatterns(); // localStorageから取得
     var patMap={};  patterns.forEach(function(p){ patMap[p.id]=p; });
-    var empByAuth={}; emps.forEach(function(e){ empByAuth[e.auth_id]=e; });
+    var empByAuth={}; emps.forEach(function(e){ if(e.auth_id) empByAuth[e.auth_id]=e; });
     var empById={};   emps.forEach(function(e){ empById[e.id]=e; });
     var rows=[];
-    // leave_requests ベース
+    var seenEmpId=new Set(); // employees.id で重複排除
+    // leave_requests ベース（user_id=auth_id → employee_idに変換）
     leaves.forEach(function(l){
       var u=l.unit||'day'; var lt=l.leave_type||'';
-      if(u==='half_am' && !isMorning) return;  // 午後は午前休除外
-      if(u==='half_pm' && isMorning)  return;  // 午前は午後休除外
+      if(u==='half_am' && !isMorning) return;
+      if(u==='half_pm' && isMorning)  return;
       var emp=empByAuth[l.user_id]; if(!emp) return;
+      if(seenEmpId.has(emp.id)) return;
+      seenEmpId.add(emp.id);
       var kubun = u==='half_am'?'午前休': u==='half_pm'?'午後休':
                   (lt.includes('有給')||lt.includes('年次')||lt.includes('有休'))?'有休':
                   lt||'休暇';
-      rows.push({dept:emp.department||'—',name:emp.name,kubun:kubun,auth_id:l.user_id});
+      rows.push({dept:emp.department||'—',name:emp.name,kubun:kubun,empId:emp.id});
     });
-    // 公休シフトベース（重複排除）
-    var seenAuth=new Set(rows.map(function(r){return r.auth_id;}));
+    // シフトベース（公休・有給休暇・半日休パターン、重複排除）
     shifts.forEach(function(s){
       var sp=patMap[s.pattern_id]; if(!sp) return;
-      var isOff=sp.type==='all_off'||(sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))||(sp.name&&(sp.name.includes('公休')||sp.name==='休'));
-      if(!isOff) return;
+      var t=sp.type||'';
+      var isFullOff=t==='all_off'||t==='off'||(sp.name&&(sp.name.includes('公休')||sp.name==='休'));
+      var isHalfAm=t==='half_am'&&isMorning;
+      var isHalfPm=t==='half_pm'&&!isMorning;
+      if(!isFullOff&&!isHalfAm&&!isHalfPm) return;
+      if(seenEmpId.has(s.employee_id)) return; // leave_requestsと重複しない
+      seenEmpId.add(s.employee_id);
       var emp=empById[s.employee_id]; if(!emp) return;
-      if(seenAuth.has(emp.auth_id)) return; // 有休と重複しない
-      seenAuth.add(emp.auth_id);
-      rows.push({dept:emp.department||'—',name:emp.name,kubun:'公休',auth_id:emp.auth_id});
+      var kubun=isHalfAm?'午前休':isHalfPm?'午後休':(sp.name&&sp.name.includes('有給'))?'有休':'公休';
+      rows.push({dept:emp.department||'—',name:emp.name,kubun:kubun,empId:s.employee_id});
     });
     // 部署 → 氏名 でソート
     rows.sort(function(a,b){ return (a.dept+a.name)<(b.dept+b.name)?-1:1; });
@@ -5297,7 +5306,7 @@ window.loadShiftDaily = async function(){
       var txt='';
       if(pat) txt=isOff
         ?'<span style="font-size:10px;color:'+pat.color+';font-weight:700">休</span>'
-        :'<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+pat.name.slice(0,4)+'</span>';
+        :'<span style="display:block;background:'+pat.color+';color:#fff;border-radius:3px;font-size:9px;padding:1px 2px;line-height:1.3;overflow:hidden;max-width:30px">'+(pat.code||pat.name.slice(0,4))+'</span>';
       return '<td onclick="openCellPicker(event,\x27'+emp.id+'\x27,\x27'+iso+'\x27)" '
         +'style="border:1px solid var(--border);padding:2px;text-align:center;cursor:pointer;width:32px;min-width:32px;height:30px;background:'+bg+'" title="'+iso+(pat?' '+pat.name:'')+'">'+txt+'</td>';
     }).join('');
