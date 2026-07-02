@@ -332,6 +332,7 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
             <button class="btn btn-outline btn-sm" onclick="runYearCheck()">⚠️ 法令チェック</button>
           </div>
           <div class="flex gap8 flex-wrap mt8" id="yi_summary"></div>
+          <div id="yi_defaults_info" style="display:none;margin-top:10px;padding:8px 12px;background:var(--lblue);border-radius:6px;font-size:11px;color:var(--blue);line-height:1.6"></div>
         </div>
 
         <!-- 法令チェック結果 -->
@@ -342,6 +343,15 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
             <thead><tr><th style="width:28px">No</th><th>判定項目</th><th>条件</th><th style="width:100px">判定</th><th>詳細</th></tr></thead>
             <tbody id="yi_rule_tbl"></tbody>
           </table>
+        </div>
+
+        <!-- エラー詳細 -->
+        <div class="card" id="yi_error_card" style="display:none;border-color:var(--red)">
+          <div class="card-title" style="color:var(--red)">❌ エラー詳細・修正が必要な項目</div>
+          <div id="yi_error_list"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-outline btn-sm" onclick="nav('calendar')">📅 カレンダー編集で修正する →</button>
+          </div>
         </div>
 
         <!-- 月カレンダープレビュー -->
@@ -422,6 +432,7 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
           <div class="stab" onclick="switchStab(this,'stab-patterns')">📋 勤務パターン</div>
           <div class="stab" onclick="switchStab(this,'stab-depts')">🏢 部署</div>
           <div class="stab" onclick="switchStab(this,'stab-holidays')">🎌 休日設定</div>
+          <div class="stab" onclick="switchStab(this,'stab-weekdays')">🗓️ 曜日デフォルト</div>
         </div>
 
         <!-- 職員マスター -->
@@ -480,6 +491,65 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
             <tbody id="holTbl"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">読み込み中...</td></tr></tbody></table>
           </div>
         </div>
+
+        <!-- 曜日デフォルト設定 -->
+        <div class="stab-content" id="stab-weekdays">
+          <div class="card">
+            <div class="card-title">
+              <span>🗓️ 曜日別デフォルト勤務区分（パターン別）</span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn btn-outline btn-sm" onclick="nav('yearinit')">→ 年間初期設定へ</button>
+                <button class="btn btn-primary btn-sm" onclick="saveWeekdayDefaults()">💾 保存</button>
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+              勤務パターンごとに曜日デフォルトを設定できます。年間初期設定でパターンを選ぶと、そのパターンの設定が自動適用されます。
+            </div>
+            <!-- パターン選択 -->
+            <div class="form-group" style="margin-bottom:16px">
+              <label class="form-label">設定対象の勤務パターン</label>
+              <select id="wdPatSel" class="form-control" style="max-width:320px" onchange="onWdPatChange()">
+                <option value="">— パターンを選択 —</option>
+              </select>
+            </div>
+            <!-- パターン未選択時のメッセージ -->
+            <div id="wdNoPatMsg" style="color:var(--muted);font-size:12px;padding:16px;text-align:center;background:var(--bg);border-radius:6px">
+              👆 上のドロップダウンから勤務パターンを選択してください
+            </div>
+            <!-- パターン選択後のテーブル -->
+            <div id="wdTableWrap" style="display:none">
+              <table class="tbl" style="width:auto;min-width:480px">
+                <thead>
+                  <tr>
+                    <th style="width:90px">曜日</th>
+                    <th style="text-align:center;min-width:90px">勤務</th>
+                    <th style="text-align:center;min-width:90px">休日</th>
+                    <th style="text-align:center;min-width:90px">法定休日</th>
+                  </tr>
+                </thead>
+                <tbody id="weekdayDefaultRows"></tbody>
+              </table>
+              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">祝日の扱い（年間初期設定に反映）</div>
+                <div style="display:flex;gap:16px;flex-wrap:wrap">
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+                    <input type="radio" name="holDefault" value="法定休日" style="accent-color:var(--blue)"> 法定休日（赤表示）
+                  </label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+                    <input type="radio" name="holDefault" value="休日" style="accent-color:var(--blue)"> 休日（グレー）
+                  </label>
+                  <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+                    <input type="radio" name="holDefault" value="勤務" style="accent-color:var(--blue)"> 勤務日にする
+                  </label>
+                </div>
+              </div>
+              <div style="margin-top:14px;padding:10px 14px;background:var(--lgreen);border-radius:6px;font-size:11px;color:var(--green)">
+                💡 設定を保存後、「年間初期設定」で同じパターンを選択してプレビュー生成すると、この設定が自動的に反映されます。
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div><!-- content -->
@@ -1069,6 +1139,23 @@ function genYearInit(){
   var brk=parseInt(document.getElementById('yi_break').value)||60;
   var annH=parseFloat(document.getElementById('yi_annual_hours').value)||1920;
   if(!patId){toast('パターンを選択してください','red');return;}
+  // 選択パターン別の曜日デフォルト設定をlocalStorageから読み込む（システム設定→曜日デフォルトで設定）
+  var wdDefaults=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
+  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var pat=_patterns.find(function(p){return p.id===patId;})||{};
+  var hasPatSetting=localStorage.getItem('yi_wd_'+patId)!==null;
+  // 使用中の設定を表示
+  var WDAY_LBL2=['日','月','火','水','木','金','土'];
+  var defHtml='<b>['+( pat.pattern_code||'?')+'] '+(pat.pattern_name||'')+'</b> の設定: ';
+  [1,2,3,4,5,6,0].forEach(function(wi){
+    var col=wi===0?'color:var(--red)':wi===6?'color:var(--blue)':'';
+    defHtml+='<span style="margin-right:6px;'+col+'">'+WDAY_LBL2[wi]+':'+wdDefaults[wi]+'</span>';
+  });
+  defHtml+=' ／ 祝日:'+holDefault;
+  if(!hasPatSetting) defHtml+=' <span style="color:var(--amber)">⚠️ 未設定のためデフォルト値を使用</span>';
+  defHtml+=' <small>（<a href="#" onclick="nav(\x27settings\x27);return false;" style="color:var(--blue)">変更する</a>）</small>';
+  var diEl=document.getElementById('yi_defaults_info');
+  if(diEl){diEl.style.display='';diEl.innerHTML=defHtml;}
   _yiYear=yr; _yiData=[];
   for(var m=1;m<=12;m++){
     var dim=lastDay(yr,m);
@@ -1077,10 +1164,13 @@ function genYearInit(){
       var wd=new Date(yr,m-1,d).getDay();
       var hol=_holidays[ds]||JP_HOL[ds];
       var dtype,schH,schSt,schEn;
-      if(wd===0){dtype='法定休日';schH=0;schSt='';schEn='';}
-      else if(wd===6||(hol&&typeof hol==='string')){dtype='休日';schH=0;schSt='';schEn='';}
-      else if(hol&&typeof hol==='object'&&hol.type==='法定休日'){dtype='法定休日';schH=0;schSt='';schEn='';}
-      else{dtype='勤務';schH=dayH;schSt=st;schEn=en;}
+      if(hol){
+        dtype=holDefault; schH=0; schSt=''; schEn='';
+      } else {
+        dtype=wdDefaults[wd]||'勤務';
+        var isWk=(dtype==='勤務'||dtype==='振替出勤');
+        schH=isWk?dayH:0; schSt=isWk?st:''; schEn=isWk?en:'';
+      }
       _yiData.push({date:ds,m:m,d:d,wd:wd,type:dtype,hours:schH,start:schSt,end:schEn,brk:brk,hol:JP_HOL[ds]||null,patId:patId});
     }
   }
@@ -1169,6 +1259,33 @@ function runYearCheck(){
     var st=ru.ng?'<span class="ng-badge">NG '+ru.ngM+'</span>':'<span class="ok-badge">OK</span>';
     return '<tr class="'+(ru.ng?'ng-row':'')+'"><td style="text-align:center;font-weight:700">'+ru.no+'</td><td style="font-weight:700;color:'+(ru.ng?'var(--red)':'var(--green)')+'">'+ru.lbl+'</td><td style="color:var(--muted);font-size:11px">'+ru.cond+'</td><td>'+st+'</td><td style="font-size:11px;color:'+(ru.ng?'var(--red)':'var(--muted)')+'">'+ru.det+'</td></tr>';
   }).join('');
+  // エラー詳細カードの表示
+  var errCard=document.getElementById('yi_error_card');
+  var errList=document.getElementById('yi_error_list');
+  if(errCard&&errList){
+    var ngRules=rules.filter(function(r){return r.ng;});
+    if(ngRules.length){
+      errCard.style.display='';
+      var fixes={
+        1:'1日の所定時間が10hを超えています。カレンダー編集で当該日の所定時間を8〜10h以内に修正してください。',
+        2:'週の合計時間が52hを超えています。その週の勤務日数を減らすか、1日の所定時間を調整してください。',
+        3:'週48h超が3週連続しています。間の週に休日を追加するか、所定時間を減らしてください。',
+        4:'3ヶ月以内に週48h超が4週以上あります。バランスよく分散させてください。',
+        5:'年間勤務日数が280日を超えています。曜日デフォルトで土曜を「休日」にするか、祝日を正しく設定してください。',
+        6:'年間休日が118日未満です。土日・祝日の設定を見直し、休日を増やしてください。'
+      };
+      errList.innerHTML=ngRules.map(function(ru){
+        return '<div style="padding:10px 14px;border:1px solid #fca5a5;border-radius:6px;background:var(--lred);margin-bottom:8px">'
+          +'<div style="font-weight:700;color:var(--red);margin-bottom:5px">❌ ルール'+ru.no+': '+ru.lbl+'（'+ru.ngM+'）</div>'
+          +'<div style="font-size:11px;margin-bottom:3px;color:#555"><b>判定条件：</b>'+ru.cond+'</div>'
+          +'<div style="font-size:11px;margin-bottom:5px;color:var(--red)"><b>該当：</b>'+ru.det+'</div>'
+          +'<div style="font-size:11px;background:#fff;border-radius:4px;padding:6px;color:#333"><b>💡 対処方法：</b>'+(fixes[ru.no]||'')+'</div>'
+          +'</div>';
+      }).join('');
+    } else {
+      errCard.style.display='none';
+    }
+  }
 }
 function saveYearInit(){
   if(!_yiData.length){toast('先にプレビューを生成してください','red');return;}
@@ -1241,6 +1358,7 @@ function exportCheckReport(){toast('チェックレポートCSV（実装中）',
 
 // ─── システム設定 ─────────────────────────────────────────────
 function initSettings(){
+  buildWeekdayDefaultsUI();
   loadEmployees().then(function(){
     populateSelects();
     loadHolidays();
@@ -1468,6 +1586,69 @@ function importJpHolidays(){
     if(r.error){toast('取込失敗: '+r.error.message,'red');return;}
     toast('✅ '+inserts.length+'件の祝日を取り込みました','green'); loadHolidaysToCache().then(loadHolidays);
   });
+}
+
+// ─── 曜日デフォルト設定UI ─────────────────────────────────────
+function buildWeekdayDefaultsUI(){
+  // パターンセレクトを _patterns で初期化
+  var sel=document.getElementById('wdPatSel');
+  if(!sel) return;
+  var prev=sel.value;
+  sel.innerHTML='<option value="">— パターンを選択 —</option>'
+    +_patterns.map(function(p){return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
+  if(prev) sel.value=prev;
+  if(sel.value) onWdPatChange();
+}
+function onWdPatChange(){
+  var patId=document.getElementById('wdPatSel').value;
+  var wrap=document.getElementById('wdTableWrap');
+  var noMsg=document.getElementById('wdNoPatMsg');
+  if(!patId){
+    if(wrap) wrap.style.display='none';
+    if(noMsg) noMsg.style.display='';
+    return;
+  }
+  if(wrap) wrap.style.display='';
+  if(noMsg) noMsg.style.display='none';
+  // パターン別にlocalStorageから読み込む (キー: yi_wd_{patId})
+  var DOW_IDX=[1,2,3,4,5,6,0];
+  var DOW_LABELS=['月','火','水','木','金','土','日'];
+  var saved=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
+  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var tbody=document.getElementById('weekdayDefaultRows');
+  if(!tbody) return;
+  var TYPES=['勤務','休日','法定休日'];
+  tbody.innerHTML=DOW_IDX.map(function(wi,i){
+    var lbl=DOW_LABELS[i];
+    var color=wi===0?'color:var(--red);font-weight:700':wi===6?'color:var(--blue);font-weight:700':'font-weight:600';
+    var cur=saved[wi]||'勤務';
+    return '<tr>'
+      +'<td style="'+color+'">'+lbl+'曜日</td>'
+      +TYPES.map(function(t){
+        var dot=t==='勤務'?'<span style="color:var(--green)">●</span>':t==='法定休日'?'<span style="color:var(--red)">●</span>':'<span style="color:var(--muted)">●</span>';
+        return '<td style="text-align:center"><label style="cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;gap:3px">'
+          +'<input type="radio" name="wd_'+wi+'" value="'+t+'"'+(cur===t?' checked':'')+' style="accent-color:var(--blue)">'+dot
+          +'</label></td>';
+      }).join('')
+      +'</tr>';
+  }).join('');
+  var holEl=document.querySelector('input[name="holDefault"][value="'+holDefault+'"]');
+  if(holEl) holEl.checked=true;
+}
+function saveWeekdayDefaults(){
+  var patId=document.getElementById('wdPatSel').value;
+  if(!patId){toast('勤務パターンを選択してください','red');return;}
+  var pat=_patterns.find(function(p){return p.id===patId;});
+  var result={};
+  [0,1,2,3,4,5,6].forEach(function(wi){
+    var checked=document.querySelector('input[name="wd_'+wi+'"]:checked');
+    result[wi]=checked?checked.value:'勤務';
+  });
+  localStorage.setItem('yi_wd_'+patId,JSON.stringify(result));
+  var holChecked=document.querySelector('input[name="holDefault"]:checked');
+  if(holChecked) localStorage.setItem('yi_hol_'+patId,holChecked.value);
+  var name=pat?'['+pat.pattern_code+'] '+pat.pattern_name:'';
+  toast('✅ '+name+' の曜日デフォルトを保存しました','green');
 }
 
 // ─── ユーティリティ ──────────────────────────────────────────
