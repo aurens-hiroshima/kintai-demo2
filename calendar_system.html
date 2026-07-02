@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>変形労働時間カレンダー管理システム</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"
+  onerror="var s=document.createElement('script');s.src='https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';document.head.appendChild(s);console.warn('jsDelivr失敗→unpkgにフォールバック');"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -678,8 +679,15 @@ var _yiData = [], _yiYear = 2026;
 
 // ─── 起動 ────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
-  setTimeout(function(){
-    if(!window.supabase){ alert('Supabase SDK読み込みエラー'); return; }
+  var _sbWait=0;
+  function _initWhenReady(){
+    if(!window.supabase){
+      if(++_sbWait<20){ setTimeout(_initWhenReady,250); return; }
+      alert('Supabase SDKの読み込みに失敗しました。\nネットワーク接続を確認して再読み込みしてください。'); return;
+    }
+    _doInit();
+  }
+  function _doInit(){
     if(!SB_URL){ document.getElementById('loginScreen').style.display='flex'; document.getElementById('sbCfg').style.display=''; return; }
     try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch(e){ showSbCfg(); return; }
     sb.auth.getSession().then(function(r){
@@ -687,7 +695,8 @@ window.addEventListener('DOMContentLoaded', function(){
       else { document.getElementById('loginScreen').style.display='flex'; }
     }).catch(showSbCfg);
     document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-  },200);
+  }
+  _initWhenReady();
 });
 function showSbCfg(){ document.getElementById('loginScreen').style.display='flex'; document.getElementById('sbCfg').style.display=''; }
 function saveCfg(){
@@ -1352,7 +1361,143 @@ function runCheck(){
 
 // ─── 出力 ────────────────────────────────────────────────────
 function initOutput(){ populateSelects(); }
-function printYearCal(){toast('年間カレンダー印刷（実装中）','amber');}
+function printYearCal(){
+  var yr=parseInt(document.getElementById('outYear').value);
+  var patId=document.getElementById('outPat').value;
+  if(!patId){toast('出力パターンを選択してください','red');return;}
+  var pat=_patterns.find(function(p){return p.id===patId;})||{};
+  var empId=document.getElementById('outEmp').value;
+  var emp=empId?_employees.find(function(e){return e.id===empId;}):null;
+  var empName=emp?emp.name:'';
+  var empDept=emp?(emp.department||''):'';
+  function doprint(data){
+    if(!data||!data.length){toast('カレンダーデータがありません','red');return;}
+    var html=buildYearPrintHtml(yr,pat,data,empName,empDept);
+    var win=window.open('','_blank','width=1100,height=820');
+    win.document.open();win.document.write(html);win.document.close();
+    setTimeout(function(){win.print();},700);
+  }
+  if(_yiData.length&&_yiYear===yr&&_yiData[0]&&_yiData[0].patId===patId){doprint(_yiData);return;}
+  if(!sb){toast('ログインしてください','red');return;}
+  sb.from('work_calendar_days').select('work_date,day_type,scheduled_hours,start_time,end_time')
+    .eq('work_pattern_id',patId).gte('work_date',yr+'-01-01').lte('work_date',yr+'-12-31').order('work_date')
+    .then(function(res){
+      if(res.error){toast('データ取得エラー: '+res.error.message,'red');return;}
+      var map={};(res.data||[]).forEach(function(r){map[r.work_date]=r;});
+      var arr=[];
+      for(var m=1;m<=12;m++){
+        var dim=lastDay(yr,m);
+        for(var d=1;d<=dim;d++){
+          var ds=yr+'-'+p2(m)+'-'+p2(d);
+          var wd=new Date(yr,m-1,d).getDay();
+          var rec=map[ds]||{day_type:'勤務',scheduled_hours:0,start_time:'',end_time:''};
+          var hol=_holidays[ds]||JP_HOL[ds]||null;
+          arr.push({date:ds,m:m,d:d,wd:wd,type:rec.day_type,hours:parseFloat(rec.scheduled_hours)||0,start:rec.start_time||'',end:rec.end_time||'',hol:hol,patId:patId});
+        }
+      }
+      doprint(arr);
+    });
+}
+function buildYearPrintHtml(yr,pat,data,empName,empDept){
+  var patLabel=(pat.pattern_code?'['+pat.pattern_code+'] ':'')+( pat.pattern_name||'');
+  var totalWk=data.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
+  var totalH=data.reduce(function(s,r){return s+(parseFloat(r.hours)||0);},0);
+  var rangeStart=yr+'年1月1日';var rangeEnd=yr+'年12月31日';
+  var css=[
+    '@page{size:A4 landscape;margin:7mm}',
+    '*{box-sizing:border-box}',
+    'body{font-family:Meiryo,"MS PGothic",sans-serif;margin:0;padding:0;font-size:6px;color:#111}',
+    /* ヘッダー */
+    '.hdr{margin-bottom:2.5mm;padding-bottom:2mm;border-bottom:1px solid #0f2744;display:flex;justify-content:space-between;align-items:flex-end}',
+    '.hdr-l .ttl{font-size:16px;font-weight:700;color:#0f2744;letter-spacing:2px;line-height:1}',
+    '.hdr-l .rng{font-size:7px;color:#555;margin-top:1mm}',
+    '.hdr-r{text-align:right;line-height:1.6}',
+    '.hdr-r .dept{font-size:7.5px;color:#555}',
+    '.hdr-r .emp{font-size:11px;font-weight:700;color:#0f2744}',
+    '.hdr-r .sum{font-size:6.5px;color:#666;margin-top:0.5mm}',
+    /* グリッド */
+    '.ygrid{display:grid;grid-template-columns:repeat(4,1fr);gap:2.2mm}',
+    '.mb{break-inside:avoid;border:0.5px solid #99a8bb;border-radius:2px;overflow:hidden}',
+    '.mt{background:#0f2744;color:#fff;font-size:9px;font-weight:700;text-align:center;padding:1.2mm 0;letter-spacing:1px}',
+    /* テーブル */
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}',
+    'col.dc{width:11.8%}col.wc{width:17.4%}',
+    'th{font-size:5.5px;padding:0.8mm 0;text-align:center;color:#fff;background:#1a4a7a}',
+    'th.s0{background:#8b1a1a}th.s6{background:#18408a}th.sw{background:#1a5c27;font-size:5px}',
+    'td{border:0.2px solid #ddd;text-align:center;vertical-align:top;height:7.8mm;padding:0.3mm;overflow:hidden}',
+    'td.em{background:#fafafa;border-color:#eee}',
+    'td.wk{background:#f0fff5}td.hl{background:#f6f6f6;color:#888}td.lg{background:#fff0f0}',
+    'td.s0 .dn,td.lg .dn{color:#c00}td.s6 .dn{color:#005}',
+    'td.wt{background:#e4f0e4;vertical-align:middle;text-align:center;font-weight:700;font-size:6px;color:#1a5c27;border-color:#b8d4b8}',
+    'td.wt0{color:#ccc;background:#f5f5f5}',
+    'tr.mr td{background:#e8edf5;border:0.3px solid #b4c2de;font-size:5.5px;font-weight:700;color:#0f2744;padding:0.8mm 1mm;height:auto}',
+    '.dn{font-size:7px;font-weight:700;line-height:1.2;display:block}',
+    '.dh{font-size:5.5px;font-weight:700;color:#0a6;display:block;line-height:1.2}',
+    'td.lg .dh{color:#c00}td.hl .dh{color:#999}',
+    '.dt{font-size:4.3px;color:#778;display:block;line-height:1.1}',
+    '.hn{font-size:3.8px;color:#b00;display:block;line-height:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%}',
+    '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}'
+  ].join('');
+  var MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var DOW=['日','月','火','水','木','金','土','週計'];
+  var months_html='';
+  for(var m=1;m<=12;m++){
+    var mrows=data.filter(function(r){return r.m===m;});
+    if(!mrows.length) continue;
+    var first=new Date(yr,m-1,1).getDay();
+    var mWkD=0,mHolD=0,mLegD=0,mH=0;
+    mrows.forEach(function(r){
+      if(r.type==='勤務'||r.type==='振替出勤'){mWkD++;mH+=parseFloat(r.hours)||0;}
+      else if(r.type==='法定休日') mLegD++; else mHolD++;
+    });
+    // スロット配列（最初の曜日空白込み）
+    var slots=[];
+    for(var si=0;si<first;si++) slots.push(null);
+    mrows.forEach(function(r){slots.push(r);});
+    var wkCount=Math.ceil(slots.length/7);
+    while(slots.length<wkCount*7) slots.push(null);
+    var rows_html='';
+    for(var w=0;w<wkCount;w++){
+      var wH=0,cells='';
+      for(var dw=0;dw<7;dw++){
+        var r=slots[w*7+dw];
+        if(!r){cells+='<td class="em"></td>';continue;}
+        var isWk=r.type==='勤務'||r.type==='振替出勤';
+        var isLg=r.type==='法定休日';
+        var cls=isWk?'wk':isLg?'lg':'hl';
+        if(dw===0) cls+=' s0'; else if(dw===6) cls+=' s6';
+        var h=parseFloat(r.hours)||0; if(isWk) wH+=h;
+        var typeS=isWk?'':isLg?'法休':r.type==='休日'?'休':r.type==='振替休日'?'振休':r.type;
+        var holH=r.hol?'<span class="hn">'+r.hol+'</span>':'';
+        var timeS=isWk&&r.start?'<span class="dt">'+r.start.substring(0,5)+'〜'+r.end.substring(0,5)+'</span>':'';
+        var hrS=isWk?'<span class="dh">'+h+'h</span>':typeS?'<span class="dh">'+typeS+'</span>':'';
+        cells+='<td class="'+cls+'"><span class="dn">'+r.d+'</span>'+holH+timeS+hrS+'</td>';
+      }
+      var wtCls=wH>0?'wt':'wt wt0';
+      cells+='<td class="'+wtCls+'">'+(wH>0?wH.toFixed(0)+'h':'—')+'</td>';
+      rows_html+='<tr>'+cells+'</tr>';
+    }
+    var cg='<colgroup>'+Array(7).fill('<col class="dc">').join('')+'<col class="wc"></colgroup>';
+    var th=DOW.map(function(d,i){return '<th class="'+(i===0?'s0':i===6?'s6':i===7?'sw':'')+'">'+d+'</th>';}).join('');
+    var mr='<tr class="mr"><td colspan="7" style="text-align:left">月計: <b>'+mH.toFixed(0)+'h</b> 　出勤<b>'+mWkD+'</b>日 休日<b>'+(mHolD+mLegD)+'</b>日（法休'+mLegD+'日）</td><td style="text-align:center"><b>'+mH.toFixed(0)+'h</b></td></tr>';
+    months_html+='<div class="mb"><div class="mt">'+MONTHS[m-1]+'</div>'+
+      '<table>'+cg+'<thead><tr>'+th+'</tr></thead><tbody>'+rows_html+mr+'</tbody></table></div>';
+  }
+  var empBlock='';
+  if(empName){
+    empBlock=(empDept?'<div class="dept">'+empDept+'</div>':'')+'<div class="emp">'+empName+'</div>';
+  } else {
+    empBlock='<div class="emp">'+patLabel+'</div>';
+  }
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>就労カレンダー '+yr+'</title>'+
+    '<style>'+css+'</style></head><body>'+
+    '<div class="hdr">'+
+      '<div class="hdr-l"><div class="ttl">就労カレンダー</div><div class="rng">対象期間: '+rangeStart+' 〜 '+rangeEnd+'</div></div>'+
+      '<div class="hdr-r">'+empBlock+'<div class="sum">勤務日: '+totalWk+'日 ／ 年間合計: '+totalH.toFixed(0)+'h ／ '+patLabel+'</div></div>'+
+    '</div>'+
+    '<div class="ygrid">'+months_html+'</div>'+
+  '</body></html>';
+}
 function exportYearCSV(){toast('年間CSV出力（実装中）','amber');}
 function exportCheckReport(){toast('チェックレポートCSV（実装中）','amber');}
 
@@ -1673,15 +1818,4 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open');});
 function toast(msg,type){
   var wrap=document.getElementById('toastWrap');
-  var colors={green:['#e1f5ee','#0F6E56'],red:['#fcebeb','#A32D2D'],amber:['#faeeda','#854F0B'],blue:['#e6f1fb','#185FA5']};
-  var c=colors[type]||colors.blue;
-  var el=document.createElement('div');
-  el.className='toast-item';
-  el.style.cssText='background:'+c[0]+';color:'+c[1]+';border:1px solid '+c[1]+'50';
-  el.textContent=msg;
-  wrap.appendChild(el);
-  setTimeout(function(){el.style.transition='opacity .3s';el.style.opacity='0';setTimeout(function(){el.remove();},300);},3000);
-}
-</script>
-</body>
-</html>
+  var colors={green:['#e1f5ee','#0F6E56']
