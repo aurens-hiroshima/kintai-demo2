@@ -556,6 +556,7 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     <div class="list-row" onclick="goScreen('screen-apply-ot')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-moon-stars" style="color:var(--war)"></i></div><div class="list-title">残業申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-holiday-work')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-check" style="color:var(--suc)"></i></div><div class="list-title">休日出勤申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-punch')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div><div class="list-title">打刻修正申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" onclick="goScreen('screen-apply-shift-wish');initWishCalendar()"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-calendar-heart" style="color:var(--war)"></i></div><div class="list-title">シフト・休暇希望申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-shift-change')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-calendar-week" style="color:var(--suc)"></i></div><div class="list-title">シフト変更申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-shift-swap');loadSwapEmpList()"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-arrow-left-right" style="color:var(--pur)"></i></div><div class="list-title">シフト交換申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
   </div>
@@ -795,6 +796,51 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     </div>
     <div id="shiftReqErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
     <button class="btn-app btn-pri" onclick="submitShiftRequest()">申請する</button>
+  </div>
+</div>
+
+<!-- シフト・休暇希望申請 -->
+<div class="pg" id="screen-apply-shift-wish">
+  <div style="padding:0 16px">
+    <!-- 注意書き -->
+    <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start">
+      <i class="bi bi-exclamation-triangle-fill" style="color:#d97706;font-size:18px;flex-shrink:0;margin-top:1px"></i>
+      <div style="font-size:12px;color:#92400e;line-height:1.6">
+        <div style="font-weight:700;margin-bottom:2px">ご注意ください</div>
+        希望に添えない場合があります。シフトが確定した際はアプリからご確認ください。
+      </div>
+    </div>
+    <!-- 月ナビ -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <button onclick="wishPrevMonth()" style="border:none;background:var(--pri-l);color:var(--pri);font-size:20px;padding:6px 14px;border-radius:10px;cursor:pointer;font-weight:700">‹</button>
+      <div id="wishMonthLabel" style="font-size:17px;font-weight:800"></div>
+      <button onclick="wishNextMonth()" style="border:none;background:var(--pri-l);color:var(--pri);font-size:20px;padding:6px 14px;border-radius:10px;cursor:pointer;font-weight:700">›</button>
+    </div>
+    <!-- 曜日ヘッダー -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:4px">
+      <div style="font-size:11px;font-weight:700;color:#dc2626">日</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted)">月</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted)">火</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted)">水</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted)">木</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted)">金</div>
+      <div style="font-size:11px;font-weight:700;color:#3b82f6">土</div>
+    </div>
+    <!-- カレンダーグリッド -->
+    <div id="wishCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;margin-bottom:14px"></div>
+    <!-- 選択状況 -->
+    <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px">
+      <span style="color:var(--muted)">選択中：</span>
+      <strong id="wishSelectedCount" style="color:var(--pri)">0</strong>
+      <span style="color:var(--muted)">日</span>
+      <div id="wishSelectedDates" style="margin-top:4px;color:var(--pri);font-size:11px;line-height:1.8"></div>
+    </div>
+    <div class="f-group">
+      <label class="f-label">理由（任意）</label>
+      <textarea class="f-ctrl" rows="2" id="wishReason" placeholder="私用のため、通院のため など"></textarea>
+    </div>
+    <div id="wishReqErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
+    <button class="btn-app btn-pri" onclick="submitShiftWish()">🌟 希望日を申請する</button>
   </div>
 </div>
 
@@ -1234,7 +1280,7 @@ var _titles = {
   'screen-apply-hourly-leave':'時間単位休暇申請','screen-apply-ot':'残業申請',
   'screen-apply-holiday-work':'休日出勤申請','screen-apply-absence':'欠勤申請',
   'screen-apply-late-early':'遅刻・早退申請','screen-apply-punch':'打刻修正申請',
-  'screen-apply-shift-change':'シフト変更申請','screen-apply-shift-swap':'シフト交換申請','screen-apply-detail':'申請詳細',
+  'screen-apply-shift-wish':'シフト・休暇希望申請','screen-apply-shift-change':'シフト変更申請','screen-apply-shift-swap':'シフト交換申請','screen-apply-detail':'申請詳細',
   'screen-approval-status':'承認状況',
   'screen-notice':'お知らせ','screen-notice-detail':'お知らせ詳細',
   'screen-leave':'有給管理','screen-leave-history':'取得履歴',
@@ -1377,9 +1423,10 @@ async function loadMyRequests(){
   if(!sb||!_myEmpId) return;
   var listEl = document.getElementById('myShiftRequestList');
   if(!listEl) return;
-  var [r1, r2] = await Promise.all([
-    sb.from('shift_requests').select('*').eq('employee_id',_myEmpId).order('created_at',{ascending:false}).limit(20),
-    sb.from('shift_swap_requests').select('*').or('requester_id.eq.'+_myEmpId+',target_id.eq.'+_myEmpId).order('created_at',{ascending:false}).limit(20)
+  var [r1, r2, r3] = await Promise.all([
+    sb.from('shift_requests').select('*').eq('employee_id',_myEmpId).order('created_at',{ascending:false}).limit(15),
+    sb.from('shift_swap_requests').select('*').or('requester_id.eq.'+_myEmpId+',target_id.eq.'+_myEmpId).order('created_at',{ascending:false}).limit(15),
+    sb.from('shift_wish_requests').select('*').eq('employee_id',_myEmpId).order('created_at',{ascending:false}).limit(10)
   ]);
   var empIds = new Set();
   (r2.data||[]).forEach(function(r){ empIds.add(r.requester_id); empIds.add(r.target_id); });
@@ -1389,13 +1436,24 @@ async function loadMyRequests(){
     (emps||[]).forEach(function(e){ empMap[e.id] = e.name; });
   }
   var html = '';
+  (r3.data||[]).forEach(function(r){
+    var badge = r.status==='approved'?'<span class="badge-app b-appr">承認済</span>'
+               :r.status==='rejected'?'<span class="badge-app b-rej">否認</span>'
+               :'<span class="badge-app b-pend">審査中</span>';
+    var dates = [];
+    try{ dates = Array.isArray(r.wish_dates)?r.wish_dates:JSON.parse(r.wish_dates||'[]'); }catch(e){}
+    html += '<div class="list-row">'
+      +'<div class="list-icon" style="background:var(--war-l)"><i class="bi bi-calendar-heart" style="color:var(--war)"></i></div>'
+      +'<div style="flex:1"><div class="list-title">🌟 シフト・休暇希望</div><div class="list-sub">'+r.wish_month+'（'+dates.length+'日）</div></div>'
+      +badge+'</div>';
+  });
   (r1.data||[]).forEach(function(r){
     var badge = r.status==='approved'?'<span class="badge-app b-appr">承認済</span>'
                :r.status==='rejected'?'<span class="badge-app b-rej">否認</span>'
                :'<span class="badge-app b-pend">審査中</span>';
     html += '<div class="list-row">'
       +'<div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-week" style="color:var(--suc)"></i></div>'
-      +'<div style="flex:1"><div class="list-title">シフト変更申請</div><div class="list-sub">'+r.request_date+'</div></div>'
+      +'<div style="flex:1"><div class="list-title">📅 シフト変更申請</div><div class="list-sub">'+r.request_date+'</div></div>'
       +badge+'</div>';
   });
   (r2.data||[]).forEach(function(r){
@@ -1404,15 +1462,89 @@ async function loadMyRequests(){
                :r.status==='rejected'?'<span class="badge-app b-rej">否認</span>'
                :'<span class="badge-app b-pend">審査中</span>';
     var other = empMap[isReq?r.target_id:r.requester_id]||'—';
-    var label = isReq?('交換申請 → '+other):('交換依頼 ← '+other);
-    var dates = r.requester_date+' ⇔ '+r.target_date;
+    var label = isReq?('🔄 交換申請 → '+other):('🔄 交換依頼 ← '+other);
     html += '<div class="list-row">'
       +'<div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-arrow-left-right" style="color:var(--pur)"></i></div>'
-      +'<div style="flex:1"><div class="list-title">'+label+'</div><div class="list-sub">'+dates+'</div></div>'
+      +'<div style="flex:1"><div class="list-title">'+label+'</div><div class="list-sub">'+r.requester_date+' ⇔ '+r.target_date+'</div></div>'
       +badge+'</div>';
   });
   if(!html) html = '<div class="list-row"><div class="list-sub" style="color:var(--muted)">申請履歴がありません</div></div>';
   listEl.innerHTML = html;
+}
+
+// ── シフト・休暇希望カレンダー ──
+var _wishYear = 0, _wishMonth = 0;
+var _wishSelected = [];
+
+function initWishCalendar(){
+  var now = new Date();
+  _wishYear  = now.getFullYear();
+  _wishMonth = now.getMonth();
+  _wishSelected = [];
+  var r = document.getElementById('wishReason');
+  if(r) r.value = '';
+  var e = document.getElementById('wishReqErr');
+  if(e) e.textContent = '';
+  renderWishCalendar();
+}
+
+function renderWishCalendar(){
+  var lbl = document.getElementById('wishMonthLabel');
+  if(lbl) lbl.textContent = _wishYear+'年'+(_wishMonth+1)+'月';
+  var grid = document.getElementById('wishCalGrid');
+  if(!grid) return;
+  var firstDay = new Date(_wishYear, _wishMonth, 1).getDay();
+  var daysInMonth = new Date(_wishYear, _wishMonth+1, 0).getDate();
+  var html = '';
+  for(var i=0;i<firstDay;i++) html += '<div></div>';
+  for(var d=1;d<=daysInMonth;d++){
+    var ds = _wishYear+'-'+String(_wishMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var dow = new Date(_wishYear, _wishMonth, d).getDay();
+    var sel = _wishSelected.indexOf(ds) >= 0;
+    var col = sel?'#fff':(dow===0?'#dc2626':dow===6?'#3b82f6':'var(--text)');
+    var bg  = sel?'var(--pri)':'transparent';
+    html += '<div onclick="toggleWishDate(\''+ds+'\')" style="cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;margin:auto;background:'+bg+';color:'+col+';font-size:14px;font-weight:'+(sel?700:400)+'">'+d+'</div>';
+  }
+  grid.innerHTML = html;
+  var cnt = document.getElementById('wishSelectedCount');
+  if(cnt) cnt.textContent = _wishSelected.length;
+  var dEl = document.getElementById('wishSelectedDates');
+  if(dEl) dEl.textContent = _wishSelected.slice().sort().map(function(s){return s.substr(5).replace('-','月')+'日';}).join('・');
+}
+
+function toggleWishDate(ds){
+  var idx = _wishSelected.indexOf(ds);
+  if(idx>=0) _wishSelected.splice(idx,1); else _wishSelected.push(ds);
+  renderWishCalendar();
+}
+
+function wishPrevMonth(){
+  _wishMonth--;
+  if(_wishMonth<0){_wishMonth=11;_wishYear--;}
+  renderWishCalendar();
+}
+function wishNextMonth(){
+  _wishMonth++;
+  if(_wishMonth>11){_wishMonth=0;_wishYear++;}
+  renderWishCalendar();
+}
+
+async function submitShiftWish(){
+  if(!sb||!_myEmpId){ showToast('ログインしてください'); return; }
+  var errEl = document.getElementById('wishReqErr');
+  if(errEl) errEl.textContent='';
+  if(!_wishSelected.length){ if(errEl) errEl.textContent='日付を選択してください'; return; }
+  var reason = (document.getElementById('wishReason')||{}).value||'';
+  var wishMonth = _wishYear+'-'+String(_wishMonth+1).padStart(2,'0');
+  var sorted = _wishSelected.slice().sort();
+  var {error} = await sb.from('shift_wish_requests').insert({
+    employee_id:_myEmpId, wish_month:wishMonth,
+    wish_dates:sorted, reason:reason||null, status:'pending'
+  });
+  if(error){ if(errEl) errEl.textContent='送信エラー: '+error.message; return; }
+  showToast('🌟 希望日を申請しました');
+  goScreen('screen-apply');
+  setTimeout(loadMyRequests,300);
 }
 
 // ── シフト変更申請送信 ──
@@ -1508,6 +1640,7 @@ var _origGoScreen = goScreen;
 goScreen = function(id){
   _origGoScreen(id);
   if(id==='screen-apply') loadMyRequests();
+  if(id==='screen-apply-shift-wish') initWishCalendar();
 };
 
 // Init
