@@ -250,7 +250,7 @@ tr:hover td{background:#fafafa}
 <div class="page active" id="page-dashboard">
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-label">本日の出勤者</div><div class="kpi-val" id="kpi-today" style="color:var(--blue)">—</div><div class="kpi-sub">出勤者数</div></div>
-    <div class="kpi"><div class="kpi-label">本日の休暇者</div><div class="kpi-val" id="kpi-on-leave" style="color:var(--green)">—</div><div class="kpi-sub">休暇取得中</div></div>
+    <div class="kpi"><div class="kpi-label">本日の休み</div><div class="kpi-val" id="kpi-on-leave" style="color:var(--green)">—</div><div class="kpi-sub">有休・公休・半休</div></div>
     <div class="kpi"><div class="kpi-label">遅刻</div><div class="kpi-val" id="kpi-late" style="color:var(--amber)">—</div><div class="kpi-sub">遅刻者数</div></div>
     <div class="kpi"><div class="kpi-label">欠勤</div><div class="kpi-val" id="kpi-absent" style="color:var(--red)">—</div><div class="kpi-sub">未打刻（シフトあり）</div></div>
     <div class="kpi"><div class="kpi-label">未承認申請</div><div class="kpi-val" id="kpi-pending" style="color:var(--amber)">—</div><div class="kpi-sub">件</div></div>
@@ -2074,15 +2074,51 @@ function loadDashboard(){
   loadLeaveAlerts();
   loadWorkAlerts();
 
-  // ── 本日の休暇者数
+  // ── 本日の休み人数（有休/公休/午前休[午前中]/午後休[午後]、重複排除）
   (async function(){
-    var kpiLeave = document.getElementById('kpi-on-leave');
-    var t = new Date().toISOString().slice(0,10);
-    var {data, error} = await sb.from('leave_requests')
-      .select('id').eq('status','approved')
-      .lte('start_date', t).gte('end_date', t);
-    if(!error && data) kpiLeave.textContent = data.length;
-    else kpiLeave.textContent = '—';
+    var kpiLeave  = document.getElementById('kpi-on-leave');
+    var today     = new Date().toISOString().slice(0,10);
+    var nowHour   = new Date().getHours();
+    var isMorning = nowHour < 12;     // 12時前 → 午前
+    var isAfter   = nowHour >= 12;    // 12時以降 → 午後
+    try {
+      var rs = await Promise.all([
+        sb.from('leave_requests').select('user_id,unit')
+          .eq('status','approved').lte('start_date',today).gte('end_date',today),
+        sb.from('shift_schedules').select('employee_id,pattern_id').eq('date',today),
+        sb.from('shift_patterns').select('id,name,type'),
+        sb.from('employees').select('id,auth_id').eq('is_active',true)
+      ]);
+      var leaves   = rs[0].data||[];
+      var shifts   = rs[1].data||[];
+      var patterns = rs[2].data||[];
+      var emps     = rs[3].data||[];
+      var patMap = {};
+      patterns.forEach(function(p){ patMap[p.id]=p; });
+      var empMap = {}; // employees.id → auth_id
+      emps.forEach(function(e){ empMap[e.id]=e.auth_id; });
+      var offSet = new Set(); // auth_id のユニーク集合
+      // leave_requests ベース
+      leaves.forEach(function(l){
+        var u = l.unit||'day';
+        if(u==='half_am' && !isMorning) return; // 午後は午前休を除外
+        if(u==='half_pm' && !isAfter)   return; // 午前は午後休を除外
+        offSet.add(l.user_id);
+      });
+      // 公休シフトベース
+      shifts.forEach(function(s){
+        var sp = patMap[s.pattern_id];
+        if(!sp) return;
+        var isOff = (sp.type&&(sp.type==='off'||sp.type.includes('公休')||sp.type.includes('休日')))
+                 || (sp.name&&sp.name.includes('公休'));
+        if(!isOff) return;
+        var authId = empMap[s.employee_id];
+        if(authId) offSet.add(authId);
+      });
+      kpiLeave.textContent = offSet.size;
+    } catch(e) {
+      kpiLeave.textContent = '—';
+    }
   })();
 
   // ── 遅刻・欠勤カウント（pattern_id はFKなしtextのため別途取得してJSマージ）
@@ -4978,334 +5014,6 @@ async function saveShiftScheduleToDB(empId, date, patternId, customStart, custom
   }catch(e){ return {error:e}; }
 }
 
-// ═══════════════════════════════════════════════════
-// ── シフト自動作成 ──
-// ═══════════════════════════════════════════════════
-
-// 祝日簡易判定（内閣府 2026年）
-var _holidays2026 = [
-  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
-  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
-  '2026-07-20','2026-09-21','2026-09-22','2026-09-23','2026-10-12',
-  '2026-11-03','2026-11-23','2026-12-23'
-];
-function isHoliday(dateStr){
-  return _holidays2026.indexOf(dateStr) >= 0;
-}
-function dayType(d){ // 'sun'|'sat'|'weekday'
-  var dow = d.getDay();
-  if(dow===0) return 'sun';
-  if(dow===6) return 'sat';
-  var s = fmtDateISO(d);
-  if(isHoliday(s)) return 'sun';
-  return 'weekday';
-}
-
-// 自動作成タブ初期化
-window.renderShiftAuto = function(){
-  // 対象月を現在月にデフォルト
-  var el = document.getElementById('autoShiftMonth');
-  if(el && !el.value){
-    var now = new Date();
-    el.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    autoShiftMonthChanged();
-  }
-  // パターンセレクト
-  populateAutoShiftPatternSelects();
-  // 人員テーブル
-  renderAutoShiftReqTable();
-};
-
-window.autoShiftMonthChanged = function(){
-  var mv = document.getElementById('autoShiftMonth').value;
-  if(!mv) return;
-  var pts = mv.split('-');
-  var y=parseInt(pts[0]), m=parseInt(pts[1])-1;
-  var first = new Date(y,m,1);
-  var last  = new Date(y,m+1,0);
-  document.getElementById('autoShiftStart').value = fmtDateISO(first);
-  document.getElementById('autoShiftEnd').value   = fmtDateISO(last);
-};
-
-function populateAutoShiftPatternSelects(){
-  var pats = getShiftPatterns().filter(function(p){ return p.status; });
-  var koukyu = '<option value="sp_koukyu">公休</option>';
-  ['autoShiftWeekday','autoShiftSat','autoShiftSun'].forEach(function(sid){
-    var sel = document.getElementById(sid); if(!sel) return;
-    sel.innerHTML = koukyu + pats.map(function(p){
-      return '<option value="'+p.id+'">'+p.name+'</option>';
-    }).join('');
-  });
-  // デフォルト: 平日=最初の通常勤務, 土=公休, 日=公休
-  var weekdaySel = document.getElementById('autoShiftWeekday');
-  if(weekdaySel && weekdaySel.options.length > 1){
-    var normal = pats.find(function(p){ return p.type==='normal'; });
-    if(normal) weekdaySel.value = normal.id;
-  }
-}
-
-function renderAutoShiftReqTable(){
-  var pats = getShiftPatterns().filter(function(p){ return p.status && p.type==='normal'; });
-  var tbody = document.getElementById('autoShiftReqTbl'); if(!tbody) return;
-  var reqs = getAutoShiftReqs();
-  tbody.innerHTML = pats.map(function(p){
-    var r = reqs[p.id]||{weekday:0,holiday:0};
-    return '<tr><td style="padding:5px 8px;border:1px solid var(--border)">'+p.name+'</td>'
-      +'<td style="padding:5px 8px;border:1px solid var(--border);text-align:center"><input type="number" min="0" max="99" value="'+r.weekday+'" style="width:52px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:2px" onchange="setAutoShiftReq(\''+p.id+'\',\'weekday\',this.value)"></td>'
-      +'<td style="padding:5px 8px;border:1px solid var(--border);text-align:center"><input type="number" min="0" max="99" value="'+r.holiday+'" style="width:52px;text-align:center;border:1px solid var(--border);border-radius:4px;padding:2px" onchange="setAutoShiftReq(\''+p.id+'\',\'holiday\',this.value)"></td>'
-      +'</tr>';
-  }).join('');
-}
-
-function getAutoShiftReqs(){
-  try{ return JSON.parse(localStorage.getItem('auto_shift_reqs')||'{}'); }catch(e){ return {}; }
-}
-window.setAutoShiftReq = function(patId, key, val){
-  var reqs = getAutoShiftReqs();
-  if(!reqs[patId]) reqs[patId]={weekday:0,holiday:0};
-  reqs[patId][key] = parseInt(val)||0;
-  localStorage.setItem('auto_shift_reqs', JSON.stringify(reqs));
-};
-
-// ── プレビュー生成 ──
-var _autoShiftPlan = []; // [{empId, date, patternId, isNew}]
-
-window.previewAutoShift = async function(){
-  var startStr = document.getElementById('autoShiftStart').value;
-  var endStr   = document.getElementById('autoShiftEnd').value;
-  if(!startStr||!endStr){ showToast('期間を指定してください','orange'); return; }
-  if(startStr>endStr){ showToast('終了日は開始日以降にしてください','orange'); return; }
-
-  var dept      = (document.getElementById('autoShiftDept')||{}).value||'';
-  var patWd     = document.getElementById('autoShiftWeekday').value;
-  var patSat    = document.getElementById('autoShiftSat').value;
-  var patSun    = document.getElementById('autoShiftSun').value;
-  var skipExist = document.getElementById('autoShiftSkipExist').checked;
-  var wishPri   = document.getElementById('autoShiftWishPriority').checked;
-  var equalDist = document.getElementById('autoShiftEqualDist').checked;
-
-  var statusEl = document.getElementById('autoShiftStatus');
-  var prevEl   = document.getElementById('autoShiftPreview');
-  statusEl.style.display='block';
-  statusEl.innerHTML='<div style="font-size:13px;color:var(--blue)">⏳ 読み込み中...</div>';
-  prevEl.innerHTML='';
-  document.getElementById('registerAutoShiftBtn').disabled=true;
-
-  // 日付リスト生成
-  var days=[];
-  var cur=new Date(startStr+'T00:00:00');
-  var endD=new Date(endStr+'T00:00:00');
-  while(cur<=endD){ days.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
-
-  // 従業員取得
-  var empRes = sb ? await sb.from('employees').select('*').eq('is_active',true) : {data:null,error:null};
-  var emps = (empRes.data||[]).filter(function(e){ return !dept || e.department===dept; });
-  if(!emps.length){ statusEl.innerHTML='<div style="color:var(--red)">⚠️ 対象従業員がいません</div>'; return; }
-
-  // 既存スケジュール取得
-  if(sb) await loadShiftSchedulesFromDB(startStr, endStr);
-
-  // 希望シフトデータ取得（shift_wishes テーブルがあれば）
-  var wishMap = {}; // {authId_dateStr: 'wish_off'|patternId}
-  if(sb && wishPri){
-    try{
-      var wr = await sb.from('shift_wishes').select('*').gte('date',startStr).lte('date',endStr);
-      if(!wr.error && wr.data){
-        wr.data.forEach(function(w){ wishMap[w.user_id+'|'+w.date] = w.wish_type; });
-      }
-    }catch(e){ /* テーブルなし */ }
-  }
-
-  // 均等配分：従業員ごとの平日出勤日数を追跡
-  var workDayCount = {}; // empId→count
-  emps.forEach(function(e){ workDayCount[e.auth_id||e.id]=0; });
-
-  // プラン生成
-  _autoShiftPlan = [];
-  var planMap = {}; // 日付→{patternId→[empIds]}  人員チェック用
-  days.forEach(function(d){ planMap[fmtDateISO(d)]={ }; });
-
-  // フェーズ1: 各従業員に基本パターンを割り当て
-  emps.forEach(function(emp){
-    var uid = emp.auth_id||emp.id;
-    days.forEach(function(d){
-      var ds = fmtDateISO(d);
-      var dt = dayType(d);
-
-      // 既存スキップ
-      if(skipExist && getShiftCell(uid, ds)) return;
-
-      // 希望シフト優先
-      var wish = wishMap[uid+'|'+ds];
-      var patId;
-      if(wish){
-        patId = (wish==='wish_off') ? 'sp_koukyu' : wish;
-      } else {
-        if(dt==='sun') patId = patSun;
-        else if(dt==='sat') patId = patSat;
-        else patId = patWd;
-      }
-
-      _autoShiftPlan.push({empId:uid, empName:emp.name, dept:emp.department||'—', date:ds, patternId:patId, isNew:true});
-      if(!planMap[ds][patId]) planMap[ds][patId]=[];
-      planMap[ds][patId].push(uid);
-      if(dt==='weekday' && patId!=='sp_koukyu') workDayCount[uid]=(workDayCount[uid]||0)+1;
-    });
-  });
-
-  // フェーズ2: 均等配分（equalDist=true の場合、過多の人を公休に変換）
-  if(equalDist){
-    var wdDays = days.filter(function(d){ return dayType(d)==='weekday'; }).length;
-    if(wdDays>0 && emps.length>0){
-      var avgDays = Math.floor(wdDays * emps.length / emps.length); // 基本全員出勤 → 均等
-      // 休日を均等に付与するケースは希望休優先と競合するためスキップ
-      // （今回はシンプルに全員出勤ベースにする）
-    }
-  }
-
-  // 人員チェック
-  var reqs = getAutoShiftReqs();
-  var alertRows = []; // {date, dow, patName, cnt, req, shortage}
-  days.forEach(function(d){
-    var ds = fmtDateISO(d);
-    var dt = dayType(d);
-    Object.keys(reqs).forEach(function(pid){
-      var req = dt==='weekday' ? (reqs[pid].weekday||0) : (reqs[pid].holiday||0);
-      if(req===0) return;
-      var cnt = (planMap[ds][pid]||[]).length;
-      if(cnt < req){
-        var pat = getPatternById(pid);
-        alertRows.push({date:ds, dow:dow(d), patName:pat?pat.name:pid, cnt:cnt, req:req, shortage:req-cnt});
-      }
-    });
-  });
-
-  // 統計
-  var newCount = _autoShiftPlan.length;
-  var skipCount = emps.length * days.length - newCount;
-  var koukuCount = _autoShiftPlan.filter(function(r){ return r.patternId==='sp_koukyu'; }).length;
-  var totalShortage = alertRows.reduce(function(s,r){return s+r.shortage;},0);
-
-  // ── ステータスバー ──
-  statusEl.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:10px">'
-    +'<span style="font-size:13px">📋 生成: <b style="color:var(--blue)">'+newCount+'件</b></span>'
-    +'<span style="color:var(--border)">|</span>'
-    +'<span style="font-size:13px">⏭ スキップ: <b style="color:var(--muted)">'+skipCount+'件</b></span>'
-    +'<span style="color:var(--border)">|</span>'
-    +'<span style="font-size:13px">🏖 公休: <b style="color:var(--muted)">'+koukuCount+'件</b></span>'
-    +'<span style="color:var(--border)">|</span>'
-    +(alertRows.length
-      ? '<span style="font-size:13px;color:var(--red);font-weight:700">⚠️ 人員不足: '+alertRows.length+'箇所 / 合計'+totalShortage+'人不足</span>'
-      : '<span style="font-size:13px;color:var(--green);font-weight:700">✅ 全日程 人員充足</span>')
-    +'</div>';
-
-  // ── 人員不足アラート表 ──
-  if(alertRows.length){
-    var alertHtml = '<div style="border:2px solid var(--red);border-radius:8px;overflow:hidden;margin-bottom:10px">'
-      +'<div style="background:#dc2626;color:#fff;padding:8px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px">'
-      +'⚠️ 人員不足アラート'
-      +'<span style="background:rgba(255,255,255,0.25);border-radius:12px;padding:1px 10px;font-size:12px">'+alertRows.length+'件</span>'
-      +'</div>'
-      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
-      +'<thead><tr style="background:#fff5f5">'
-      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">日付</th>'
-      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">曜日</th>'
-      +'<th style="padding:6px 10px;text-align:left;border-bottom:1px solid #fca5a5">パターン</th>'
-      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">現在</th>'
-      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">必要</th>'
-      +'<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #fca5a5">不足</th>'
-      +'</tr></thead><tbody>';
-    alertRows.forEach(function(r, i){
-      var sev = r.shortage>=3 ? '#dc2626' : r.shortage>=2 ? '#ea580c' : '#d97706';
-      var bg = i%2===0 ? '#fff' : '#fff8f8';
-      alertHtml += '<tr style="background:'+bg+'">'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;font-weight:600">'+r.date+'</td>'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;color:var(--muted)">'+r.dow+'</td>'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2">'+r.patName+'</td>'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center">'+r.cnt+'人</td>'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center">'+r.req+'人</td>'
-        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;text-align:center;font-weight:700;color:'+sev+'">'
-        +'あと'+r.shortage+'人</td>'
-        +'</tr>';
-    });
-    alertHtml += '</tbody></table>'
-      +'<div style="background:#fff5f5;padding:7px 14px;font-size:11px;color:#991b1b;border-top:1px solid #fca5a5">'
-      +'💡 合計 <b>'+totalShortage+'人分</b> の配置が不足しています。シフトパターンの設定か最低人数の設定を見直してください。'
-      +'</div></div>';
-    statusEl.innerHTML += alertHtml;
-  }
-  renderAutoShiftPreviewTable(emps, days);
-  document.getElementById('registerAutoShiftBtn').disabled = newCount===0;
-};
-
-function renderAutoShiftPreviewTable(emps, days){
-  if(!_autoShiftPlan.length){ document.getElementById('autoShiftPreview').innerHTML='<div style="color:var(--muted);font-size:13px">生成するデータがありません</div>'; return; }
-  var planLookup={};
-  _autoShiftPlan.forEach(function(r){ planLookup[r.empId+'|'+r.date]=r.patternId; });
-  var B='border:1px solid var(--border);';
-  var html='<table style="border-collapse:collapse;font-size:11px;white-space:nowrap">';
-  html+='<thead><tr><th style="padding:4px 8px;'+B+'background:var(--bg);position:sticky;left:0;z-index:2">氏名</th><th style="padding:4px 8px;'+B+'background:var(--bg)">部署</th>';
-  days.forEach(function(d){
-    var dt=dayType(d);
-    var bg=dt==='sun'?'#fee2e2':dt==='sat'?'#eff6ff':'var(--bg)';
-    var fc=dt==='sun'?'var(--red)':dt==='sat'?'var(--blue)':'var(--text)';
-    html+='<th style="padding:3px 5px;'+B+'background:'+bg+';color:'+fc+';text-align:center;min-width:36px">'+d.getDate()+'<br><span style="font-size:9px">'+dow(d)+'</span></th>';
-  });
-  html+='<th style="padding:4px 8px;'+B+'background:var(--bg);text-align:center">出勤</th></tr></thead><tbody>';
-  emps.forEach(function(emp){
-    var uid=emp.auth_id||emp.id, workCnt=0;
-    html+='<tr><td style="padding:4px 8px;'+B+'background:#fff;position:sticky;left:0;font-weight:600">'+emp.name+'</td>';
-    html+='<td style="padding:4px 6px;'+B+'color:var(--muted)">'+(emp.department||'—')+'</td>';
-    days.forEach(function(d){
-      var ds=fmtDateISO(d);
-      var pid=planLookup[uid+'|'+ds];
-      if(!pid){
-        var ex=getShiftCell(uid,ds);
-        if(ex){ pid=ex.pattern_id; html+='<td style="padding:3px 4px;'+B+'text-align:center;background:#f0fdf4">'; }
-        else{ html+='<td style="padding:3px 4px;'+B+'text-align:center;color:var(--muted)">—</td>'; return; }
-      } else {
-        html+='<td style="padding:3px 4px;'+B+'text-align:center">';
-      }
-      if(pid==='sp_koukyu'){
-        html+='<span style="background:#e5e7eb;color:#6b7280;font-size:9px;font-weight:700;border-radius:3px;padding:1px 4px">休</span>';
-      } else {
-        var pat=getPatternById(pid);
-        if(pat){ html+='<span style="background:'+pat.color+';color:#fff;font-size:9px;font-weight:700;border-radius:3px;padding:1px 4px">'+pat.code+'</span>'; workCnt++; }
-        else { html+='<span style="font-size:9px;color:var(--muted)">?</span>'; }
-      }
-      html+='</td>';
-    });
-    html+='<td style="padding:4px 8px;'+B+'text-align:center;font-weight:700;color:var(--blue)">'+workCnt+'</td></tr>';
-  });
-  html+='</tbody><tfoot><tr><td colspan="2" style="padding:4px 8px;'+B+'background:var(--bg);font-weight:700;font-size:10px">出勤人数</td>';
-  days.forEach(function(d){
-    var ds=fmtDateISO(d);
-    var cnt=_autoShiftPlan.filter(function(r){ return r.date===ds && r.patternId!=='sp_koukyu'; }).length;
-    html+='<td style="padding:3px 4px;'+B+'text-align:center;background:var(--bg);font-weight:700;font-size:10px">'+cnt+'</td>';
-  });
-  html+='<td style="'+B+'background:var(--bg)"></td></tr></tfoot></table>';
-  document.getElementById('autoShiftPreview').innerHTML=html;
-}
-
-// ── 一括登録 ──
-window.registerAutoShift = async function(){
-  if(!_autoShiftPlan.length){ showToast('プレビューが空です','orange'); return; }
-  var btn=document.getElementById('registerAutoShiftBtn');
-  btn.disabled=true; btn.textContent='登録中...';
-  var ok=0, ng=0;
-  for(var i=0;i<_autoShiftPlan.length;i++){
-    var r=_autoShiftPlan[i];
-    var res=await saveShiftScheduleToDB(r.empId, r.date, r.patternId, null, null, '自動作成');
-    if(res&&res.error) ng++; else ok++;
-    if((i+1)%10===0) btn.textContent='登録中 '+(i+1)+'/'+_autoShiftPlan.length+'...';
-  }
-  btn.disabled=false; btn.textContent='⚡ 一括登録';
-  if(ng===0){ showToast('✅ '+ok+'件 登録完了','green'); loadShiftDaily(); }
-  else showToast('⚠️ '+ok+'件 成功 / '+ng+'件 失敗','orange');
-  _autoShiftPlan=[];
-  document.getElementById('registerAutoShiftBtn').disabled=true;
-};
-
 // ── 部署セレクト共通 ──
 function populateDeptSelects(emps){
   var depts=[...new Set(emps.map(function(e){return e.department||'—';}))].sort();
@@ -5317,289 +5025,347 @@ function populateDeptSelects(emps){
   });
 }
 
-// ── シフト表（月次カレンダー） ──
-var _shiftCalDate = new Date();
-var _shiftDailyDate = _shiftCalDate;
+// ── シフト表（日次ガント） ──
+var _shiftDailyDate = new Date();
 var _shiftEmployees = [];
-
-function _syncCalPicker(){
-  var el=document.getElementById('shiftCalMonth');
-  if(el) el.value=_shiftCalDate.getFullYear()+'-'+String(_shiftCalDate.getMonth()+1).padStart(2,'0');
-}
-
 window.loadShiftPage = function(){
-  _shiftCalDate=new Date(); _shiftCalDate.setDate(1);
-  _syncCalPicker();
+  _shiftDailyDate = new Date();
   renderShiftPatternTable();
   populatePatternSelects();
   loadShiftDaily();
 };
-window.shiftCalPrev = function(){ _shiftCalDate.setMonth(_shiftCalDate.getMonth()-1); _shiftCalDate.setDate(1); _syncCalPicker(); loadShiftDaily(); };
-window.shiftCalNext = function(){ _shiftCalDate.setMonth(_shiftCalDate.getMonth()+1); _shiftCalDate.setDate(1); _syncCalPicker(); loadShiftDaily(); };
-window.shiftCalToday = function(){ _shiftCalDate=new Date(); _shiftCalDate.setDate(1); _syncCalPicker(); loadShiftDaily(); };
-window.shiftDailyPrev = window.shiftCalPrev;
-window.shiftDailyNext = window.shiftCalNext;
-window.shiftDailyToday = window.shiftCalToday;
+window.shiftDailyPrev = function(){ _shiftDailyDate.setDate(_shiftDailyDate.getDate()-1); loadShiftDaily(); };
+window.shiftDailyNext = function(){ _shiftDailyDate.setDate(_shiftDailyDate.getDate()-1+2); loadShiftDaily(); };
+window.shiftDailyToday = function(){ _shiftDailyDate=new Date(); loadShiftDaily(); };
 
 function fmtDate(d){ return d.getFullYear()+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0'); }
 function fmtDateISO(d){ return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0'); }
 function dow(d){ return ['日','月','火','水','木','金','土'][d.getDay()]; }
 
 window.loadShiftDaily = async function(){
-  var picker=document.getElementById('shiftCalMonth');
-  if(picker&&picker.value){
-    var pts=picker.value.split('-');
-    _shiftCalDate=new Date(parseInt(pts[0]),parseInt(pts[1])-1,1);
-  }
-  var y=_shiftCalDate.getFullYear(), m=_shiftCalDate.getMonth();
-  var daysInMonth=new Date(y,m+1,0).getDate();
-  var days=[];
-  for(var d=1;d<=daysInMonth;d++) days.push(new Date(y,m,d));
-  var startStr=y+'-'+String(m+1).padStart(2,'0')+'-01';
-  var endStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(daysInMonth).padStart(2,'0');
+  var lbl=document.getElementById('shiftDailyDateLbl');
+  if(lbl) lbl.textContent = fmtDate(_shiftDailyDate)+'('+dow(_shiftDailyDate)+')';
   var dept=(document.getElementById('shiftDailyDept')||{value:''}).value;
-  var head=document.getElementById('shiftCalHead')||document.getElementById('shiftDailyHead');
-  var body=document.getElementById('shiftCalBody')||document.getElementById('shiftDailyBody');
-  var foot=document.getElementById('shiftCalFoot')||document.getElementById('shiftDailyFoot');
-  if(body) body.innerHTML='<tr><td colspan="'+(daysInMonth+2)+'" style="text-align:center;padding:20px;color:var(--muted)">読み込み中...</td></tr>';
+  var dateStr=fmtDateISO(_shiftDailyDate);
+
+  var head=document.getElementById('shiftDailyHead');
+  var body=document.getElementById('shiftDailyBody');
+  var foot=document.getElementById('shiftDailyFoot');
+  if(body) body.innerHTML='<tr><td colspan="30" style="text-align:center;padding:20px;color:var(--muted)">読み込み中...</td></tr>';
+
+  // Load employees
   var empQ=sb.from('employees').select('id,name,department').eq('is_active',true).order('department').order('name');
   var {data:emps,error}=await empQ;
-  if(error||!emps){if(body)body.innerHTML='<tr><td colspan="33" style="color:var(--red);padding:16px">読み込みエラー</td></tr>';return;}
+  if(error||!emps){if(body)body.innerHTML='<tr><td colspan="30" style="color:var(--red);padding:16px">"+error.message+"</td></tr>';return;}
   _shiftEmployees=emps;
   populateDeptSelects(emps);
-  if(dept) emps=emps.filter(function(e){return (e.department||'')===dept;});
-  await loadShiftSchedulesFromDB(startStr,endStr);
-  var pats=getShiftPatterns();
-  var DOW=['日','月','火','水','木','金','土'];
-  var B='border:1px solid var(--border);';
-  var thS=B+'padding:3px 1px;text-align:center;font-size:11px;font-weight:700;';
+  if(dept) emps=emps.filter(function(e){return (e.department||'—')===dept;});
+
+  // Load schedules for this date
+  await loadShiftSchedulesFromDB(dateStr, dateStr);
+
+  // Hours 0-23
+  var HOURS=[];for(var h=0;h<24;h++) HOURS.push(h);
+  var thStyle='border:1px solid var(--border);padding:4px 2px;text-align:center;background:var(--surface2);white-space:nowrap;';
+
+  // Render header
   if(head) head.innerHTML='<tr>'
-    +'<th style="'+thS+'min-width:88px;position:sticky;left:0;z-index:3;background:#f8fafc;padding:4px 8px;text-align:left">氏名</th>'
-    +days.map(function(d){
-      var dw=d.getDay(), isSun=dw===0, isSat=dw===6;
-      var bg=isSun?'#fff0f0':isSat?'#eff6ff':'#f8fafc';
-      var col=isSun?'#dc2626':isSat?'#2563eb':'var(--muted)';
-      return '<th style="'+thS+'width:38px;min-width:34px;background:'+bg+';color:'+col+'"><div>'+d.getDate()+'</div><div style="font-size:9px">'+DOW[dw]+'</div></th>';
-    }).join('')
-    +'<th style="'+thS+'width:44px;background:#f0f9ff;color:var(--blue)">出勤<br>日数</th></tr>';
-  if(!emps.length){
-    if(body) body.innerHTML='<tr><td colspan="'+(daysInMonth+2)+'" style="text-align:center;padding:28px;color:var(--muted)">従業員データなし</td></tr>';
-    var f=document.getElementById('shiftCalFoot')||document.getElementById('shiftDailyFoot'); if(f) f.innerHTML=''; return;
-  }
-  var dailyCnt=new Array(daysInMonth).fill(0);
-  var tdB=B+'padding:1px;text-align:center;cursor:pointer;';
-  var tdName=B+'padding:4px 8px;position:sticky;left:0;background:#fff;z-index:2;white-space:nowrap;font-size:12px;';
-  var bodyHTML=emps.map(function(emp){
-    var workDays=0;
-    var cells=days.map(function(d,di){
-      var ds=fmtDateISO(d), dw=d.getDay(), isSun=dw===0, isSat=dw===6;
-      var sc=getShiftCell(emp.id,ds);
-      var pat=sc&&sc.pattern_id?pats.find(function(p){return p.id===sc.pattern_id;}):null;
-      var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
-      var cellBg='', txtColor='', label='';
-      if(pat){
-        cellBg=pat.color||'#94a3b8'; txtColor='#fff';
-        label=(pat.code||(pat.name||'').substring(0,3));
-        if(!isOff){ workDays++; dailyCnt[di]++; }
-      } else {
-        cellBg=isSun?'#fff0f0':isSat?'#eff6ff':'';
-        txtColor=isSun?'#dc2626':isSat?'#2563eb':'var(--muted)';
-        label=isSun?'休':isSat?'休':'';
-      }
-      return '<td style="'+tdB+'background:'+cellBg+'" title="'+(pat?pat.name:'未設定')+'" onclick="openShiftCellPicker(this,\x27'+emp.id+'\x27,\x27'+ds+'\x27)">'
-        +'<div style="font-size:10px;font-weight:700;color:'+txtColor+';line-height:28px;min-height:28px">'+label+'</div></td>';
-    }).join('');
-    return '<tr><td style="'+tdName+'"><span style="font-size:10px;color:var(--muted)">'+(emp.department||'')+'</span><br><strong>'+emp.name+'</strong></td>'
-      +cells+'<td style="'+B+'text-align:center;font-weight:700;font-size:12px;color:var(--blue);background:#f0f9ff">'+workDays+'</td></tr>';
-  }).join('');
-  if(body) body.innerHTML=bodyHTML;
-  if(foot) foot.innerHTML='<tr style="background:#f8fafc">'
-    +'<td style="'+B+'padding:4px 8px;font-size:11px;font-weight:700;position:sticky;left:0;background:#f8fafc">予定合計人数</td>'
-    +dailyCnt.map(function(n){return '<td style="'+B+'text-align:center;font-size:11px;font-weight:700;color:'+(n>0?'var(--blue)':'var(--muted)')+';">'+(n||'')+'</td>';}).join('')
-    +'<td style="'+B+'"></td></tr>';
+    +'<th style="'+thStyle+'min-width:90px;position:sticky;left:0;z-index:2">名前</th>'
+    +'<th style="'+thStyle+'width:80px">パターン</th>'
+    +'<th style="'+thStyle+'width:55px">出勤</th>'
+    +'<th style="'+thStyle+'width:55px">退勤</th>'
+    +'<th style="'+thStyle+'width:55px">休憩</th>'
+    +HOURS.map(function(h){return '<th style="'+thStyle+'width:36px;font-size:10px;color:var(--muted)">'+h.toString().padStart(2,'0')+'</th>';}).join('')
+    +'</tr>';
+
+  // Count per hour
+  var hourCount=new Array(24).fill(0);
+
+   // Render body
+   var pats=getShiftPatterns();
+   var rows=emps.map(function(emp){
+     var cell=getShiftCell(emp.id, dateStr);
+     var pat=cell&&cell.pattern_id?pats.find(function(p){return p.id===cell.pattern_id;}):null;
+     var st=cell&&cell.custom_start?cell.custom_start:(pat?pat.start:null);
+     var en=cell&&cell.custom_end?cell.custom_end:(pat?pat.end:null);
+     var brkMins=0;
+     if(pat){ brkMins=Array.isArray(pat.breaks)?pat.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(pat.break||0); }
+     var color=pat?pat.color:'#94a3b8';
+     var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
+
+     // Gantt bars
+     var ganttCells=HOURS.map(function(h){
+       var active=false;
+       if(pat&&st&&en&&!isOff){
+         var sh=parseInt(st.split(':')[0]),sm=parseInt(st.split(':')[1]);
+         var eh=parseInt(en.split(':')[0]),em2=parseInt(en.split(':')[1]);
+         var startM=sh*60+sm, endM=eh*60+em2;
+         if(endM<startM) endM+=1440;
+         var hStart=h*60, hEnd=(h+1)*60;
+         if(startM<hEnd && endM>hStart) active=true;
+       }
+       if(active) hourCount[h]++;
+       var bg=active?color:(isOff&&pat?pat.color+'33':'');
+       return '<td style="border:1px solid var(--border);padding:0;width:36px;height:28px;background:'+bg+'"></td>';
+     }).join('');
+
+     var selBg=pat?pat.color:'#f1f5f9';
+     var selTxt=pat&&pat.color&&pat.color!=='#1e293b'?'#fff':'#374151';
+     var patSel='<select onchange="onDailyPatternChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27)" style="font-size:11px;height:26px;padding:0 4px;border:1px solid var(--border);border-radius:4px;background:'+selBg+';color:'+selTxt+';max-width:100px">'
+       +'<option value="">-- 未設定 --</option>'
+       +pats.map(function(p){return '<option value="'+p.id+'"'+(cell&&cell.pattern_id===p.id?' selected':'')+'>'+p.name+'</option>';}).join('')
+       +'</select>';
+
+     var td='border:1px solid var(--border);padding:3px 5px;';
+     var tdS=td+'position:sticky;left:0;background:var(--surface1);white-space:nowrap;';
+     var tInp='width:62px;font-size:12px;border:1px solid var(--border);border-radius:4px;padding:1px 3px;background:var(--surface1);color:var(--text)';
+     var brkCell=pat?(isOff?'<span style="background:'+color+'33;color:'+color+';border-radius:3px;padding:1px 5px;font-size:10px">'+pat.name+'</span>':brkMins+'分'):'<span style="color:var(--muted);font-size:12px">—</span>';
+
+     return '<tr data-emp="'+emp.id+'" data-date="'+dateStr+'">'
+       +'<td style="'+tdS+'"><span style="font-size:10px;color:var(--muted);margin-right:4px">'+(emp.department||'')+'</span><strong>'+emp.name+'</strong></td>'
+       +'<td style="'+td+'text-align:center">'+patSel+'</td>'
+       +'<td style="'+td+'text-align:center"><input type="time" value="'+(st||'')+'" data-field="start" style="'+tInp+'" onchange="onDailyTimeChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27,\x27start\x27)"></td>'
+       +'<td style="'+td+'text-align:center"><input type="time" value="'+(en||'')+'" data-field="end" style="'+tInp+'" onchange="onDailyTimeChange(this,\x27'+emp.id+'\x27,\x27'+dateStr+'\x27,\x27end\x27)"></td>'
+       +'<td style="'+td+'text-align:center;font-size:11px">'+brkCell+'</td>'
+       +ganttCells
+       +'</tr>';
+   }).join('');
+   if(body) body.innerHTML=rows||'<tr><td colspan="30" style="text-align:center;padding:20px;color:var(--muted)">データなし</td></tr>';
+
+   if(foot) foot.innerHTML='<tr style="background:var(--surface2);font-size:11px">'
+     +'<td style="border:1px solid var(--border);padding:4px 8px;position:sticky;left:0;background:var(--surface2);font-weight:700;font-size:11px" colspan="5">予定合計人数</td>'
+     +hourCount.map(function(n){return '<td style="border:1px solid var(--border);text-align:center;font-weight:700;color:'+(n>0?'var(--blue)':'var(--muted)')+'">'+n+'</td>';}).join('')
+     +'</tr>';
+
 };
 
-// ── セルクリック パターンピッカー ──
-var _pickerEmpId=null, _pickerDate=null, _pickerTd=null;
-window.openShiftCellPicker = function(td, empId, dateStr){
-  _pickerEmpId=empId; _pickerDate=dateStr; _pickerTd=td;
-  var pats=getShiftPatterns();
-  var sc=getShiftCell(empId,dateStr);
-  var cur=sc?sc.pattern_id:null;
-  var DOW=['日','月','火','水','木','金','土'];
-  var d=new Date(dateStr+'T00:00:00');
-  var emp=_shiftEmployees.find(function(e){return e.id===empId;})||{name:''};
-  var label=document.getElementById('shiftPickerLabel');
-  if(label) label.textContent=dateStr.replace(/-/g,'/')+'('+DOW[d.getDay()]+') '+emp.name;
-  var opts=document.getElementById('shiftPickerOptions');
-  if(opts){
-    opts.innerHTML='<div onclick="applyShiftCellPattern(null)" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;background:#f1f5f9;color:var(--muted);margin-bottom:4px">— 未設定にする</div>'
-      +'<div onclick="applyShiftCellPattern(\'sp_koukyu\')" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;background:#e5e7eb;color:#374151;margin-bottom:4px"'+(cur==='sp_koukyu'?' style="outline:3px solid #1e293b"':'')+'>公休</div>'
-      +pats.map(function(p){
-        var active=p.id===cur;
-        return '<div onclick="applyShiftCellPattern(\''+p.id+'\')" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:3px;background:'+(p.color||'#94a3b8')+';color:#fff;'+(active?'outline:3px solid #1e293b;outline-offset:-2px;':'')+'">'
-          +(active?'✓ ':'')+(p.code?'['+p.code+'] ':'')+p.name+'</div>';
-      }).join('');
-  }
-  var picker=document.getElementById('shiftCellPicker'); if(!picker) return;
-  var rect=td.getBoundingClientRect();
-  var left=Math.min(rect.left+window.scrollX, window.innerWidth-230);
-  var top=rect.bottom+window.scrollY+4;
-  picker.style.left=left+'px'; picker.style.top=top+'px'; picker.style.display='block';
-  setTimeout(function(){ document.addEventListener('mousedown',_closeCellPickerOutside); },50);
-};
-function _closeCellPickerOutside(e){
-  var picker=document.getElementById('shiftCellPicker');
-  if(picker&&!picker.contains(e.target)){ picker.style.display='none'; document.removeEventListener('mousedown',_closeCellPickerOutside); }
-}
-window.closeCellPicker = function(){
-  var picker=document.getElementById('shiftCellPicker'); if(picker) picker.style.display='none';
-  document.removeEventListener('mousedown',_closeCellPickerOutside);
-};
-window.applyShiftCellPattern = function(patId){
-  if(!_pickerEmpId||!_pickerDate) return;
-  var pats=getShiftPatterns();
-  var pat=patId&&patId!=='sp_koukyu'?pats.find(function(p){return p.id===patId;}):null;
+window.onDailyPatternChange = function(sel, empId, date){
+  var pat=sel.value?getPatternById(sel.value):null;
+  var row=sel.closest('tr');
+  var stIn=row.querySelector('[data-field="start"]');
+  var enIn=row.querySelector('[data-field="end"]');
+  sel.style.background=pat?pat.color:'#f1f5f9';
+  sel.style.color=pat&&pat.color&&pat.color!=='#1e293b'?'#fff':'#374151';
   var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
-  var cur=getShiftCell(_pickerEmpId,_pickerDate)||{};
-  setShiftCell(_pickerEmpId,_pickerDate,Object.assign(cur,{
-    pattern_id:patId||null, custom_start:pat&&!isOff?pat.start:null, custom_end:pat&&!isOff?pat.end:null,
-  }));
-  if(_pickerTd){
-    var label='', bg='', col='var(--muted)';
-    if(patId==='sp_koukyu'){ label='休'; bg='#e5e7eb'; col='#6b7280'; }
-    else if(pat){ label=pat.code||(pat.name||'').substring(0,3); bg=pat.color||'#94a3b8'; col='#fff'; }
-    _pickerTd.style.background=bg; _pickerTd.title=pat?pat.name:patId==='sp_koukyu'?'公休':'未設定';
-    var inner=_pickerTd.querySelector('div');
-    if(inner){ inner.textContent=label; inner.style.color=col; }
+  if(stIn) stIn.value=(pat&&!isOff&&pat.start)?pat.start:'';
+  if(enIn) enIn.value=(pat&&!isOff&&pat.end)?pat.end:'';
+  // update break cell
+  var brkCell=row.cells[4];
+  if(brkCell){
+    if(!pat) brkCell.innerHTML='<span style="color:var(--muted);font-size:12px">—</span>';
+    else if(isOff) brkCell.innerHTML='<span style="background:'+pat.color+'33;color:'+pat.color+';border-radius:3px;padding:1px 5px;font-size:10px">'+pat.name+'</span>';
+    else{ var bm=Array.isArray(pat.breaks)?pat.breaks.reduce(function(s,b){if(!b.start||!b.end)return s;return s+(parseInt(b.end.split(':')[0])*60+parseInt(b.end.split(':')[1]))-(parseInt(b.start.split(':')[0])*60+parseInt(b.start.split(':')[1]));},0):(pat.break||0); brkCell.textContent=bm+'分'; }
   }
-  closeCellPicker();
-  showToast('シフトを変更（💾 保存で確定）','amber');
-};
-
-// ── 保存 ──
-window.saveShiftDaily = async function(){
-  var y=_shiftCalDate.getFullYear(), m=_shiftCalDate.getMonth();
-  var startStr=y+'-'+String(m+1).padStart(2,'0')+'-01';
-  var endStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(new Date(y,m+1,0).getDate()).padStart(2,'0');
-  var toSave=Object.keys(_shiftSchedules).filter(function(k){
-    var date=k.split('|')[1]; return date&&date>=startStr&&date<=endStr;
-  });
-  if(!toSave.length){ showToast('変更がありません','amber'); return; }
-  var ok=0, ng=0;
-  for(var i=0;i<toSave.length;i++){
-    var k=toSave[i], parts=k.split('|');
-    var empId=parts[0], date=parts[1];
-    var sc=_shiftSchedules[k];
-    var r=await saveShiftScheduleToDB(empId, date, sc.pattern_id, sc.custom_start, sc.custom_end, sc.note||'');
-    if(r&&r.error) ng++; else ok++;
-  }
-  if(ng===0) showToast('✅ '+ok+'件 保存しました','green');
-  else showToast('⚠️ '+ok+'件 成功 / '+ng+'件 失敗','orange');
-};
-
-// ── スケジュール登録（月次編集）──
-// ── 月次シフト 月送りナビ ──
-window.shiftMonthToday = function(){
-  var n=new Date();
-  var ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
-  var mv=document.getElementById('shiftMonthYM'); if(mv) mv.value=ym;
-  loadShiftMonthly();
-};
-// ── 月次シフト 月送りナビ ──
-window.shiftMonthToday = function(){
-  var n=new Date();
-  var ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
-  var mv=document.getElementById('shiftMonthYM'); if(mv) mv.value=ym;
-  loadShiftMonthly();
-};
-window.shiftMonthPrev = function(){
-  var mv=document.getElementById('shiftMonthYM');
-  var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
-  var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
-  m--; if(m<0){m=11;y--;}
-  var nym=y+'-'+String(m+1).padStart(2,'0');
-  if(mv) mv.value=nym;
-  loadShiftMonthly();
-};
-window.shiftMonthNext = function(){
-  var mv=document.getElementById('shiftMonthYM');
-  var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
-  var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
-  m++; if(m>11){m=0;y++;}
-  var nym=y+'-'+String(m+1).padStart(2,'0');
-  if(mv) mv.value=nym;
-  loadShiftMonthly();
-};
-
-window.loadShiftMonthly = async function(){
-  var dept=(document.getElementById('shiftMonthDept')||{value:''}).value;
-  var mv=document.getElementById('shiftMonthYM')||null;
-  var ym=mv&&mv.value?mv.value:(function(){var n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');})();
-  if(mv) mv.value=ym;
-  var pts=ym.split('-'), y=parseInt(pts[0]), m=parseInt(pts[1])-1;
-  var lbl=document.getElementById('shiftMonthLbl'); if(lbl) lbl.textContent=y+'年'+(m+1)+'月';
-  var daysInMonth=new Date(y,m+1,0).getDate();
-  var days=[];
-  for(var d=1;d<=daysInMonth;d++) days.push(new Date(y,m,d));
-  var startStr=y+'-'+String(m+1).padStart(2,'0')+'-01';
-  var endStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(daysInMonth).padStart(2,'0');
-  var tbl=document.getElementById('shiftMonthTbl'); if(!tbl) return;
-  tbl.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">読み込み中...</div>';
-  var empRes=await sb.from('employees').select('id,auth_id,name,department').eq('is_active',true).order('department').order('name');
-  var emps=(empRes.data||[]).filter(function(e){return !dept||e.department===dept;});
-  populateDeptSelects(empRes.data||[]);
-  await loadShiftSchedulesFromDB(startStr,endStr);
-  var pats=getShiftPatterns();
-  var DOW=['日','月','火','水','木','金','土'];
-  var B='border:1px solid var(--border);';
-  var html='<table style="border-collapse:collapse;font-size:11px"><thead><tr>'
-    +'<th style="padding:4px 8px;'+B+'background:var(--bg);position:sticky;left:0;z-index:2;min-width:100px">氏名</th>';
-  days.forEach(function(d){
-    var dw=d.getDay(), isSun=dw===0, isSat=dw===6;
-    var bg=isSun?'#fff0f0':isSat?'#eff6ff':'var(--bg)';
-    var col=isSun?'var(--red)':isSat?'var(--blue)':'var(--muted)';
-    html+='<th style="padding:3px 4px;'+B+'background:'+bg+';color:'+col+';text-align:center;min-width:72px;font-size:11px">'+d.getDate()+'<br><span style="font-size:9px">'+DOW[dw]+'</span></th>';
-  });
-  html+='</tr></thead><tbody>';
-  emps.forEach(function(emp){
-    html+='<tr><td style="padding:4px 8px;'+B+'background:#fff;position:sticky;left:0;font-weight:600;font-size:12px">'+emp.name+'</td>';
-    days.forEach(function(d){
-      var ds=fmtDateISO(d), dw=d.getDay(), isSun=dw===0, isSat=dw===6;
-      var sc=getShiftCell(emp.id,ds);
-      var cur=sc?sc.pattern_id:'';
-      html+='<td style="padding:2px;'+B+'background:'+(isSun?'#fff8f8':isSat?'#f8f9ff':'')+'">'
-        +'<select style="width:100%;font-size:10px;border:none;background:transparent;padding:2px" onchange="onMonthCellChange(this,\''+emp.id+'\',\''+ds+'\')">'
-        +'<option value="">—</option>'
-        +'<option value="sp_koukyu"'+(cur==='sp_koukyu'?' selected':'')+'>公休</option>'
-        +pats.map(function(p){return '<option value="'+p.id+'"'+(cur===p.id?' selected':'')+' style="background:'+p.color+';color:#fff">'+p.name+'</option>';}).join('')
-        +'</select></td>';
-    });
-    html+='</tr>';
-  });
-  html+='</tbody></table>';
-  tbl.innerHTML=html;
-};
-
-window.onMonthCellChange = function(sel, empId, date){
-  var patId=sel.value||null;
-  var pat=patId&&patId!=='sp_koukyu'?getPatternById(patId):null;
-  var isOff=pat&&(pat.type==='all_off'||pat.type==='half_am'||pat.type==='half_pm'||pat.type==='hourly_off');
   var cur=getShiftCell(empId,date)||{};
-  setShiftCell(empId,date,Object.assign(cur,{pattern_id:patId,custom_start:pat&&!isOff?pat.start:null,custom_end:pat&&!isOff?pat.end:null}));
-  sel.style.background=pat?pat.color:patId==='sp_koukyu'?'#e5e7eb':'transparent';
-  sel.style.color=pat?'#fff':patId==='sp_koukyu'?'#374151':'inherit';
-  showToast('変更（💾 保存で確定）','amber');
+  setShiftCell(empId,date,Object.assign(cur,{pattern_id:sel.value||null,custom_start:pat&&!isOff?pat.start:null,custom_end:pat&&!isOff?pat.end:null}));
 };
-
-window.saveShiftMonthly = window.saveShiftDaily;
-
-// 後方互換
-window.onDailyPatternChange = function(sel, empId, date){ applyShiftCellPattern(sel.value||null); };
 window.onDailyTimeChange = function(inp, empId, date, field){
   var cur=getShiftCell(empId,date)||{};
   cur['custom_'+(field==='start'?'start':'end')]=inp.value;
   setShiftCell(empId,date,cur);
+};
+window.saveShiftDaily = async function(){
+  var dateStr=fmtDateISO(_shiftDailyDate);
+  var dept=(document.getElementById('shiftDailyDept')||{value:''}).value;
+  var emps=dept?_shiftEmployees.filter(function(e){return (e.department||'—')===dept;}):_shiftEmployees;
+  var errors=[];
+  for(var i=0;i<emps.length;i++){
+    var emp=emps[i];
+    var cell=getShiftCell(emp.id,dateStr);
+    if(!cell||!cell.pattern_id) continue;
+    var r=await saveShiftScheduleToDB(emp.id,dateStr,cell.pattern_id,cell.custom_start,cell.custom_end,cell.note||'');
+    if(r&&r.error) errors.push(emp.name);
+  }
+  if(errors.length) showToast('一部保存失敗: '+errors.join(','),'red');
+  else showToast('✅ シフトを保存しました','green');
+};
+
+// ── スケジュール登録（月次カレンダー） ──
+var _shiftMonthDate = new Date();
+window.shiftMonthPrev = function(){ _shiftMonthDate.setMonth(_shiftMonthDate.getMonth()-1); loadShiftMonthly(); };
+window.shiftMonthNext = function(){ _shiftMonthDate.setMonth(_shiftMonthDate.getMonth()+1); loadShiftMonthly(); };
+window.shiftMonthToday = function(){ _shiftMonthDate=new Date(); loadShiftMonthly(); };
+
+window.loadShiftMonthly = async function(){
+  var lbl=document.getElementById('shiftMonthLbl');
+  var y=_shiftMonthDate.getFullYear(), m=_shiftMonthDate.getMonth();
+  if(lbl) lbl.textContent=y+'年'+(m+1)+'月';
+  var dept=(document.getElementById('shiftMonthDept')||{value:''}).value;
+
+  var daysInMonth=new Date(y,m+1,0).getDate();
+  var startStr=y+'-'+(m+1).toString().padStart(2,'0')+'-01';
+  var endStr=y+'-'+(m+1).toString().padStart(2,'0')+'-'+daysInMonth.toString().padStart(2,'0');
+
+  var head=document.getElementById('shiftMonthHead');
+  var body=document.getElementById('shiftMonthBody');
+  if(body) body.innerHTML='<tr><td colspan="35" style="text-align:center;padding:20px;color:var(--muted)">読み込み中...</td></tr>';
+
+  var {data:emps}=await sb.from('employees').select('id,name,department').eq('is_active',true).order('department').order('name');
+  if(!emps) return;
+  _shiftEmployees=emps;
+  populateDeptSelects(emps);
+  if(dept) emps=emps.filter(function(e){return (e.department||'—')===dept;});
+
+  await loadShiftSchedulesFromDB(startStr, endStr);
+
+  var pats=getShiftPatterns();
+  var DOW_JP=['日','月','火','水','木','金','土'];
+  var DOW_COLOR=['#ef4444','','','','','','#3b82f6'];
+
+  // Header
+  var days=[];
+  for(var d=1;d<=daysInMonth;d++) days.push(new Date(y,m,d));
+  var thS='border:1px solid var(--border);padding:3px 2px;text-align:center;background:var(--surface2);white-space:nowrap;font-size:10px;';
+  var hCells=days.map(function(dd){
+    var dw=dd.getDay();
+    var col=DOW_COLOR[dw];
+    return '<th style="'+thS+'width:32px;color:'+(col||'inherit')+'">'+dd.getDate()+'<br>'+DOW_JP[dw]+'</th>';
+  }).join('');
+  if(head) head.innerHTML='<tr>'
+    +'<th style="'+thS+'min-width:60px;font-size:11px">雇用区分</th>'
+    +'<th style="'+thS+'min-width:80px;font-size:11px">名前</th>'
+    +'<th style="'+thS+'width:36px">有休残</th>'
+    +'<th style="'+thS+'width:36px">公休</th>'
+    +hCells+'</tr>';
+
+  // Body
+  var rows=emps.map(function(emp){
+    var paidLeft=0; var offCount=0;
+    var cells=days.map(function(dd){
+      var dateStr=y+'-'+(m+1).toString().padStart(2,'0')+'-'+dd.getDate().toString().padStart(2,'0');
+      var cell=getShiftCell(emp.id,dateStr);
+      var pat=cell?pats.find(function(p){return p.id===cell.pattern_id;}):null;
+      if(pat&&pat.type==='off') offCount++;
+      var bg=pat?pat.color:'var(--border)';
+      var label=pat?pat.name:'';
+      return '<td style="border:1px solid var(--border);padding:1px;text-align:center;cursor:pointer;background:'+(pat?pat.color+'22':'')+'\" onclick="openShiftCellModal(\''+emp.id+'\',\''+dateStr+'\')">'
+        +(label?'<span style="display:inline-block;padding:1px 4px;border-radius:3px;background:'+bg+';color:#fff;font-size:10px;white-space:nowrap">'+label+'</span>':'<span style="font-size:9px;color:var(--muted)">—</span>')
+        +'</td>';
+    }).join('');
+    return '<tr><td style="border:1px solid var(--border);padding:3px 6px;font-size:10px;color:var(--muted)">正社員</td>'
+      +'<td style="border:1px solid var(--border);padding:3px 6px;font-weight:600;white-space:nowrap">'+emp.name+'</td>'
+      +'<td style="border:1px solid var(--border);padding:3px;text-align:center;font-size:11px">—</td>'
+      +'<td style="border:1px solid var(--border);padding:3px;text-align:center;font-size:11px">'+offCount+'</td>'
+      +cells+'</tr>';
+  }).join('');
+  if(body) body.innerHTML=rows||'<tr><td colspan="35" style="text-align:center;padding:20px;color:var(--muted)">データなし</td></tr>';
+};
+
+window.openShiftCellModal = function(empId, date){
+  var emp=(_shiftEmployees||[]).find(function(e){return e.id===empId;});
+  var cell=getShiftCell(empId,date)||{};
+  document.getElementById('scmEmpId').value=empId;
+  document.getElementById('scmDate').value=date;
+  var tEl=document.getElementById('shiftCellTitle'); if(tEl) tEl.innerHTML=(emp?emp.name:'')+'　'+date+'<span class="modal-close" onclick="closeModal(\'shiftCellModal\')">×</span>';
+  populatePatternSelects();
+  var sel=document.getElementById('scmPattern'); if(sel&&cell.pattern_id) sel.value=cell.pattern_id;
+  var pat=cell.pattern_id?getPatternById(cell.pattern_id):null;
+  document.getElementById('scmStart').value=cell.custom_start||(pat?pat.start:'')||'';
+  document.getElementById('scmEnd').value=cell.custom_end||(pat?pat.end:'')||'';
+  document.getElementById('scmNote').value=cell.note||'';
+  openModal('shiftCellModal');
+};
+window.saveShiftCell = async function(){
+  var empId=document.getElementById('scmEmpId').value;
+  var date=document.getElementById('scmDate').value;
+  var patId=document.getElementById('scmPattern').value;
+  var st=document.getElementById('scmStart').value;
+  var en=document.getElementById('scmEnd').value;
+  var note=document.getElementById('scmNote').value;
+  setShiftCell(empId,date,{pattern_id:patId,custom_start:st,custom_end:en,note:note});
+  var r=await saveShiftScheduleToDB(empId,date,patId,st,en,note);
+  closeModal('shiftCellModal');
+  if(r&&r.error){ showToast('保存失敗: '+r.error.message,'red'); }
+  else { showToast('✅ 保存しました','green'); loadShiftMonthly(); }
+};
+window.saveShiftMonthly = async function(){
+  showToast('✅ スケジュールは変更時に自動保存されます','green');
+};
+
+// ── シフト自動作成 ──
+var _autoShiftPreviewData=[];
+window.renderShiftAuto = function(){
+  renderShiftPatternTable(); populatePatternSelects();
+  var now=new Date();
+  var s=document.getElementById('autoShiftStart'); if(s&&!s.value) s.value=fmtDateISO(now);
+  var e=document.getElementById('autoShiftEnd');
+  if(e&&!e.value){ var e2=new Date(now); e2.setDate(e2.getDate()+27); e.value=fmtDateISO(e2); }
+};
+window.previewAutoShift = async function(){
+  var start=document.getElementById('autoShiftStart').value;
+  var end=document.getElementById('autoShiftEnd').value;
+  var dept=(document.getElementById('autoShiftDept')||{value:''}).value;
+  var satPat=document.getElementById('autoShiftSat').value||'sp_koukyu';
+  var sunPat=document.getElementById('autoShiftSun').value||'sp_koukyu';
+  if(!start||!end){showToast('期間を指定してください','red');return;}
+  var diffMs=new Date(end)-new Date(start);
+  if(diffMs>90*86400000){showToast('期間は最大3ヶ月（90日）です','red');return;}
+  if(diffMs<0){showToast('開始日≤終了日にしてください','red');return;}
+
+  var {data:emps}=await sb.from('employees').select('id,name,department').eq('is_active',true).order('name');
+  if(!emps) return;
+  if(dept) emps=emps.filter(function(e){return (e.department||'—')===dept;});
+
+  var pats=getShiftPatterns();
+  var defPat=pats.find(function(p){return p.type==='work';})||pats[0];
+  var days=[];
+  var cur=new Date(start);
+  var endD=new Date(end);
+  while(cur<=endD){ days.push(fmtDateISO(new Date(cur))); cur.setDate(cur.getDate()+1); }
+
+  _autoShiftPreviewData=[];
+  emps.forEach(function(emp){
+    days.forEach(function(dateStr){
+      var dw=new Date(dateStr).getDay();
+      var patId=dw===0?sunPat:dw===6?satPat:defPat.id;
+      _autoShiftPreviewData.push({employee_id:emp.id,empName:emp.name,date:dateStr,pattern_id:patId});
+    });
+  });
+
+  // Preview table
+  var prev=document.getElementById('autoShiftPreview');
+  if(!prev) return;
+  var pLimit=Math.min(days.length,7);
+  var previewDays=days.slice(0,pLimit);
+  var shown=emps.slice(0,5);
+  var table='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">プレビュー（最初の'+pLimit+'日×'+shown.length+'名）</div>';
+  table+='<table style="font-size:11px;border-collapse:collapse"><thead><tr><th style="border:1px solid var(--border);padding:4px 8px">名前</th>';
+  previewDays.forEach(function(d){ var dw=new Date(d).getDay(); table+='<th style="border:1px solid var(--border);padding:4px 6px;color:'+(dw===0?'#ef4444':dw===6?'#3b82f6':'inherit')+'">'+d.slice(5)+'</th>'; });
+  table+='</tr></thead><tbody>';
+  shown.forEach(function(emp){
+    table+='<tr><td style="border:1px solid var(--border);padding:4px 8px;font-weight:600">'+emp.name+'</td>';
+    previewDays.forEach(function(d){
+      var row=_autoShiftPreviewData.find(function(r){return r.employee_id===emp.id&&r.date===d;});
+      var pat=row?pats.find(function(p){return p.id===row.pattern_id;}):null;
+      table+='<td style="border:1px solid var(--border);padding:2px 4px;text-align:center">'
+        +(pat?'<span style="background:'+pat.color+';color:#fff;border-radius:3px;padding:1px 5px;font-size:10px">'+pat.name+'</span>':'—')+'</td>';
+    });
+    table+='</tr>';
+  });
+  table+='</tbody></table>';
+  if(emps.length>5||days.length>pLimit) table+='<div style="margin-top:6px;font-size:11px;color:var(--muted)">... 全'+emps.length+'名 × '+days.length+'日 = '+_autoShiftPreviewData.length+'件が登録されます</div>';
+  prev.innerHTML=table;
+  var btn=document.getElementById('registerAutoShiftBtn'); if(btn) btn.disabled=false;
+};
+window.registerAutoShift = async function(){
+  if(!_autoShiftPreviewData.length){showToast('先にプレビューを実行してください','amber');return;}
+  if(!confirm(_autoShiftPreviewData.length+'件のシフトを登録します。既存スケジュールは上書きされません。よろしいですか？')) return;
+  var errors=0;
+  var batch=_autoShiftPreviewData;
+  var pats=getShiftPatterns();
+  for(var i=0;i<batch.length;i++){
+    var row=batch[i];
+    var existing=getShiftCell(row.employee_id,row.date);
+    if(existing&&existing.pattern_id) continue; // skip existing
+    var pat=pats.find(function(p){return p.id===row.pattern_id;})||null;
+    var r=await saveShiftScheduleToDB(row.employee_id,row.date,row.pattern_id,pat?pat.start:null,pat?pat.end:null,'auto');
+    if(r&&r.error) errors++;
+  }
+  if(errors) showToast('一部エラー('+errors+'件)','red');
+  else showToast('✅ シフトを登録しました（'+batch.length+'件）','green');
+  var btn=document.getElementById('registerAutoShiftBtn'); if(btn) btn.disabled=true;
+  _autoShiftPreviewData=[];
+  document.getElementById('autoShiftPreview').innerHTML='';
 };
 
 </script>
