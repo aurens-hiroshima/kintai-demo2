@@ -219,6 +219,10 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
         <label class="f-label" data-i18n="login.pw">パスワード</label>
         <input class="f-ctrl" type="password" id="staffPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <input type="checkbox" id="rememberMe" style="width:16px;height:16px;cursor:pointer;accent-color:var(--pri)">
+        <label for="rememberMe" style="font-size:13px;color:var(--txt2);cursor:pointer">IDとパスワードを記憶する</label>
+      </div>
       <div id="loginErr" style="color:#dc2626;font-size:12px;margin-bottom:8px;min-height:16px"></div>
       <div style="margin-bottom:24px">
         <button class="btn-app btn-pri" id="loginBtn" onclick="doLogin()" data-i18n="login.btn">ログイン</button>
@@ -1313,6 +1317,7 @@ function goScreen(id){
 
   var isNavRoot = !!_navScreens[id];
   var isLogin = id==='screen-login'||id==='screen-reset-pw'||id==='screen-punch-confirm';
+  if(id==='screen-login') setTimeout(restoreLoginCredentials, 0);
 
   // ボトムナビ表示制御
   var bnav = document.getElementById('bnav');
@@ -1392,12 +1397,28 @@ function initSb(){
   }
 }
 
+// ── ログイン画面の保存済み認証情報を復元 ──
+function restoreLoginCredentials(){
+  try {
+    var saved = localStorage.getItem('staff_remember');
+    if(!saved) return;
+    var creds = JSON.parse(saved);
+    var emailEl = document.getElementById('staffEmail');
+    var pwEl    = document.getElementById('staffPassword');
+    var remEl   = document.getElementById('rememberMe');
+    if(emailEl && creds.email) emailEl.value = creds.email;
+    if(pwEl    && creds.pw)    pwEl.value    = creds.pw;
+    if(remEl)                  remEl.checked  = true;
+  } catch(e){}
+}
+
 // ── ログイン ──
 async function doLogin(){
   if(!sb) initSb();
   if(!sb){ showToast('接続エラー'); return; }
   var email = (document.getElementById('staffEmail')||{}).value.trim();
   var pw    = (document.getElementById('staffPassword')||{}).value;
+  var remember = (document.getElementById('rememberMe')||{}).checked;
   var errEl = document.getElementById('loginErr');
   if(errEl) errEl.textContent = '';
   if(!email||!pw){ if(errEl) errEl.textContent='メールとパスワードを入力してください'; return; }
@@ -1408,6 +1429,12 @@ async function doLogin(){
   if(error){
     if(errEl) errEl.textContent='メールまたはパスワードが違います';
     return;
+  }
+  // 記憶チェックの処理
+  if(remember){
+    localStorage.setItem('staff_remember', JSON.stringify({email:email, pw:pw}));
+  } else {
+    localStorage.removeItem('staff_remember');
   }
   _myAuthId = data.user.id;
   // employees レコードを取得
@@ -1925,6 +1952,49 @@ var _i18n = {
     'notif.notice':'Thông báo','notif.shift':'Ca làm','notif.apply_result':'Kết quả đơn','notif.punch_reminder':'Nhắc chấm'
   },
   zh:{
-    'login.email':'邮箱','login.password':'密码','login.btn':'登录',
+    'login.email':'邮箱','login.pw':'密码','login.btn':'登录','login.forgot':'忘记密码',
     'home.punch_status':'打卡状态','home.notice':'📢 通知','home.apply':'申请状态',
-    'home.today_shift':'今日班次','ho
+    'home.today_shift':'今日班次','home.normal_work':'正常上班','home.punch_btn':'打卡','home.history_btn':'历史',
+    'nav.home':'首页','nav.punch':'打卡','nav.shift':'班次','nav.apply':'申请','nav.mypage':'我的',
+    'menu.attendance':'打卡','menu.shift':'班次管理','menu.apply':'申请列表',
+    'menu.notice':'通知','menu.mypage':'个人页面','menu.settings':'设置',
+    'settings.lang':'语言设置','settings.notif':'通知设置','settings.logout':'退出登录',
+    'punch.clock_in':'上班','punch.clock_out':'下班','punch.break_start':'休息\n开始','punch.break_end':'继续\n上班',
+    'punch.go_out':'外出','punch.return':'返回','punch.photo':'拍照','punch.photo_sub':'自拍打卡',
+    'punch.complete':'打卡完成！','punch.waiting_out':'等待下班',
+    'common.back_home':'返回首页',
+    'status.working':'上班中','status.pending':'审批中','status.approved':'已批准','status.rejected':'已拒绝',
+    'shift.normal':'正常班','shift.early':'早班','shift.wish_off':'希望休','shift.wish_work':'希望上班',
+    'shift.enter_wish':'输入班次意愿','shift.apply_change':'申请换班',
+    'shift.start':'开始时间','shift.end':'结束时间','shift.break':'休息','shift.hours':'工作时间','shift.location':'工作地点',
+    'apply.history_title':'申请历史','apply.new':'新申请',
+    'apply_cat.leave':'休假','apply_cat.other':'其他',
+    'apply_type.paid_leave':'带薪休假','apply_type.half_leave':'半天','apply_type.hourly_leave':'按小时',
+    'apply_type.absence':'缺勤','apply_type.late_early':'迟到/早退','apply_type.overtime':'加班',
+    'apply_type.holiday_work':'节假日上班','apply_type.punch_fix':'修正打卡',
+    'apply_type.shift_wish':'班次意愿','apply_type.shift_change':'换班申请','apply_type.shift_swap':'班次互换',
+    'form.start_date':'开始日期','form.end_date':'结束日期','form.reason':'理由','form.comment':'备注',
+    'form.submit':'提交','form.register':'登记','form.am':'上午','form.pm':'下午',
+    'form.start_time':'开始时间','form.end_time':'结束时间','form.hours':'小时数','form.date':'日期','form.type':'类型','form.body':'内容',
+    'leave.remaining':'剩余','leave.used':'已使用','leave.granted':'已授予',
+    'leave.history':'历史','leave.grant_hist':'授予记录','leave.expire':'到期',
+    'notice.post_btn':'✏️ 发布','notice.see_all':'查看全部','notice.category':'类别',
+    'notice.attach_photo':'📷 附加照片（可选）','notice.submit_btn':'📢 发布',
+    'profile.name':'姓名','profile.dept':'部门','profile.emp_no':'员工号',
+    'profile.emp_type':'合同类型','profile.hire_date':'入职日期','profile.edit':'编辑资料',
+    'notif.notice':'通知','notif.shift':'班次','notif.apply_result':'申请结果','notif.punch_reminder':'打卡提醒'
+  }
+};
+function t(key){ return (_i18n[_lang]&&_i18n[_lang][key])||_i18n.ja[key]||key; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n'); var v=t(k); if(v) el.textContent=v;
+  });
+}
+// ページ初期表示時に保存済み認証情報を復元
+document.addEventListener('DOMContentLoaded', function(){
+  restoreLoginCredentials();
+});
+</script>
+</body>
+</html>
