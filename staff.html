@@ -1318,6 +1318,8 @@ function goScreen(id){
   var isNavRoot = !!_navScreens[id];
   var isLogin = id==='screen-login'||id==='screen-reset-pw'||id==='screen-punch-confirm';
   if(id==='screen-login') setTimeout(restoreLoginCredentials, 0);
+  if(id==='screen-home') setTimeout(loadHomeNotices, 0);
+  if(id==='screen-notice') setTimeout(loadAllNotices, 0);
 
   // ボトムナビ表示制御
   var bnav = document.getElementById('bnav');
@@ -1713,7 +1715,9 @@ async function submitShiftWish(){
 // ── お知らせ ──
 async function loadHomeNotices(){
   var el = document.getElementById('homeNoticeList');
-  if(!el||!sb) return;
+  if(!el) return;
+  if(!sb){ el.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">接続中...</div>'; return; }
+  el.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">読み込み中...</div>';
   var {data,error} = await sb.from('notices').select('id,title,category,is_pinned,created_at').order('is_pinned',{ascending:false}).order('created_at',{ascending:false}).limit(3);
   if(error||!data||data.length===0){
     el.innerHTML='<div class="list-row"><div class="list-sub" style="color:var(--muted);font-size:12px">お知らせはありません</div></div>';
