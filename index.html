@@ -987,6 +987,53 @@ tr:hover td{background:#fafafa}
     </div>
   </div>
   <div class="settings-section">
+    <div class="settings-header">
+      <span>🗓️ 勤務パターン 曜日デフォルト設定</span>
+      <button class="btn btn-sm btn-primary" onclick="saveWdPatSettings()">💾 保存</button>
+    </div>
+    <div class="settings-body">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+        勤務パターンごとに曜日のデフォルト区分を設定します。シフト自動作成・年間カレンダー生成に反映されます。
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <div class="form-label">設定対象の勤務パターン</div>
+        <select class="form-control" id="wdSettingPatSel" style="max-width:320px" onchange="onWdPatSettingsChange()">
+          <option value="">— パターンを選択 —</option>
+        </select>
+      </div>
+      <div id="wdSettingNoMsg" style="color:var(--muted);font-size:12px;padding:12px;text-align:center;background:var(--bg);border-radius:6px">
+        👆 上のドロップダウンから勤務パターンを選択してください
+      </div>
+      <div id="wdSettingTableWrap" style="display:none">
+        <table style="border-collapse:collapse;width:auto;min-width:420px;font-size:13px">
+          <thead>
+            <tr style="background:var(--bg)">
+              <th style="padding:7px 12px;border:1px solid var(--border);text-align:left;width:80px">曜日</th>
+              <th style="padding:7px 16px;border:1px solid var(--border);text-align:center">勤務日</th>
+              <th style="padding:7px 16px;border:1px solid var(--border);text-align:center">休日</th>
+              <th style="padding:7px 16px;border:1px solid var(--border);text-align:center">法定休日</th>
+            </tr>
+          </thead>
+          <tbody id="wdSettingRows"></tbody>
+        </table>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px">🎌 祝日の扱い</div>
+          <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="wdSettingHol" value="法定休日" style="accent-color:var(--primary)"> 法定休日（赤）
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="wdSettingHol" value="休日" style="accent-color:var(--primary)"> 休日（グレー）
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+              <input type="radio" name="wdSettingHol" value="勤務" style="accent-color:var(--primary)"> 勤務日にする
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
     <div class="settings-header"><span>🖥️ 外部リンク</span></div>
     <div class="settings-body" style="display:flex;gap:12px;flex-wrap:wrap">
       <a href="kiosk.html" target="_blank" class="btn btn-outline">🖥️ 打刻専用画面</a>
@@ -2021,6 +2068,7 @@ window.nav = function(id){
   if(id==='shift') loadShiftPage();
   if(id==='face') loadFacePage();
   if(id==='notice') loadNotices();
+  if(id==='settings') loadWdPatSettings();
 };
 
 // ── Clock ──
@@ -4991,6 +5039,70 @@ function getShiftPatterns(){
 }
 function saveShiftPatternsToStorage(pats){ localStorage.setItem('shift_patterns',JSON.stringify(pats)); }
 function getPatternById(id){ return getShiftPatterns().find(function(p){return p.id===id;})||null; }
+
+// ─── 曜日デフォルト設定（システム設定ページ） ───────────────────────────
+function loadWdPatSettings(){
+  var sel=document.getElementById('wdSettingPatSel');
+  if(!sel) return;
+  var prev=sel.value;
+  var pats=getShiftPatterns().filter(function(p){return p.type==='normal'||p.type==='flex'||p.type==='deemed'||p.type==='work';});
+  if(!pats.length) pats=getShiftPatterns();
+  sel.innerHTML='<option value="">— パターンを選択 —</option>'
+    +pats.map(function(p){return '<option value="'+p.id+'">['+p.code+'] '+p.name+'</option>';}).join('');
+  if(prev) sel.value=prev;
+  onWdPatSettingsChange();
+}
+function onWdPatSettingsChange(){
+  var patId=(document.getElementById('wdSettingPatSel')||{}).value;
+  var wrap=document.getElementById('wdSettingTableWrap');
+  var noMsg=document.getElementById('wdSettingNoMsg');
+  if(!patId){
+    if(wrap) wrap.style.display='none';
+    if(noMsg) noMsg.style.display='';
+    return;
+  }
+  if(wrap) wrap.style.display='';
+  if(noMsg) noMsg.style.display='none';
+  var DOW_IDX=[1,2,3,4,5,6,0];
+  var DOW_LABELS=['月','火','水','木','金','土','日'];
+  var saved=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
+  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var tbody=document.getElementById('wdSettingRows');
+  if(!tbody) return;
+  var TYPES=['勤務','休日','法定休日'];
+  var TYPE_COLORS={'勤務':'#16a34a','休日':'#6b7280','法定休日':'#dc2626'};
+  tbody.innerHTML=DOW_IDX.map(function(wi,i){
+    var lbl=DOW_LABELS[i];
+    var tdStyle=wi===0?'color:#dc2626;font-weight:700':wi===6?'color:#2563eb;font-weight:700':'font-weight:600';
+    var cur=saved[wi]||'勤務';
+    return '<tr>'
+      +'<td style="padding:7px 12px;border:1px solid var(--border);'+tdStyle+'">'+lbl+'曜日</td>'
+      +TYPES.map(function(t){
+        return '<td style="padding:7px 16px;border:1px solid var(--border);text-align:center">'
+          +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;font-size:12px;color:'+TYPE_COLORS[t]+'">'
+          +'<input type="radio" name="wdSet_'+wi+'" value="'+t+'"'+(cur===t?' checked':'')+' style="accent-color:var(--primary)"> '+t
+          +'</label></td>';
+      }).join('')
+      +'</tr>';
+  }).join('');
+  var holEl=document.querySelector('input[name="wdSettingHol"][value="'+holDefault+'"]');
+  if(holEl) holEl.checked=true;
+}
+function saveWdPatSettings(){
+  var patId=(document.getElementById('wdSettingPatSel')||{}).value;
+  if(!patId){ showToast('勤務パターンを選択してください','⚠️'); return; }
+  var result={};
+  [0,1,2,3,4,5,6].forEach(function(wi){
+    var checked=document.querySelector('input[name="wdSet_'+wi+'"]:checked');
+    result[wi]=checked?checked.value:'勤務';
+  });
+  localStorage.setItem('yi_wd_'+patId,JSON.stringify(result));
+  var holChecked=document.querySelector('input[name="wdSettingHol"]:checked');
+  if(holChecked) localStorage.setItem('yi_hol_'+patId,holChecked.value);
+  var pat=getShiftPatterns().find(function(p){return p.id===patId;});
+  var name=pat?'['+pat.code+'] '+pat.name:'';
+  showToast('✅ '+name+' の曜日デフォルトを保存しました');
+}
 
 var _TYPE_LABEL = {normal:'通常勤務',flex:'フレックス',deemed:'みなし勤務',all_off:'全日休暇',half_am:'半日(午前)',half_pm:'半日(午後)',hourly_off:'時間休暇',work:'勤務',off:'休日',remote:'在宅',biz:'出張'};
 function calcWorkHours(p){
