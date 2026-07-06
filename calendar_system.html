@@ -1417,7 +1417,18 @@ function saveYearInit(){
       if(errors>0){
         toast('保存完了（一部エラー '+errors+'件）','amber');
       } else {
-        toast('✅ '+upserts.length+'日分を保存しました','green');
+        toast('✅ '+upserts.length+'日分を保存しました。カレンダーで確認します...','green');
+        // 保存したパターンに合う職員を自動選択してカレンダーへ遷移
+        var savedPatId = upserts.length ? upserts[0].work_pattern_id : null;
+        if(savedPatId){
+          var matchEmp = _employees.find(function(e){
+            return e.work_pattern_id === savedPatId && e.employment_status !== '退職';
+          });
+          if(matchEmp){
+            _calEmpId = matchEmp.id;
+            setTimeout(function(){ nav('calendar'); }, 1000);
+          }
+        }
       }
       return;
     }
