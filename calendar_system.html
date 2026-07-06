@@ -1895,7 +1895,8 @@ function onWdPatChange(){
   if(wrap) wrap.style.display='';
   var wd=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
   var hol=localStorage.getItem('yi_hol_'+patId)||'法定休日';
-  var tbody=document.getElementById('wdTableBody');
+  // tbody IDを正しく参照（HTMLは weekdayDefaultRows）
+  var tbody=document.getElementById('weekdayDefaultRows');
   if(!tbody) return;
   var wdLabels=['日','月','火','水','木','金','土'];
   var opts=['勤務','休日','法定休日'];
@@ -1909,16 +1910,11 @@ function onWdPatChange(){
       }).join('')
       +'</tr>';
   }).join('');
-  // 祝日行
-  var holTr=document.getElementById('holDefaultRow');
-  if(holTr){
-    holTr.innerHTML='<td style="padding:6px 10px;font-weight:600">祝日</td>'
-      +opts.map(function(opt){
-        return '<td style="padding:6px 10px;text-align:center">'
-          +'<input type="radio" name="holDefault" value="'+opt+'"'+(hol===opt?' checked':'')+' onchange="saveWeekdayDefaults()">'
-          +'</td>';
-      }).join('');
-  }
+  // 祝日ラジオは静的HTMLのため .checked で初期選択を反映
+  document.querySelectorAll('input[name="holDefault"]').forEach(function(el){
+    el.checked=(el.value===hol);
+    el.onchange=saveWeekdayDefaults;
+  });
 }
 function saveWeekdayDefaults(){
   var patId=document.getElementById('wdPatSel').value;
