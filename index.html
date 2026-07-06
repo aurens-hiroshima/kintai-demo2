@@ -765,15 +765,50 @@ tr:hover td{background:#fafafa}
 
 <!-- ── Users ── -->
 <div class="page" id="page-users">
-  <div class="flex gap8 mb16">
-    <button class="btn btn-primary" onclick="openModal('addUserModal')">＋ ユーザー追加</button>
-    <input type="text" class="form-control" id="userSearch" placeholder="氏名・メールで検索..." style="width:240px;margin-left:auto" oninput="filterUsers()">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'tab-users-list');loadAllUsers()">👥 職員一覧</div>
+    <div class="tab" onclick="switchTab(this,'tab-users-dept');loadDepts()">🏢 部署設定</div>
   </div>
-  <div class="card">
-    <table>
-      <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
-      <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
-    </table>
+
+  <!-- ── 職員一覧タブ ── -->
+  <div class="tab-content active" id="tab-users-list">
+    <div class="flex gap8 mb16">
+      <button class="btn btn-primary" onclick="openModal('addUserModal')">＋ ユーザー追加</button>
+      <input type="text" class="form-control" id="userSearch" placeholder="氏名・メールで検索..." style="width:240px;margin-left:auto" oninput="filterUsers()">
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
+        <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 部署設定タブ ── -->
+  <div class="tab-content" id="tab-users-dept">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="card-title" style="margin:0">🏢 部署一覧</div>
+        <button class="btn btn-primary btn-sm" onclick="openDeptModal()">＋ 部署追加</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+        ここで管理する部署は <strong>calendar_system.html</strong> の部署設定と共通（同じDBテーブル）です。
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:100px">部署コード</th>
+            <th>部署名</th>
+            <th style="width:80px;text-align:center">人数</th>
+            <th style="width:80px">備考</th>
+            <th style="width:120px">操作</th>
+          </tr>
+        </thead>
+        <tbody id="deptMasterTbl">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -1605,6 +1640,31 @@ tr:hover td{background:#fafafa}
   </div>
 </div>
 
+<!-- Dept Modal -->
+<div class="modal-overlay" id="deptModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-title" id="deptModalTitle">🏢 部署追加<span class="modal-close" onclick="closeModal('deptModal')">×</span></div>
+    <input type="hidden" id="dpId">
+    <div class="form-group">
+      <div class="form-label">部署コード</div>
+      <input class="form-control" id="dpCode" placeholder="例: SALES">
+    </div>
+    <div class="form-group">
+      <div class="form-label">部署名 <span style="color:var(--red)">*</span></div>
+      <input class="form-control" id="dpName" placeholder="例: 営業部">
+    </div>
+    <div class="form-group">
+      <div class="form-label">備考</div>
+      <input class="form-control" id="dpNote" placeholder="（任意）">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red btn-sm" id="dpDelBtn" onclick="deleteDept()" style="margin-right:auto;display:none">削除</button>
+      <button class="btn btn-outline" onclick="closeModal('deptModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveDept()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- Leave Grant Modal -->
 <div class="modal-overlay" id="leaveGrantModal">
   <div class="modal" style="width:420px">
@@ -2064,7 +2124,7 @@ window.nav = function(id){
   if(id==='leave'){ loadLeaveAdmin(); }
   if(id==='overtime') loadOvertimePage();
   if(id==='reports') loadReports();
-  if(id==='users') loadAllUsers();
+  if(id==='users'){ loadAllUsers(); loadDepts(); }
   if(id==='shift') loadShiftPage();
   if(id==='face') loadFacePage();
   if(id==='notice') loadNotices();
@@ -3134,23 +3194,127 @@ window.saveShift = function(){
 };
 
 // ── Users ──
+// ───────────── 部署CRUD ─────────────
+var _departments = [];
+
+function loadDepts(){
+  if(!sb){ return; }
+  sb.from('departments').select('*').order('dept_code').then(function(r){
+    if(r.error){ showToast('部署取得エラー: '+r.error.message,'red'); return; }
+    _departments = r.data||[];
+    renderDepts();
+    populateDeptSelects();
+  });
+}
+
+function renderDepts(){
+  var tb = document.getElementById('deptMasterTbl');
+  if(!tb) return;
+  if(!_departments.length){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">部署がありません。「＋ 部署追加」から登録してください。</td></tr>';
+    return;
+  }
+  // 職員数カウント用マップ
+  var cntMap={};
+  (allUsers||[]).forEach(function(e){ if(e.department) cntMap[e.department]=(cntMap[e.department]||0)+1; });
+  tb.innerHTML = _departments.map(function(d){
+    var cnt = cntMap[d.dept_name]||0;
+    return '<tr>'
+      +'<td>'+escHtml(d.dept_code||'')+'</td>'
+      +'<td><strong>'+escHtml(d.dept_name||'')+'</strong></td>'
+      +'<td style="text-align:center">'+cnt+'人</td>'
+      +'<td style="color:var(--muted);font-size:12px">'+escHtml(d.notes||'')+'</td>'
+      +'<td><button class="btn btn-outline btn-sm" onclick="openDeptModal(\''+d.id+'\')">編集</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function openDeptModal(id){
+  document.getElementById('dpId').value = '';
+  document.getElementById('dpCode').value = '';
+  document.getElementById('dpName').value = '';
+  document.getElementById('dpNote').value = '';
+  document.getElementById('dpDelBtn').style.display = 'none';
+  document.getElementById('deptModalTitle').innerHTML = '🏢 部署追加<span class="modal-close" onclick="closeModal(\'deptModal\')">×</span>';
+  if(id){
+    var d = _departments.find(function(x){ return x.id===id; });
+    if(!d) return;
+    document.getElementById('dpId').value = d.id;
+    document.getElementById('dpCode').value = d.dept_code||'';
+    document.getElementById('dpName').value = d.dept_name||'';
+    document.getElementById('dpNote').value = d.notes||'';
+    document.getElementById('dpDelBtn').style.display = '';
+    document.getElementById('deptModalTitle').innerHTML = '🏢 部署編集<span class="modal-close" onclick="closeModal(\'deptModal\')">×</span>';
+  }
+  openModal('deptModal');
+}
+
+function saveDept(){
+  var id   = document.getElementById('dpId').value.trim();
+  var code = document.getElementById('dpCode').value.trim();
+  var name = document.getElementById('dpName').value.trim();
+  var note = document.getElementById('dpNote').value.trim();
+  if(!name){ showToast('部署名を入力してください','amber'); return; }
+  var payload = { dept_code: code||null, dept_name: name, notes: note||null };
+  var p = id
+    ? sb.from('departments').update(payload).eq('id',id)
+    : sb.from('departments').insert(payload);
+  p.then(function(r){
+    if(r.error){ showToast('保存エラー: '+r.error.message,'red'); return; }
+    showToast(id?'部署を更新しました':'部署を追加しました','green');
+    closeModal('deptModal');
+    loadDepts();
+  });
+}
+
+function deleteDept(){
+  var id   = document.getElementById('dpId').value.trim();
+  var name = document.getElementById('dpName').value.trim();
+  if(!id) return;
+  if(!confirm('「'+name+'」を削除しますか？\n※この部署に所属する職員の部署欄は空になります。')) return;
+  sb.from('departments').delete().eq('id',id).then(function(r){
+    if(r.error){ showToast('削除エラー: '+r.error.message,'red'); return; }
+    showToast('削除しました','amber');
+    closeModal('deptModal');
+    loadDepts();
+  });
+}
+
+function populateDeptSelects(){
+  var names = _departments.map(function(d){ return d.dept_name; });
+  // 先頭オプションを保持して部署名リストで上書き
+  var selIds = [
+    'editUserDept','newUserDept',
+    'attDept','leaveFilterDept',
+    'shiftDailyDept','shiftMonthDept','autoShiftDept','csvDept'
+  ];
+  selIds.forEach(function(sid){
+    var sel = document.getElementById(sid);
+    if(!sel) return;
+    var cur = sel.value;
+    var opts = sel.querySelectorAll('option');
+    var firstOpt = opts[0]?opts[0].outerHTML:'<option value="">選択してください</option>';
+    sel.innerHTML = firstOpt + names.map(function(n){
+      return '<option value="'+escHtml(n)+'"'+(n===cur?' selected':'')+'>'+escHtml(n)+'</option>';
+    }).join('');
+  });
+}
+// ─────────────────────────────────────
+
 function loadAllUsers(){
   sb.from('employees').select('*').order('name').then(function(r){
     if(r.error){showToast('employeesテーブルエラー: '+r.error.message,'red');return;}
     allUsers = r.data||[];
-    const sel1 = document.getElementById('attDept');
     const sel2 = document.getElementById('calEmpSel');
     const sel3 = document.getElementById('calShiftEmp');
-    const depts=[...new Set(allUsers.map(e=>e.department).filter(Boolean))];
-    [sel1].forEach(function(sel){
-      const cur=sel.value;
-      sel.innerHTML='<option value="">全部署</option>'+depts.map(d=>'<option>'+d+'</option>').join('');
-      sel.value=cur;
-    });
     [sel2,sel3].forEach(function(sel){
       if(!sel)return;
       sel.innerHTML='<option value="">全員（共通）</option>'+allUsers.map(e=>'<option value="'+e.id+'">'+e.name+'</option>').join('');
     });
+    // 部署selectはloadDepts()→populateDeptSelects()で管理
+    if(_departments.length) populateDeptSelects();
     renderUserTable(allUsers);
   });
 }
@@ -5312,8 +5476,8 @@ async function saveShiftScheduleToDB(empId, date, patternId, customStart, custom
   }catch(e){ return {error:e}; }
 }
 
-// ── 部署セレクト共通 ──
-function populateDeptSelects(emps){
+// ── 部署セレクト共通（シフト用） ──
+function populateShiftDeptSelects(emps){
   var depts=[...new Set(emps.map(function(e){return e.department||'—';}))].sort();
   ['shiftDailyDept','shiftMonthDept','autoShiftDept'].forEach(function(sid){
     var sel=document.getElementById(sid); if(!sel) return;
@@ -5366,7 +5530,7 @@ window.loadShiftDaily = async function(){
   var {data:emps,error}=await sb.from('employees').select('id,name,department').eq('is_active',true).order('department').order('name');
   if(error||!emps){ if(body) body.innerHTML='<tr><td colspan="40" style="color:var(--red);padding:16px">取得失敗</td></tr>'; return; }
   _shiftEmployees=emps;
-  populateDeptSelects(emps);
+  populateShiftDeptSelects(emps);
   if(dept) emps=emps.filter(function(e){ return (e.department||'—')===dept; });
 
   var startDate=year+'-'+(month+1).toString().padStart(2,'0')+'-01';
@@ -5540,7 +5704,7 @@ window.loadShiftMonthly = async function(){
   var {data:emps}=await sb.from('employees').select('id,name,department').eq('is_active',true).order('department').order('name');
   if(!emps) return;
   _shiftEmployees=emps;
-  populateDeptSelects(emps);
+  populateShiftDeptSelects(emps);
   if(dept) emps=emps.filter(function(e){return (e.department||'—')===dept;});
 
   await loadShiftSchedulesFromDB(startStr, endStr);
@@ -5672,83 +5836,43 @@ window.renderShiftAuto = function(){
 window.previewAutoShift = async function(){
   var start=document.getElementById('autoShiftStart').value;
   var end=document.getElementById('autoShiftEnd').value;
-  var dept=(document.getElementById('autoShiftDept')||{value:''}).value;
-  var satPat=(document.getElementById('autoShiftSat')||{value:''}).value||'sp_koukyu';
-  var sunPat=(document.getElementById('autoShiftSun')||{value:''}).value||'sp_koukyu';
-  var weekdayPatEl=document.getElementById('autoShiftWeekday');
-  var weekdayPat=weekdayPatEl&&weekdayPatEl.value?weekdayPatEl.value:'';
-  var wishPriority=(document.getElementById('autoShiftWishPriority')||{checked:true}).checked;
-  var equalDist=(document.getElementById('autoShiftEqualDist')||{checked:false}).checked;
-  if(!start||!end){showToast('期間を指定してください','red');return;}
-  var diffMs=new Date(end)-new Date(start);
-  if(diffMs>90*86400000){showToast('期間は最大3ヶ月（90日）です','red');return;}
-  if(diffMs<0){showToast('開始日≤終了日にしてください','red');return;}
-
-  var statusEl=document.getElementById('autoShiftStatus');
-  if(statusEl){statusEl.style.display='';statusEl.innerHTML='<span style="color:var(--blue)">⏳ データ読み込み中...</span>';}
-
-  var rs=await Promise.all([
-    sb.from('employees').select('id,name,department,auth_id').eq('is_active',true).order('name'),
-    wishPriority?sb.from('shift_wish_requests').select('employee_id,wish_dates,status').gte('wish_month',start.slice(0,7)).lte('wish_month',end.slice(0,7)):Promise.resolve({data:[]}),
-    sb.from('leave_requests').select('user_id,start_date,end_date,unit').eq('status','approved').lte('start_date',end).gte('end_date',start)
-  ]);
-  var emps=rs[0].data||[];
-  var wishRows=rs[1].data||[];
-  var leaveRows=rs[2].data||[];
-  if(!emps.length){if(statusEl)statusEl.innerHTML='<span style="color:var(--red)">職員が見つかりません</span>';return;}
-  if(dept) emps=emps.filter(function(e){return (e.department||'—')===dept;});
-
-  // 希望休マップ {empId: Set of dates}
-  var wishMap={};
-  wishRows.filter(function(w){return w.status==='approved'||w.status==='pending';}).forEach(function(w){
-    if(!wishMap[w.employee_id]) wishMap[w.employee_id]=new Set();
-    var dates=[]; try{dates=Array.isArray(w.wish_dates)?w.wish_dates:JSON.parse(w.wish_dates||'[]');}catch(e){}
-    dates.forEach(function(d){wishMap[w.employee_id].add(d);});
-  });
-  // 有休マップ {authId: [{start,end}]}
-  var leaveMap={};
-  var authIdMap={}; emps.forEach(function(e){authIdMap[e.id]=e.auth_id;});
-  leaveRows.forEach(function(l){
-    if(!leaveMap[l.user_id]) leaveMap[l.user_id]=[];
-    leaveMap[l.user_id].push({start:l.start_date,end:l.end_date,unit:l.unit||'day'});
-  });
+  var dept=document.getElementById('autoShiftDept').value;
+  if(!start||!end){showToast('期間を指定してください','amber');return;}
+  if(start>end){showToast('開始日が終了日より後です','amber');return;}
 
   var pats=getShiftPatterns();
-  var offPat=pats.find(function(p){return p.type==='all_off'||(p.name&&p.name.includes('公休'));})||pats.find(function(p){return p.id===sunPat;})||pats[0];
-  var workPats=pats.filter(function(p){return p.type!=='all_off'&&p.type!=='half_am'&&p.type!=='half_pm'&&p.type!=='hourly_off';});
-  // autoShiftWeekday の選択値を優先、未設定なら先頭の勤務パターン
-  var defPat=(weekdayPat?pats.find(function(p){return p.id===weekdayPat;}):null)||workPats[0]||pats[0];
-  var defPats=weekdayPat?[defPat]:workPats; // equalDist時のローテーション対象
+  if(!pats.length){showToast('勤務パターンが未設定です','amber');return;}
 
+  // 期間の日付リスト
   var days=[];
-  var cur=new Date(start); var endD=new Date(end);
-  while(cur<=endD){days.push(fmtDateISO(new Date(cur)));cur.setDate(cur.getDate()+1);}
-  var workDays=days.filter(function(d){var dw=new Date(d).getDay();return dw!==0&&dw!==6;});
+  var d=new Date(start);
+  while(d<=new Date(end)){days.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}
 
+  // 対象職員
+  var emps=(allUsers||[]).filter(function(e){return e.is_active&&(!dept||e.department===dept);});
+  if(!emps.length){showToast('対象職員が0人です','amber');return;}
+
+  // 曜日デフォルト設定読み込み（最初のパターンのIDで代表取得）
+  var patId=pats[0].id;
+  var wdDefault=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'{"0":"法定休日","1":"勤務日","2":"勤務日","3":"勤務日","4":"勤務日","5":"勤務日","6":"休日"}');
+  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+
+  // 既存シフト取得（同期的にDB確認）
+  var existing={};
+  var r1=await sb.from('shift_schedules').select('employee_id,date').gte('date',start).lte('date',end);
+  if(!r1.error)(r1.data||[]).forEach(function(s){existing[s.employee_id+'_'+s.date]=true;});
+
+  // プレビューデータ生成
   _autoShiftPreviewData=[];
-  var warnings=[];
-
   emps.forEach(function(emp){
-    var authId=authIdMap[emp.id]||'';
-    var empLeaves=leaveMap[authId]||[];
-    var assignedWork=0;
     days.forEach(function(dateStr){
+      if(existing[emp.id+'_'+dateStr]) return; // 既存はスキップ
       var dw=new Date(dateStr).getDay();
-      var isWeekend=dw===0||dw===6;
-      // 有休チェック
-      var onLeave=empLeaves.some(function(l){return l.start<=dateStr&&dateStr<=l.end;});
-      // 希望休チェック
-      var onWish=wishPriority&&wishMap[emp.id]&&wishMap[emp.id].has(dateStr);
-      var patId;
-      if(onLeave||onWish){
-        patId=offPat.id; // 有休・希望休→公休扱い
-      } else if(isWeekend){
-        patId=dw===0?sunPat:satPat;
-      } else {
-        patId=defPat.id; // weekdayPat で選択したパターンを使用
-        assignedWork++;
-      }
-      _autoShiftPreviewData.push({employee_id:emp.id,empName:emp.name,date:dateStr,pattern_id:patId,onLeave:onLeave,onWish:onWish});
+      var isHoliday=dw===0||dw===6;
+      var dayType=wdDefault[String(dw)]||'勤務日';
+      if(dayType==='休日'||dayType==='法定休日') return; // 休日はスキップ
+      // 最初のパターンを割り当て（複数パターンは今後拡張）
+      _autoShiftPreviewData.push({employee_id:emp.id,name:emp.name,date:dateStr,pattern_id:patId});
     });
   });
 
@@ -5771,129 +5895,132 @@ window.previewAutoShift = async function(){
     var patMap={}; pats.forEach(function(p){patMap[p.id]=p;});
     var html='';
     if(reqWarnings.length){
-      html+='<div style="background:var(--lamber);border:1px solid var(--amber);border-radius:6px;padding:10px 14px;margin-bottom:10px;font-size:12px">'
-        +'<strong>⚠️ 必要人員不足 ('+reqWarnings.length+'件)</strong><br>'+reqWarnings.slice(0,5).map(function(w){return '・'+w;}).join('<br>') +(reqWarnings.length>5?'<br>…他'+(reqWarnings.length-5)+'件':'')+'</div>';
+      html+='<div style="background:var(--lamber,#fffbeb);border:1px solid var(--amber,#f59e0b);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px">'
+        +'⚠️ 人数不足の日程があります:<ul style="margin:6px 0 0 16px;padding:0">'
+        +reqWarnings.map(function(w){return '<li>'+w+'</li>';}).join('')
+        +'</ul></div>';
     }
-    html+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">対象職員: '+emps.length+'名 / 対象日数: '+days.length+'日 / 総レコード: '+_autoShiftPreviewData.length+'件</div>';
-    html+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;white-space:nowrap">';
-    html+='<thead><tr><th style="padding:4px 8px;border:1px solid var(--border);background:var(--bg);position:sticky;left:0;z-index:1">職員名</th>';
-    days.forEach(function(d){
-      var dw=new Date(d).getDay();
-      var col=dw===0?'#fef2f2':dw===6?'#eff6ff':'';
-      var label=d.slice(5).replace('-','/')+'('+['日','月','火','水','木','金','土'][dw]+')';
-      html+='<th style="padding:4px 6px;border:1px solid var(--border);background:'+(col||'var(--bg)')+';color:'+(dw===0?'#dc2626':dw===6?'#2563eb':'inherit')+'">'+label+'</th>';
-    });
-    html+='</tr></thead><tbody>';
-    emps.forEach(function(emp){
-      html+='<tr><td style="padding:4px 8px;border:1px solid var(--border);font-weight:600;position:sticky;left:0;background:#fff;z-index:1">'+emp.name+'</td>';
-      days.forEach(function(d){
-        var rec=_autoShiftPreviewData.find(function(r){return r.employee_id===emp.id&&r.date===d;});
-        var pat=rec?patMap[rec.pattern_id]:null;
-        var bg=pat?pat.color:'#e5e7eb'; var lbl=pat?pat.name:'—';
-        var special=rec&&(rec.onLeave?'⚠️':rec.onWish?'🙏':'');
-        html+='<td style="padding:3px 6px;border:1px solid var(--border);text-align:center">'
-          +'<span style="background:'+bg+';color:#fff;border-radius:3px;padding:1px 5px;font-size:10px">'+lbl+'</span>'
-          +(special?'<span style="font-size:9px">'+special+'</span>':'')+'</td>';
-      });
-      html+='</tr>';
-    });
-    html+='</tbody></table></div>';
+    if(!_autoShiftPreviewData.length){
+      html+='<div style="text-align:center;padding:20px;color:var(--muted)">登録対象のシフトがありません（既存シフトと重複または全日休日）</div>';
+    } else {
+      // 日付×職員マトリクス
+      var empIds=[...new Set(_autoShiftPreviewData.map(function(r){return r.employee_id;}))];
+      var empNames={};
+      _autoShiftPreviewData.forEach(function(r){empNames[r.employee_id]=r.name;});
+      html+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%">'
+        +'<thead><tr><th style="padding:4px 8px;border:1px solid var(--border);background:var(--surface)">氏名</th>'
+        +days.slice(0,31).map(function(d){
+          var dw=new Date(d).getDay();
+          var wdays=['日','月','火','水','木','金','土'];
+          var color=dw===0?'color:var(--red)':dw===6?'color:var(--blue)':'';
+          return '<th style="padding:3px 4px;border:1px solid var(--border);background:var(--surface);min-width:36px;'+color+'">'+d.slice(5)+'<br>'+wdays[dw]+'</th>';
+        }).join('')
+        +'</tr></thead><tbody>'
+        +empIds.map(function(eid){
+          return '<tr><td style="padding:4px 8px;border:1px solid var(--border);white-space:nowrap">'+empNames[eid]+'</td>'
+            +days.slice(0,31).map(function(d){
+              var rec=_autoShiftPreviewData.find(function(r){return r.employee_id===eid&&r.date===d;});
+              if(!rec) return '<td style="border:1px solid var(--border);background:#f9f9f9"></td>';
+              var pat=patMap[rec.pattern_id]||{};
+              return '<td style="border:1px solid var(--border);background:'+(pat.color||'#e0f2fe')+';text-align:center;font-size:10px">'+( pat.name||'勤務').slice(0,2)+'</td>';
+            }).join('')
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }
     previewEl.innerHTML=html;
+    previewEl.style.display='';
+    var btn=document.getElementById('registerAutoShiftBtn');
+    if(btn) btn.disabled=!_autoShiftPreviewData.length;
   }
-
-  var regBtn=document.getElementById('registerAutoShiftBtn');
-  if(regBtn) regBtn.disabled=false;
-  if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ プレビュー完了 — 内容を確認して「一括登録」を押してください</span>';
+  showToast('プレビューを生成しました（'+_autoShiftPreviewData.length+'件）','blue');
 };
 
 window.registerAutoShift = async function(){
-  if(!_autoShiftPreviewData.length){showToast('プレビューを先に実行してください','red');return;}
-  var skipExist=(document.getElementById('autoShiftSkipExist')||{checked:true}).checked;
+  if(!_autoShiftPreviewData||!_autoShiftPreviewData.length){
+    showToast('先にプレビューを実行してください','amber'); return;
+  }
   var btn=document.getElementById('registerAutoShiftBtn');
   if(btn){btn.disabled=true;btn.textContent='登録中...';}
-  var statusEl=document.getElementById('autoShiftStatus');
-  if(statusEl){statusEl.style.display='';statusEl.innerHTML='<span style="color:var(--blue)">⏳ 登録中...</span>';}
-  try{
-    var rows=_autoShiftPreviewData.map(function(r){return {employee_id:r.employee_id,date:r.date,pattern_id:r.pattern_id};});
-    var r;
-    if(skipExist){
-      // 既存チェック → upsert
-      r=await sb.from('shift_schedules').upsert(rows,{onConflict:'employee_id,date'});
-    } else {
-      r=await sb.from('shift_schedules').upsert(rows,{onConflict:'employee_id,date'});
-    }
-    if(r.error) throw r.error;
-    showToast('✅ '+rows.length+'件のシフトを登録しました','green');
-    if(statusEl) statusEl.innerHTML='<span style="color:var(--green)">✅ '+rows.length+'件 登録完了</span>';
-    _autoShiftPreviewData=[];
-    if(btn){btn.disabled=true;btn.textContent='⚡ 一括登録';}
-  }catch(e){
-    showToast('登録失敗: '+(e.message||e),'red');
-    if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">❌ 登録失敗: '+(e.message||e)+'</span>';
+  var rows=_autoShiftPreviewData.map(function(r){
+    return {employee_id:r.employee_id,date:r.date,pattern_id:r.pattern_id};
+  });
+  var r=await sb.from('shift_schedules').upsert(rows,{onConflict:'employee_id,date'});
+  if(r.error){
+    showToast('登録エラー: '+r.error.message,'red');
     if(btn){btn.disabled=false;btn.textContent='⚡ 一括登録';}
+    return;
   }
+  showToast(rows.length+'件のシフトを登録しました','green');
+  _autoShiftPreviewData=[];
+  var previewEl=document.getElementById('autoShiftPreview');
+  if(previewEl){previewEl.innerHTML='';previewEl.style.display='none';}
+  if(btn){btn.disabled=true;btn.textContent='⚡ 一括登録';}
 };
 
-// ─── 曜日デフォルト設定（システム設定ページ） ───────────────────────────
-function loadWdPatSettings(){
+// ── 曜日デフォルト設定（システム設定ページ）──
+window.loadWdPatSettings = function(){
+  var pats=getShiftPatterns();
   var sel=document.getElementById('wdSettingPatSel');
-  if(!sel) return;
-  var prev=sel.value;
-  var pats=getShiftPatterns().filter(function(p){return p.type==='normal'||p.type==='flex'||p.type==='deemed';});
-  if(!pats.length) pats=getShiftPatterns();
-  sel.innerHTML='<option value="">— パターンを選択 —</option>'
-    +pats.map(function(p){return '<option value="'+p.id+'">['+p.code+'] '+p.name+'</option>';}).join('');
-  if(prev&&prev!=='') sel.value=prev;
-  onWdPatSettingsChange();
-}
-function onWdPatSettingsChange(){
-  var sel=document.getElementById('wdSettingPatSel'); if(!sel) return;
-  var patId=sel.value;
   var wrap=document.getElementById('wdSettingTableWrap');
   var noMsg=document.getElementById('wdSettingNoMsg');
-  if(!patId){if(wrap)wrap.style.display='none';if(noMsg)noMsg.style.display='';return;}
-  if(wrap)wrap.style.display='';
-  if(noMsg)noMsg.style.display='none';
-  var DOW_IDX=[1,2,3,4,5,6,0];
-  var DOW_LABELS=['月','火','水','木','金','土','日'];
-  var saved=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
-  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
-  var tbody=document.getElementById('wdSettingRows'); if(!tbody) return;
-  var TYPES=['勤務','休日','法定休日'];
-  var TYPE_COLORS={'勤務':'#16a34a','休日':'#6b7280','法定休日':'#dc2626'};
-  tbody.innerHTML=DOW_IDX.map(function(wi,i){
-    var lbl=DOW_LABELS[i];
-    var tdStyle=wi===0?'color:#dc2626;font-weight:700':wi===6?'color:#2563eb;font-weight:700':'font-weight:600';
-    var cur=saved[wi]||'勤務';
-    return '<tr>'
-      +'<td style="padding:7px 12px;border:1px solid var(--border);'+tdStyle+'">'+lbl+'曜日</td>'
-      +TYPES.map(function(t){
-        return '<td style="padding:7px 16px;border:1px solid var(--border);text-align:center">'
-          +'<label style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;font-size:12px;color:'+TYPE_COLORS[t]+'">'
-          +'<input type="radio" name="wdSet_'+wi+'" value="'+t+'"'+(cur===t?' checked':'')+'> '+t
-          +'</label></td>';
-      }).join('')+'</tr>';
+  if(!sel) return;
+  if(!pats||!pats.length){
+    if(wrap) wrap.style.display='none';
+    if(noMsg) noMsg.style.display='';
+    return;
+  }
+  if(noMsg) noMsg.style.display='none';
+  if(wrap) wrap.style.display='';
+  var cur=sel.value;
+  sel.innerHTML=pats.map(function(p){
+    return '<option value="'+p.id+'"'+(p.id===cur?' selected':'')+'>'+p.name+'</option>';
   }).join('');
-  var holEl=document.querySelector('input[name="wdSettingHol"][value="'+holDefault+'"]');
-  if(holEl) holEl.checked=true;
-}
-function saveWdPatSettings(){
-  var sel=document.getElementById('wdSettingPatSel'); if(!sel) return;
-  var patId=sel.value;
-  if(!patId){showToast('勤務パターンを選択してください','amber');return;}
-  var result={};
-  [0,1,2,3,4,5,6].forEach(function(wi){
-    var checked=document.querySelector('input[name="wdSet_'+wi+'"]:checked');
-    result[wi]=checked?checked.value:'勤務';
-  });
-  localStorage.setItem('yi_wd_'+patId,JSON.stringify(result));
-  var holChecked=document.querySelector('input[name="wdSettingHol"]:checked');
-  if(holChecked) localStorage.setItem('yi_hol_'+patId,holChecked.value);
-  var pat=getShiftPatterns().find(function(p){return p.id===patId;});
-  var name=pat?'['+pat.code+'] '+pat.name:'';
-  showToast('✅ '+name+' の曜日デフォルトを保存しました','green');
-}
+  window.onWdPatSettingsChange();
+};
 
+window.onWdPatSettingsChange = function(){
+  var sel=document.getElementById('wdSettingPatSel');
+  if(!sel) return;
+  var patId=sel.value;
+  var wd=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'{"0":"法定休日","1":"勤務日","2":"勤務日","3":"勤務日","4":"勤務日","5":"勤務日","6":"休日"}');
+  var hol=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var tbody=document.getElementById('wdSettingRows');
+  if(!tbody) return;
+  var wdLabels=['日','月','火','水','木','金','土'];
+  var opts=['勤務日','休日','法定休日'];
+  tbody.innerHTML=wdLabels.map(function(label,i){
+    return '<tr>'
+      +'<td style="padding:6px 10px;font-weight:600">'+label+'曜日</td>'
+      +opts.map(function(opt){
+        var checked=(wd[String(i)]===opt)?'checked':'';
+        return '<td style="padding:6px 12px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer">'
+          +'<input type="radio" name="wdSet_'+i+'" value="'+opt+'" '+checked+' style="cursor:pointer">'
+          +opt+'</label></td>';
+      }).join('')
+      +'</tr>';
+  }).join('');
+  // 祝日ラジオ
+  document.querySelectorAll('input[name="wdSettingHol"]').forEach(function(rb){
+    rb.checked=(rb.value===hol);
+  });
+};
+
+window.saveWdPatSettings = function(){
+  var sel=document.getElementById('wdSettingPatSel');
+  if(!sel) return;
+  var patId=sel.value;
+  var wd={};
+  for(var i=0;i<7;i++){
+    var rb=document.querySelector('input[name="wdSet_'+i+'"]:checked');
+    wd[String(i)]=rb?rb.value:'勤務日';
+  }
+  var holRb=document.querySelector('input[name="wdSettingHol"]:checked');
+  var hol=holRb?holRb.value:'法定休日';
+  localStorage.setItem('yi_wd_'+patId,JSON.stringify(wd));
+  localStorage.setItem('yi_hol_'+patId,hol);
+  showToast('曜日デフォルトを保存しました','green');
+};
 </script>
 </body>
 </html>
