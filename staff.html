@@ -329,18 +329,83 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
   </div>
   <!-- 打刻ボタン -->
   <div class="punch-grid">
-    <button class="pbtn pbtn-in done" onclick="doPunch('出勤')"><i class="bi bi-box-arrow-in-right"></i><span data-i18n="punch.clock_in">出勤</span></button>
-    <button class="pbtn pbtn-out" onclick="doPunch('退勤')"><i class="bi bi-box-arrow-left"></i><span data-i18n="punch.clock_out">退勤</span></button>
-    <button class="pbtn pbtn-brk" onclick="doPunch('休憩開始')"><i class="bi bi-cup-hot"></i><span data-i18n="punch.break_start">休憩<br>開始</span></button>
-    <button class="pbtn pbtn-ret" onclick="doPunch('休憩終了')"><i class="bi bi-arrow-return-left"></i><span data-i18n="punch.break_end">休憩<br>終了</span></button>
-    <button class="pbtn pbtn-go" onclick="doPunch('外出')"><i class="bi bi-door-open"></i><span data-i18n="punch.go_out">外出</span></button>
-    <button class="pbtn pbtn-back" onclick="doPunch('戻り')"><i class="bi bi-door-closed"></i><span data-i18n="punch.return">戻り</span></button>
+    <button class="pbtn pbtn-in" id="pbtn-main-in"  onclick="doPunch('出勤','本業')"><i class="bi bi-box-arrow-in-right"></i><span>出勤</span></button>
+    <button class="pbtn pbtn-out" id="pbtn-main-out" onclick="doPunch('退勤','本業')"><i class="bi bi-box-arrow-left"></i><span>退勤</span></button>
+    <button class="pbtn pbtn-brk" onclick="doPunch('休憩開始','本業')"><i class="bi bi-cup-hot"></i><span>休憩<br>開始</span></button>
+    <button class="pbtn pbtn-ret" onclick="doPunch('休憩終了','本業')"><i class="bi bi-arrow-return-left"></i><span>休憩<br>終了</span></button>
+    <button class="pbtn pbtn-go"  onclick="doPunch('外出','本業')"><i class="bi bi-door-open"></i><span>外出</span></button>
+    <button class="pbtn pbtn-back" onclick="doPunch('戻り','本業')"><i class="bi bi-door-closed"></i><span>戻り</span></button>
+  </div>
+  <!-- 副業打刻ボタン（副業機能ON時のみ表示） -->
+  <div id="sideJobPunchWrap" style="display:none;margin:12px 16px 0">
+    <div style="font-size:11px;font-weight:700;color:var(--pri);margin-bottom:6px;letter-spacing:.04em">💼 副業打刻</div>
+    <div class="punch-grid" style="grid-template-columns:1fr 1fr">
+      <button class="pbtn" id="pbtn-side-in"
+        style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff"
+        onclick="doPunch('出勤','副業')">
+        <i class="bi bi-briefcase"></i><span>副業<br>出勤</span>
+      </button>
+      <button class="pbtn"
+        style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff"
+        onclick="doPunch('退勤','副業')">
+        <i class="bi bi-briefcase-fill"></i><span>副業<br>退勤</span>
+      </button>
+    </div>
   </div>
   <!-- 写真撮影オプション -->
   <div class="card-app" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px">
     <div><div style="font-size:13px;font-weight:600" data-i18n="punch.photo">写真撮影</div><div style="font-size:11px;color:var(--muted)" data-i18n="punch.photo_sub">打刻時に自撮り撮影</div></div>
     <div style="position:relative;display:inline-block">
       <input type="checkbox" id="photoToggle" checked style="width:44px;height:24px;appearance:none;background:var(--pri);border-radius:20px;cursor:pointer;transition:background .2s">
+    </div>
+  </div>
+</div>
+
+
+<!-- 副業申請画面 -->
+<div class="pg" id="screen-sidejob-req">
+  <div class="app-header">
+    <button class="back-btn" onclick="goScreen('screen-home')"><i class="bi bi-chevron-left"></i></button>
+    <div class="app-header-title">💼 副業申請</div>
+  </div>
+  <div style="padding:16px">
+    <div style="background:var(--pri-l,#eff6ff);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--pri);margin-bottom:16px">
+      副業を行う場合は事前に申請が必要です。承認後に副業打刻が利用できます。
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px">副業先会社名 <span style="color:var(--err,#dc2626)">*</span></div>
+        <input type="text" id="sjCompanyName" class="inp-app" placeholder="例: 株式会社〇〇" style="width:100%;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px">業務内容</div>
+        <textarea id="sjJobDesc" rows="3" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:13px;resize:none" placeholder="例: Webサイト制作・コンテンツ編集など"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">開始予定日</div>
+          <input type="date" id="sjStartDate" class="inp-app" style="width:100%;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:4px">終了予定日（任意）</div>
+          <input type="date" id="sjEndDate" class="inp-app" style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px">週の予定労働時間（時間）</div>
+        <input type="number" id="sjWeeklyHours" class="inp-app" min="0" max="40" placeholder="例: 10" style="width:120px">
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px">申請理由</div>
+        <textarea id="sjReason" rows="3" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border,#e2e8f0);border-radius:8px;font-size:13px;resize:none" placeholder="副業を希望する理由をご記入ください"></textarea>
+      </div>
+    </div>
+    <div id="sjErr" style="color:var(--err,#dc2626);font-size:12px;margin-top:8px;display:none"></div>
+    <button class="btn-app btn-pri" onclick="submitSideJobRequest()" style="width:100%;margin-top:20px;padding:14px">
+      <i class="bi bi-send"></i> 申請する
+    </button>
+    <div id="sjSuccess" style="display:none;text-align:center;margin-top:12px;padding:16px;background:#f0fdf4;border-radius:8px;color:#16a34a;font-size:13px;font-weight:700">
+      ✅ 申請を送信しました。承認をお待ちください。
     </div>
   </div>
 </div>
@@ -551,6 +616,7 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
     <div class="list-row" onclick="goScreen('screen-apply-ot')"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-moon-stars" style="color:var(--war)"></i></div><div class="list-title">残業申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-holiday-work')"><div class="list-icon" style="background:var(--suc-l)"><i class="bi bi-calendar-check" style="color:var(--suc)"></i></div><div class="list-title" data-i18n="apply_type.holiday_work">休日出勤申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-punch')"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-pen" style="color:var(--pur)"></i></div><div class="list-title" data-i18n="apply_type.punch_fix">打刻修正申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
+    <div class="list-row" id="sidejob-apply-row" onclick="goScreen('screen-sidejob-req')" style="display:none"><div class="list-icon" style="background:#ede9fe"><i class="bi bi-briefcase" style="color:#7c3aed"></i></div><div class="list-title">💼 副業申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-shift-wish');initWishCalendar()"><div class="list-icon" style="background:var(--war-l)"><i class="bi bi-calendar-heart" style="color:var(--war)"></i></div><div class="list-title" data-i18n="apply_type.shift_wish">シフト・休暇希望申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-shift-change')"><div class="list-icon" style="background:#f0fdf4"><i class="bi bi-calendar-week" style="color:var(--suc)"></i></div><div class="list-title" data-i18n="apply_type.shift_change">シフト変更申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
     <div class="list-row" onclick="goScreen('screen-apply-shift-swap');loadSwapEmpList()"><div class="list-icon" style="background:var(--pur-l)"><i class="bi bi-arrow-left-right" style="color:var(--pur)"></i></div><div class="list-title" data-i18n="apply_type.shift_swap">シフト交換申請</div><i class="bi bi-chevron-right list-chev ms-auto"></i></div>
@@ -1315,6 +1381,18 @@ function goScreen(id){
   if(!pg) return;
   pg.classList.add('on');
 
+  // 副業機能の表示制御
+  if(id==='screen-punch'){
+    var enabled = localStorage.getItem('sidejob_enabled')==='1';
+    var wrap = document.getElementById('sideJobPunchWrap');
+    if(wrap) wrap.style.display = enabled?'':'none';
+  }
+  if(id==='screen-home'||id==='screen-apply'){
+    var enabled = localStorage.getItem('sidejob_enabled')==='1';
+    var row = document.getElementById('sidejob-apply-row');
+    if(row) row.style.display = enabled?'':'none';
+  }
+
   var isNavRoot = !!_navScreens[id];
   var isLogin = id==='screen-login'||id==='screen-reset-pw'||id==='screen-punch-confirm';
   if(id==='screen-login') setTimeout(restoreLoginCredentials, 0);
@@ -1358,12 +1436,54 @@ function goBack(){
   }
 }
 
-function doPunch(type){
-  document.getElementById('punchConfirmType').textContent = type;
+async function doPunch(type, jobType){
+  if(!jobType) jobType = '本業';
+  var label = jobType==='副業' ? '副業 '+type : type;
+  document.getElementById('punchConfirmType').textContent = label;
   var now = new Date();
-  document.getElementById('punchConfirmTime').textContent = 
+  document.getElementById('punchConfirmTime').textContent =
     now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   goScreen('screen-punch-confirm');
+  // Supabase INSERT
+  if(sb && _myAuthId){
+    var payload = {
+      user_id: _myAuthId,
+      punch_type: type,
+      job_type: jobType,
+      punched_at: new Date().toISOString()
+    };
+    var {error} = await sb.from('punch_records').insert(payload);
+    if(error) showToast('打刻エラー: '+error.message);
+    else { loadTodayPunch(); loadHomeNotices(); }
+  }
+}
+
+async function submitSideJobRequest(){
+  var company = (document.getElementById('sjCompanyName')||{}).value||'';
+  var errEl = document.getElementById('sjErr');
+  if(!company.trim()){
+    if(errEl){errEl.textContent='副業先会社名を入力してください';errEl.style.display='';}
+    return;
+  }
+  if(errEl) errEl.style.display='none';
+  var payload = {
+    user_id: _myAuthId,
+    company_name: company.trim(),
+    job_description: (document.getElementById('sjJobDesc')||{}).value||null,
+    start_date: (document.getElementById('sjStartDate')||{}).value||null,
+    end_date:   (document.getElementById('sjEndDate')||{}).value||null,
+    weekly_hours: parseFloat((document.getElementById('sjWeeklyHours')||{}).value)||0,
+    reason: (document.getElementById('sjReason')||{}).value||null,
+    status: 'pending'
+  };
+  var {error} = await sb.from('side_job_requests').insert(payload);
+  if(error){
+    if(errEl){errEl.textContent='送信エラー: '+error.message;errEl.style.display='';}
+    return;
+  }
+  var succ = document.getElementById('sjSuccess');
+  if(succ) succ.style.display='';
+  showToast('副業申請を送信しました');
 }
 
 // Clock update
@@ -1989,15 +2109,33 @@ var _i18n = {
     'notif.notice':'通知','notif.shift':'班次','notif.apply_result':'申请结果','notif.punch_reminder':'打卡提醒'
   }
 };
-function t(key){ return (_i18n[_lang]&&_i18n[_lang][key])||_i18n.ja[key]||key; }
+function t(key){ return (_i18n[_lang]&&_i18n[_lang][key])||_i18n['ja'][key]||key; }
 function applyI18n(){
   document.querySelectorAll('[data-i18n]').forEach(function(el){
-    var k=el.getAttribute('data-i18n'); var v=t(k); if(v) el.textContent=v;
+    var k=el.getAttribute('data-i18n');
+    var v=t(k);
+    if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') el.placeholder=v;
+    else el.textContent=v;
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){
+    el.placeholder=t(el.getAttribute('data-i18n-placeholder'));
   });
 }
-// ページ初期表示時に保存済み認証情報を復元
+
+// ── 副業機能チェック ──
+function checkSideJobFeature(){
+  var enabled = localStorage.getItem('sidejob_enabled')==='1';
+  var wrap = document.getElementById('sideJobPunchWrap');
+  if(wrap) wrap.style.display = enabled?'':'none';
+  var row = document.getElementById('sidejob-apply-row');
+  if(row) row.style.display = enabled?'':'none';
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   restoreLoginCredentials();
+  applyI18n();
+  updateClock();
+  checkSideJobFeature();
 });
 </script>
 </body>
