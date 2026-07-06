@@ -1208,10 +1208,34 @@ var JP_HOL={
   '2026-01-01':'元日','2026-01-12':'成人の日','2026-02-11':'建国記念の日','2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日','2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日','2026-09-21':'敬老の日','2026-09-22':'振替休日','2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日',
   '2027-01-01':'元日','2027-01-11':'成人の日','2027-02-11':'建国記念の日','2027-02-23':'天皇誕生日','2027-03-21':'春分の日','2027-04-29':'昭和の日','2027-05-03':'憲法記念日','2027-05-04':'みどりの日','2027-05-05':'こどもの日','2027-07-19':'海の日','2027-08-11':'山の日','2027-09-20':'敬老の日','2027-09-23':'秋分の日','2027-10-11':'スポーツの日','2027-11-03':'文化の日','2027-11-23':'勤労感謝の日'
 };
+function fillYiFromPattern(patId){
+  if(!patId) return;
+  var pat=_patterns.find(function(p){return p.id===patId;});
+  if(!pat) return;
+  // 開始・終了・休憩
+  if(pat.default_start) document.getElementById('yi_start').value=pat.default_start;
+  if(pat.default_end) document.getElementById('yi_end').value=pat.default_end;
+  if(pat.default_break!=null) document.getElementById('yi_break').value=pat.default_break;
+  // 週労働時間上限
+  if(pat.weekly_limit) document.getElementById('yi_week_limit').value=pat.weekly_limit;
+  // 1日所定時間 = 終了 - 開始 - 休憩
+  var st=pat.default_start||'08:30', en=pat.default_end||'17:30';
+  var brk=parseInt(pat.default_break)||60;
+  var sp=st.split(':'), ep=en.split(':');
+  var stM=parseInt(sp[0])*60+parseInt(sp[1]), enM=parseInt(ep[0])*60+parseInt(ep[1]);
+  var dayH=(enM-stM-brk)/60;
+  if(dayH>0){
+    document.getElementById('yi_day_hours').value=Math.round(dayH*100)/100;
+    // 年間所定時間 = annual_days_limit × 1日時間
+    if(pat.annual_days_limit>0){
+      document.getElementById('yi_annual_hours').value=Math.round(pat.annual_days_limit*dayH);
+    }
+  }
+}
 function initYearInit(){
   var sel=document.getElementById('yi_pattern');
   sel.innerHTML='<option value="">選択してください</option>'+_patterns.map(function(p){return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
-  sel.onchange=function(){ updateYiWdPreview(); };
+  sel.onchange=function(){ updateYiWdPreview(); fillYiFromPattern(this.value); };
 }
 function updateYiWdPreview(){
   var patId=document.getElementById('yi_pattern').value;
@@ -1287,7 +1311,7 @@ function genYearInit(){
   var futeikiWorkCount=0;
   if(futeikiIdxs.length>0){
     var fixedWork=_yiData.filter(function(r){ return r.type==='勤務'||r.type==='振替出勤'; }).length;
-    var targetWork=dayH>0?Math.round(annH/dayH):245;
+    var targetWork=(pat.annual_days_limit>0)?pat.annual_days_limit:(dayH>0?Math.round(annH/dayH):245);
     var needWork=Math.max(0,Math.min(targetWork-fixedWork, futeikiIdxs.length));
     futeikiIdxs.forEach(function(dataIdx,k){
       var r=_yiData[dataIdx];
@@ -1297,18 +1321,31 @@ function genYearInit(){
       else { r.type='休日'; r.hours=0; r.start=''; r.end=''; }
     });
   }
-  // サマリー（1日所定時間を直接使用、年間所定時間は目標として表示）
+  // 年間所定時間を全勤務日に均等配分（合計がannHに一致するよう1日時間を算出）
   var wd2=_yiData.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
+  if(wd2>0 && annH>0){
+    var actualDayH=Math.round(annH/wd2*100)/100;
+    var stParts=st.split(':');
+    var stMin=parseInt(stParts[0])*60+parseInt(stParts[1]);
+    var enMin=stMin+Math.round(actualDayH*60)+brk;
+    var actualEn=p2(Math.floor(enMin/60)%24)+':'+p2(enMin%60);
+    _yiData.forEach(function(r){
+      if(r.type==='勤務'||r.type==='振替出勤'){
+        r.hours=actualDayH;
+        r.end=actualEn;
+      }
+    });
+  }
+  // サマリー
   var hd=_yiData.filter(function(r){return r.type!=='勤務'&&r.type!=='振替出勤';}).length;
   var th=_yiData.reduce(function(s,r){return s+r.hours;},0);
-  var diff=th-annH;
-  var diffStr=(diff===0?'✅一致':(diff>0?'⚠️+':'')+diff.toFixed(0)+'h');
-  var futeikiInfo=futeikiIdxs.length>0?'<div style="background:#f3e8ff;border-radius:7px;padding:6px 12px;font-size:11px">不定期: <strong>'+futeikiIdxs.length+'</strong>日中 <strong>'+futeikiWorkCount+'</strong>日を勤務・'+(futeikiIdxs.length-futeikiWorkCount)+'日を休日に均等配置</div>':'';
+  var actualDayHDisp=wd2>0?Math.round(annH/wd2*100)/100:dayH;
+  var futeikiInfo=futeikiIdxs.length>0?'<div style="background:#f3e8ff;border-radius:7px;padding:6px 12px;font-size:11px">不定期: <strong>'+futeikiIdxs.length+'</strong>日中 <strong>'+futeikiWorkCount+'</strong>日を勤務に均等配置</div>':'';
   document.getElementById('yi_summary').innerHTML=
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">勤務日: <strong>'+wd2+'</strong>日</div>'+
     '<div style="background:var(--lgreen);border-radius:7px;padding:6px 12px;font-size:11px">休日: <strong>'+hd+'</strong>日</div>'+
     futeikiInfo+
-    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">実働時間: <strong>'+th.toFixed(0)+'</strong>h（目標'+annH+'h　'+diffStr+'）</div>';
+    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">年間所定: <strong>'+annH+'</strong>h ／ 1日: <strong>'+actualDayHDisp+'</strong>h（'+wd2+'日×'+actualDayHDisp+'h）</div>';
   document.getElementById('yiSaveBtn').style.display='';
   document.getElementById('yi_preview').style.display='';
   var sw=document.getElementById('yi_summary_wrap'); if(sw) sw.style.display='';
@@ -1945,24 +1982,7 @@ function saveWeekdayDefaults(){
   if(!patId) return;
   var wd={};
   for(var i=0;i<7;i++){
-    var r=document.querySelector('input[name="wd_'+i+'"]:checked');
-    if(r) wd[String(i)]=r.value;
-  }
-  localStorage.setItem('yi_wd_'+patId,JSON.stringify(wd));
-  var holEl=document.querySelector('input[name="holDefault"]:checked');
-  if(holEl) localStorage.setItem('yi_hol_'+patId,holEl.value);
-  toast('曜日デフォルト設定を保存しました','green');
-  updateYiWdPreview();
-}
-
-function openModal(id){
-  var el=document.getElementById(id);
-  if(el) el.classList.add('open');
-}
-function closeModal(id){
-  var el=document.getElementById(id);
-  if(el) el.classList.remove('open');
-}
+    var r=document.querySelector('input[name="wd_'+i+'"]:
 function toast(msg, type){
   var wrap=document.getElementById('toastWrap');
   if(!wrap) return;
