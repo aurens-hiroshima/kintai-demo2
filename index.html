@@ -3324,7 +3324,7 @@ window.saveShift = function(){
 // ───────────── 部署CRUD ─────────────
 var _departments = [];
 
-function loadDepts(){
+window.loadDepts = function(){
   if(!sb){ return; }
   sb.from('departments').select('*').order('dept_code').then(function(r){
     if(r.error){ showToast('部署取得エラー: '+r.error.message,'red'); return; }
@@ -3363,7 +3363,7 @@ function renderDepts(){
 
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function openDeptModal(id){
+window.openDeptModal = function(id){
   document.getElementById('dpId').value = '';
   document.getElementById('dpCode').value = '';
   document.getElementById('dpName').value = '';
@@ -3383,7 +3383,7 @@ function openDeptModal(id){
   openModal('deptModal');
 }
 
-function saveDept(){
+window.saveDept = function(){
   var id   = document.getElementById('dpId').value.trim();
   var code = document.getElementById('dpCode').value.trim();
   var name = document.getElementById('dpName').value.trim();
@@ -3401,7 +3401,7 @@ function saveDept(){
   });
 }
 
-function deleteDept(){
+window.deleteDept = function(){
   var id   = document.getElementById('dpId').value.trim();
   var name = document.getElementById('dpName').value.trim();
   if(!id) return;
@@ -3414,7 +3414,7 @@ function deleteDept(){
   });
 }
 
-function populateDeptSelects(){
+window.populateDeptSelects = function(){
   // 職員割当用select（部だけ）
   var assignSelIds = ['editUserDept','newUserDept'];
   assignSelIds.forEach(function(sid){
@@ -3500,7 +3500,7 @@ function renderDepts(){
   }
 }
 
-function filterSectionList(){
+window.filterSectionList = function(){
   var sf=document.getElementById('sectionDeptFilter');
   var deptId=sf?sf.value:'';
   if(!deptId){ 
@@ -3533,7 +3533,7 @@ function renderSections(){
   }).join('');
 }
 
-function openSectionModal(id){
+window.openSectionModal = function(id){
   document.getElementById('scId').value='';
   document.getElementById('scCode').value='';
   document.getElementById('scName').value='';
@@ -3564,7 +3564,7 @@ function openSectionModal(id){
   openModal('sectionModal');
 }
 
-function saveSection(){
+window.saveSection = function(){
   var id    =document.getElementById('scId').value.trim();
   var deptId=document.getElementById('scDeptId').value.trim();
   var code  =document.getElementById('scCode').value.trim();
@@ -3584,7 +3584,7 @@ function saveSection(){
   });
 }
 
-function deleteSection(){
+window.deleteSection = function(){
   var id  =document.getElementById('scId').value.trim();
   var name=document.getElementById('scName').value.trim();
   if(!id) return;
@@ -3599,7 +3599,7 @@ function deleteSection(){
 }
 
 // 課セレクトを部選択に連動して更新
-function updateSectionSelect(sectionSelId, deptSelId){
+window.updateSectionSelect = function(sectionSelId, deptSelId){
   var deptSel=document.getElementById(deptSelId);
   var sectSel=document.getElementById(sectionSelId);
   if(!deptSel||!sectSel) return;
@@ -3639,7 +3639,7 @@ window.saveDeemedOtSettings = function(){
   showToast('みなし残業設定を保存しました','green');
 };
 
-function loadDeemedOtSettings(){
+window.loadDeemedOtSettings = function(){
   var enabled=localStorage.getItem('deemed_ot_enable')==='1';
   var hours  =localStorage.getItem('deemed_ot_hours')||'20';
   var target =localStorage.getItem('deemed_ot_target')||'all';
