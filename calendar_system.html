@@ -1817,5 +1817,15 @@ function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open');});
 function toast(msg,type){
-  var wrap=document.getElementById('toastWrap');
-  var colors={green:['#e1f5ee','#0F6E56']
+  var wrap=document.getElementById('toastWrap'); if(!wrap) return;
+  var colors={green:['#e1f5ee','#0F6E56'],red:['#fee2e2','#dc2626'],amber:['#fef3c7','#d97706'],blue:['#eff6ff','#185FA5']};
+  var c=colors[type]||colors.blue;
+  var t=document.createElement('div');
+  t.style.cssText='background:'+c[0]+';color:'+c[1]+';padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.1);transition:opacity .3s';
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove();},300);},2800);
+}
+</script>
+</body>
+</html>
