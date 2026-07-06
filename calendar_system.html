@@ -1276,28 +1276,16 @@ function genYearInit(){
       _yiData.push({date:ds,m:m,d:d,wd:wd,type:dtype,hours:schH,start:schSt,end:schEn,brk:brk,hol:JP_HOL[ds]||null,patId:patId});
     }
   }
-  // 年間所定時間を優先: 勤務日数で割った1日あたり実働時間を再計算して適用
+  // サマリー（1日所定時間を直接使用、年間所定時間は目標として表示）
   var wd2=_yiData.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
-  if(wd2>0 && annH>0){
-    var actualDayH=Math.round(annH/wd2*100)/100;
-    var stParts=st.split(':');
-    var stMin=parseInt(stParts[0])*60+parseInt(stParts[1]);
-    var enMin=stMin+Math.round(actualDayH*60)+brk;
-    var actualEn=p2(Math.floor(enMin/60)%24)+':'+p2(enMin%60);
-    _yiData.forEach(function(r){
-      if(r.type==='勤務'||r.type==='振替出勤'){
-        r.hours=actualDayH;
-        r.end=actualEn;
-      }
-    });
-  }
-  // サマリー
   var hd=_yiData.filter(function(r){return r.type!=='勤務'&&r.type!=='振替出勤';}).length;
   var th=_yiData.reduce(function(s,r){return s+r.hours;},0);
+  var diff=th-annH;
+  var diffStr=(diff===0?'✅一致':(diff>0?'⚠️+':'')+diff.toFixed(0)+'h');
   document.getElementById('yi_summary').innerHTML=
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">勤務日: <strong>'+wd2+'</strong>日</div>'+
     '<div style="background:var(--lgreen);border-radius:7px;padding:6px 12px;font-size:11px">休日: <strong>'+hd+'</strong>日</div>'+
-    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">年間所定: <strong>'+annH+'</strong>h（1日'+Math.round(annH/wd2*100)/100+'h / 終業'+(_yiData.find(function(r){return r.end;})||{end:en}).end+'）</div>';
+    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">実働時間: <strong>'+th.toFixed(0)+'</strong>h（目標'+annH+'h　'+diffStr+'）</div>';
   document.getElementById('yiSaveBtn').style.display='';
   document.getElementById('yi_preview').style.display='';
   var sw=document.getElementById('yi_summary_wrap'); if(sw) sw.style.display='';
@@ -1905,12 +1893,12 @@ function onWdPatChange(){
   }
   if(noMsg) noMsg.style.display='none';
   if(wrap) wrap.style.display='';
-  var wd=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務日',2:'勤務日',3:'勤務日',4:'勤務日',5:'勤務日',6:'休日'};
+  var wd=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
   var hol=localStorage.getItem('yi_hol_'+patId)||'法定休日';
   var tbody=document.getElementById('wdTableBody');
   if(!tbody) return;
   var wdLabels=['日','月','火','水','木','金','土'];
-  var opts=['勤務日','休日','法定休日'];
+  var opts=['勤務','休日','法定休日'];
   tbody.innerHTML=wdLabels.map(function(label,i){
     return '<tr>'
       +'<td style="padding:6px 10px;font-weight:600;'+(i===0?'color:var(--red)':i===6?'color:var(--blue)':'')+'">'+label+'</td>'
