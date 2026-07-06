@@ -581,9 +581,10 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
                 <thead>
                   <tr>
                     <th style="width:90px">曜日</th>
-                    <th style="text-align:center;min-width:90px">勤務</th>
-                    <th style="text-align:center;min-width:90px">休日</th>
-                    <th style="text-align:center;min-width:90px">法定休日</th>
+                    <th style="text-align:center;min-width:80px">勤務</th>
+                    <th style="text-align:center;min-width:80px">休日</th>
+                    <th style="text-align:center;min-width:80px">法定休日</th>
+                    <th style="text-align:center;min-width:80px">不定期</th>
                   </tr>
                 </thead>
                 <tbody id="weekdayDefaultRows"></tbody>
@@ -1270,11 +1271,31 @@ function genYearInit(){
         dtype=holDefault; schH=0; schSt=''; schEn='';
       } else {
         dtype=wdDefaults[wd]||'勤務';
-        var isWk=(dtype==='勤務'||dtype==='振替出勤');
-        schH=isWk?dayH:0; schSt=isWk?st:''; schEn=isWk?en:'';
+        if(dtype==='不定期'){
+          schH=0; schSt=''; schEn=''; // 後で目標日数に合わせて調整
+        } else {
+          var isWk=(dtype==='勤務'||dtype==='振替出勤');
+          schH=isWk?dayH:0; schSt=isWk?st:''; schEn=isWk?en:'';
+        }
       }
       _yiData.push({date:ds,m:m,d:d,wd:wd,type:dtype,hours:schH,start:schSt,end:schEn,brk:brk,hol:JP_HOL[ds]||null,patId:patId});
     }
+  }
+  // 不定期の日を目標勤務日数に合わせて均等分散で調整
+  var futeikiIdxs=[];
+  _yiData.forEach(function(r,i){ if(r.type==='不定期') futeikiIdxs.push(i); });
+  var futeikiWorkCount=0;
+  if(futeikiIdxs.length>0){
+    var fixedWork=_yiData.filter(function(r){ return r.type==='勤務'||r.type==='振替出勤'; }).length;
+    var targetWork=dayH>0?Math.round(annH/dayH):245;
+    var needWork=Math.max(0,Math.min(targetWork-fixedWork, futeikiIdxs.length));
+    futeikiIdxs.forEach(function(dataIdx,k){
+      var r=_yiData[dataIdx];
+      // Bresenham均等分散: 年間を通じて均等に勤務日を配置
+      var isWork=(needWork>0)&&(Math.floor((k+1)*needWork/futeikiIdxs.length) > Math.floor(k*needWork/futeikiIdxs.length));
+      if(isWork){ r.type='勤務'; r.hours=dayH; r.start=st; r.end=en; futeikiWorkCount++; }
+      else { r.type='休日'; r.hours=0; r.start=''; r.end=''; }
+    });
   }
   // サマリー（1日所定時間を直接使用、年間所定時間は目標として表示）
   var wd2=_yiData.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
@@ -1282,9 +1303,11 @@ function genYearInit(){
   var th=_yiData.reduce(function(s,r){return s+r.hours;},0);
   var diff=th-annH;
   var diffStr=(diff===0?'✅一致':(diff>0?'⚠️+':'')+diff.toFixed(0)+'h');
+  var futeikiInfo=futeikiIdxs.length>0?'<div style="background:#f3e8ff;border-radius:7px;padding:6px 12px;font-size:11px">不定期: <strong>'+futeikiIdxs.length+'</strong>日中 <strong>'+futeikiWorkCount+'</strong>日を勤務・'+(futeikiIdxs.length-futeikiWorkCount)+'日を休日に均等配置</div>':'';
   document.getElementById('yi_summary').innerHTML=
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">勤務日: <strong>'+wd2+'</strong>日</div>'+
     '<div style="background:var(--lgreen);border-radius:7px;padding:6px 12px;font-size:11px">休日: <strong>'+hd+'</strong>日</div>'+
+    futeikiInfo+
     '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">実働時間: <strong>'+th.toFixed(0)+'</strong>h（目標'+annH+'h　'+diffStr+'）</div>';
   document.getElementById('yiSaveBtn').style.display='';
   document.getElementById('yi_preview').style.display='';
@@ -1899,7 +1922,7 @@ function onWdPatChange(){
   var tbody=document.getElementById('weekdayDefaultRows');
   if(!tbody) return;
   var wdLabels=['日','月','火','水','木','金','土'];
-  var opts=['勤務','休日','法定休日'];
+  var opts=['勤務','休日','法定休日','不定期'];
   tbody.innerHTML=wdLabels.map(function(label,i){
     return '<tr>'
       +'<td style="padding:6px 10px;font-weight:600;'+(i===0?'color:var(--red)':i===6?'color:var(--blue)':'')+'">'+label+'</td>'
@@ -1910,6 +1933,7 @@ function onWdPatChange(){
       }).join('')
       +'</tr>';
   }).join('');
+  // 祝日ラジオは静的HTMLのため .checked で初期選択を反映
   // 祝日ラジオは静的HTMLのため .checked で初期選択を反映
   document.querySelectorAll('input[name="holDefault"]').forEach(function(el){
     el.checked=(el.value===hol);
