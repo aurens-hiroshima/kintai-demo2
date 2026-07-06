@@ -307,75 +307,133 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
           <div style="font-size:14px;font-weight:700;margin-bottom:4px">🗓️ 年度初期設定 — 全職員一括スケジュール生成</div>
           <div style="font-size:12px;opacity:.8">対象年度・パターンを設定して全職員の年間カレンダーを一括生成します。6ルールを自動判定します。</div>
         </div>
-        <div class="card">
-          <div class="card-title">⚙️ 設定パラメータ</div>
-          <div class="form-row3 mb12">
-            <div class="form-group"><label class="form-label">対象年度</label>
-              <select id="yi_year" class="form-control"><option value="2025">2025年度</option><option value="2026" selected>2026年度</option><option value="2027">2027年度</option></select></div>
-            <div class="form-group"><label class="form-label">勤務パターン</label>
-              <select id="yi_pattern" class="form-control"><option value="">選択してください</option></select></div>
-            <div class="form-group"><label class="form-label">年間所定時間(h)</label>
-              <input id="yi_annual_hours" type="number" class="form-control" value="1920" step="8"></div>
-            <div class="form-group"><label class="form-label">1日所定時間(h)</label>
-              <input id="yi_day_hours" type="number" class="form-control" value="8" step="0.25"></div>
-            <div class="form-group"><label class="form-label">始業</label>
-              <input id="yi_start" type="time" class="form-control" value="08:30"></div>
-            <div class="form-group"><label class="form-label">終業</label>
-              <input id="yi_end" type="time" class="form-control" value="17:30"></div>
-            <div class="form-group"><label class="form-label">休憩(分)</label>
-              <input id="yi_break" type="number" class="form-control" value="60" step="5"></div>
-            <div class="form-group"><label class="form-label">週上限(h)</label>
-              <input id="yi_week_limit" type="number" class="form-control" value="40" step="0.5"></div>
-          </div>
-          <div class="flex gap8 flex-wrap">
-            <button class="btn btn-primary" onclick="genYearInit()">🔄 プレビュー生成</button>
-            <button class="btn btn-success" id="yiSaveBtn" onclick="saveYearInit()" style="display:none">💾 全職員に一括保存</button>
-            <button class="btn btn-outline btn-sm" onclick="runYearCheck()">⚠️ 法令チェック</button>
-          </div>
-          <div class="flex gap8 flex-wrap mt8" id="yi_summary"></div>
-          <div id="yi_defaults_info" style="display:none;margin-top:10px;padding:8px 12px;background:var(--lblue);border-radius:6px;font-size:11px;color:var(--blue);line-height:1.6"></div>
-        </div>
 
-        <!-- 法令チェック結果 -->
-        <div class="card" id="yi_check_card" style="display:none">
-          <div class="card-title">⚠️ 法令自動判定（6ルール）</div>
-          <div class="kpi-row" id="yi_check_kpis"></div>
-          <table class="check-rule-tbl" style="width:100%">
-            <thead><tr><th style="width:28px">No</th><th>判定項目</th><th>条件</th><th style="width:100px">判定</th><th>詳細</th></tr></thead>
-            <tbody id="yi_rule_tbl"></tbody>
-          </table>
-        </div>
+        <div style="display:grid;grid-template-columns:270px 1fr;gap:14px;align-items:start">
 
-        <!-- エラー詳細 -->
-        <div class="card" id="yi_error_card" style="display:none;border-color:var(--red)">
-          <div class="card-title" style="color:var(--red)">❌ エラー詳細・修正が必要な項目</div>
-          <div id="yi_error_list"></div>
-          <div style="margin-top:12px">
-            <button class="btn btn-outline btn-sm" onclick="nav('calendar')">📅 カレンダー編集で修正する →</button>
-          </div>
-        </div>
+          <!-- ── 左パネル: 条件設定 ── -->
+          <div>
+            <div class="card" style="padding:14px">
+              <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;letter-spacing:.04em">📋 条件設定</div>
 
-        <!-- 月カレンダープレビュー -->
-        <div id="yi_preview" style="display:none">
-          <div class="card" style="padding:12px">
-            <div class="flex gap8 items-center just-between mb8">
-              <div style="font-weight:700;font-size:13px">📅 年間カレンダープレビュー</div>
-              <select id="yi_preview_month" class="form-control" style="width:90px;font-size:11px" onchange="renderYiMonth()">
-                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
-                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
-                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
-                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
-              </select>
-            </div>
-            <div class="flex gap8 flex-wrap mb8" id="yi_month_stats"></div>
-            <div class="cal-month-card">
-              <div class="cal-grid-header">
-                <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
+              <div class="form-group">
+                <label class="form-label">対象年度</label>
+                <select id="yi_year" class="form-control">
+                  <option value="2025">2025年度</option>
+                  <option value="2026" selected>2026年度</option>
+                  <option value="2027">2027年度</option>
+                </select>
               </div>
-              <div class="cal-grid" id="yi_cal_grid"></div>
+              <div class="form-group">
+                <label class="form-label">勤務パターン</label>
+                <select id="yi_pattern" class="form-control"><option value="">選択してください</option></select>
+              </div>
+
+              <div style="height:1px;background:var(--border);margin:10px 0"></div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">⏱ 勤務時間</div>
+
+              <div class="form-group">
+                <label class="form-label">年間所定時間 (h)</label>
+                <input id="yi_annual_hours" type="number" class="form-control" value="1920" step="8">
+              </div>
+              <div class="form-group">
+                <label class="form-label">1日所定時間 (h)</label>
+                <input id="yi_day_hours" type="number" class="form-control" value="8" step="0.25">
+              </div>
+              <div class="form-row mb12">
+                <div class="form-group">
+                  <label class="form-label">始業</label>
+                  <input id="yi_start" type="time" class="form-control" value="08:30">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">終業</label>
+                  <input id="yi_end" type="time" class="form-control" value="17:30">
+                </div>
+              </div>
+              <div class="form-row mb12">
+                <div class="form-group">
+                  <label class="form-label">休憩 (分)</label>
+                  <input id="yi_break" type="number" class="form-control" value="60" step="5">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">週上限 (h)</label>
+                  <input id="yi_week_limit" type="number" class="form-control" value="40" step="0.5">
+                </div>
+              </div>
+
+              <div style="height:1px;background:var(--border);margin:10px 0"></div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">📅 曜日デフォルト（パターン別）</div>
+              <div id="yi_wd_preview" style="font-size:11px;color:var(--muted);line-height:1.8;min-height:36px">
+                パターンを選択すると表示されます
+              </div>
+              <a href="#" onclick="nav('settings');return false;" style="font-size:11px;color:var(--blue);text-decoration:none;display:block;margin-top:4px">⚙️ 設定を変更する →</a>
+
+              <div style="height:1px;background:var(--border);margin:12px 0"></div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-primary" onclick="genYearInit()">🔄 プレビュー生成</button>
+                <button class="btn btn-success" id="yiSaveBtn" onclick="saveYearInit()" style="display:none">💾 全職員に一括保存</button>
+                <button class="btn btn-outline btn-sm" onclick="runYearCheck()">⚠️ 法令チェック実行</button>
+              </div>
             </div>
           </div>
-        </div>
+
+          <!-- ── 右パネル: サマリー・プレビュー・チェック結果 ── -->
+          <div>
+            <!-- サマリー -->
+            <div id="yi_summary_wrap" style="display:none;margin-bottom:12px">
+              <div class="flex gap8 flex-wrap" id="yi_summary"></div>
+              <div id="yi_defaults_info" style="display:none;margin-top:8px;padding:8px 12px;background:var(--lblue);border-radius:6px;font-size:11px;color:var(--blue);line-height:1.6"></div>
+            </div>
+
+            <!-- 法令チェック結果 -->
+            <div class="card" id="yi_check_card" style="display:none;margin-bottom:12px">
+              <div class="card-title">⚠️ 法令自動判定（6ルール）</div>
+              <div class="kpi-row" id="yi_check_kpis"></div>
+              <table class="check-rule-tbl" style="width:100%">
+                <thead><tr><th style="width:28px">No</th><th>判定項目</th><th>条件</th><th style="width:100px">判定</th><th>詳細</th></tr></thead>
+                <tbody id="yi_rule_tbl"></tbody>
+              </table>
+            </div>
+
+            <!-- エラー詳細 -->
+            <div class="card" id="yi_error_card" style="display:none;border-color:var(--red);margin-bottom:12px">
+              <div class="card-title" style="color:var(--red)">❌ エラー詳細・修正が必要な項目</div>
+              <div id="yi_error_list"></div>
+              <div style="margin-top:12px">
+                <button class="btn btn-outline btn-sm" onclick="nav('calendar')">📅 カレンダー編集で修正する →</button>
+              </div>
+            </div>
+
+            <!-- 月カレンダープレビュー -->
+            <div id="yi_preview" style="display:none">
+              <div class="card" style="padding:12px">
+                <div class="flex gap8 items-center just-between mb8">
+                  <div style="font-weight:700;font-size:13px">📅 年間カレンダープレビュー</div>
+                  <select id="yi_preview_month" class="form-control" style="width:90px;font-size:11px" onchange="renderYiMonth()">
+                    <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                    <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                    <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                    <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                  </select>
+                </div>
+                <div class="flex gap8 flex-wrap mb8" id="yi_month_stats"></div>
+                <div class="cal-month-card">
+                  <div class="cal-grid-header">
+                    <div class="sun">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="sat">土</div>
+                  </div>
+                  <div class="cal-grid" id="yi_cal_grid"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 初期状態メッセージ -->
+            <div id="yi_empty_msg" class="card" style="text-align:center;color:var(--muted);padding:40px 20px">
+              <div style="font-size:32px;margin-bottom:12px">🗓️</div>
+              <div style="font-size:14px;font-weight:600;margin-bottom:6px">左の条件を設定して「プレビュー生成」を押してください</div>
+              <div style="font-size:12px">年度・勤務パターンを選択すると、全職員の年間カレンダーをシミュレーションできます。</div>
+            </div>
+          </div>
+
+        </div><!-- /grid -->
       </div>
 
       <!-- ── チェック結果 ── -->
@@ -1138,6 +1196,27 @@ var JP_HOL={
 function initYearInit(){
   var sel=document.getElementById('yi_pattern');
   sel.innerHTML='<option value="">選択してください</option>'+_patterns.map(function(p){return '<option value="'+p.id+'">['+p.pattern_code+'] '+p.pattern_name+'</option>';}).join('');
+  sel.onchange=function(){ updateYiWdPreview(); };
+}
+function updateYiWdPreview(){
+  var patId=document.getElementById('yi_pattern').value;
+  var el=document.getElementById('yi_wd_preview');
+  if(!el) return;
+  if(!patId){el.textContent='パターンを選択すると表示されます';return;}
+  var wdDef=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務日',2:'勤務日',3:'勤務日',4:'勤務日',5:'勤務日',6:'休日'};
+  var holDef=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var wdLabels=['日','月','火','水','木','金','土'];
+  var typeColor={'勤務日':'var(--blue)','勤務':'var(--blue)','休日':'var(--muted)','法定休日':'var(--red)','振替出勤':'var(--green)'};
+  var html='';
+  [1,2,3,4,5,6,0].forEach(function(wi){
+    var v=wdDef[wi]||'—';
+    var c=typeColor[v]||'var(--text)';
+    html+='<span style="display:inline-flex;gap:4px;margin-right:8px"><span style="color:var(--muted)">'+wdLabels[wi]+':</span><span style="color:'+c+';font-weight:700">'+v+'</span></span>';
+  });
+  html+='<br><span style="color:var(--muted)">祝日: </span><span style="color:var(--red);font-weight:700">'+holDef+'</span>';
+  var hasSet=localStorage.getItem('yi_wd_'+patId)!==null;
+  if(!hasSet) html+=' <span style="color:var(--amber);font-size:10px">⚠️ 未設定・デフォルト値</span>';
+  el.innerHTML=html;
 }
 function genYearInit(){
   var yr=parseInt(document.getElementById('yi_year').value);
@@ -1193,6 +1272,8 @@ function genYearInit(){
     '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">年間時間: <strong>'+th.toFixed(0)+'</strong>h（目標'+annH+'h、差'+(th-annH>0?'+':'')+(th-annH).toFixed(0)+'）</div>';
   document.getElementById('yiSaveBtn').style.display='';
   document.getElementById('yi_preview').style.display='';
+  var sw=document.getElementById('yi_summary_wrap'); if(sw) sw.style.display='';
+  var em=document.getElementById('yi_empty_msg'); if(em) em.style.display='none';
   var curM=new Date().getMonth()+1;
   document.getElementById('yi_preview_month').value=curM;
   renderYiMonth();
@@ -1753,78 +1834,49 @@ function onWdPatChange(){
     if(noMsg) noMsg.style.display='';
     return;
   }
-  if(wrap) wrap.style.display='';
   if(noMsg) noMsg.style.display='none';
-  // パターン別にlocalStorageから読み込む (キー: yi_wd_{patId})
-  var DOW_IDX=[1,2,3,4,5,6,0];
-  var DOW_LABELS=['月','火','水','木','金','土','日'];
-  var saved=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務',2:'勤務',3:'勤務',4:'勤務',5:'勤務',6:'休日'};
-  var holDefault=localStorage.getItem('yi_hol_'+patId)||'法定休日';
-  var tbody=document.getElementById('weekdayDefaultRows');
+  if(wrap) wrap.style.display='';
+  var wd=JSON.parse(localStorage.getItem('yi_wd_'+patId)||'null')||{0:'法定休日',1:'勤務日',2:'勤務日',3:'勤務日',4:'勤務日',5:'勤務日',6:'休日'};
+  var hol=localStorage.getItem('yi_hol_'+patId)||'法定休日';
+  var tbody=document.getElementById('wdTableBody');
   if(!tbody) return;
-  var TYPES=['勤務','休日','法定休日'];
-  tbody.innerHTML=DOW_IDX.map(function(wi,i){
-    var lbl=DOW_LABELS[i];
-    var color=wi===0?'color:var(--red);font-weight:700':wi===6?'color:var(--blue);font-weight:700':'font-weight:600';
-    var cur=saved[wi]||'勤務';
+  var wdLabels=['日','月','火','水','木','金','土'];
+  var opts=['勤務日','休日','法定休日'];
+  tbody.innerHTML=wdLabels.map(function(label,i){
     return '<tr>'
-      +'<td style="'+color+'">'+lbl+'曜日</td>'
-      +TYPES.map(function(t){
-        var dot=t==='勤務'?'<span style="color:var(--green)">●</span>':t==='法定休日'?'<span style="color:var(--red)">●</span>':'<span style="color:var(--muted)">●</span>';
-        return '<td style="text-align:center"><label style="cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;gap:3px">'
-          +'<input type="radio" name="wd_'+wi+'" value="'+t+'"'+(cur===t?' checked':'')+' style="accent-color:var(--blue)">'+dot
-          +'</label></td>';
+      +'<td style="padding:6px 10px;font-weight:600;'+(i===0?'color:var(--red)':i===6?'color:var(--blue)':'')+'">'+label+'</td>'
+      +opts.map(function(opt){
+        return '<td style="padding:6px 10px;text-align:center">'
+          +'<input type="radio" name="wd_'+i+'" value="'+opt+'"'+(wd[String(i)]===opt?' checked':'')+' onchange="saveWeekdayDefaults()">'
+          +'</td>';
       }).join('')
       +'</tr>';
   }).join('');
-  var holEl=document.querySelector('input[name="holDefault"][value="'+holDefault+'"]');
-  if(holEl) holEl.checked=true;
+  // 祝日行
+  var holTr=document.getElementById('holDefaultRow');
+  if(holTr){
+    holTr.innerHTML='<td style="padding:6px 10px;font-weight:600">祝日</td>'
+      +opts.map(function(opt){
+        return '<td style="padding:6px 10px;text-align:center">'
+          +'<input type="radio" name="holDefault" value="'+opt+'"'+(hol===opt?' checked':'')+' onchange="saveWeekdayDefaults()">'
+          +'</td>';
+      }).join('');
+  }
 }
 function saveWeekdayDefaults(){
   var patId=document.getElementById('wdPatSel').value;
-  if(!patId){toast('勤務パターンを選択してください','red');return;}
-  var pat=_patterns.find(function(p){return p.id===patId;});
-  var result={};
-  [0,1,2,3,4,5,6].forEach(function(wi){
-    var checked=document.querySelector('input[name="wd_'+wi+'"]:checked');
-    result[wi]=checked?checked.value:'勤務';
-  });
-  localStorage.setItem('yi_wd_'+patId,JSON.stringify(result));
-  var holChecked=document.querySelector('input[name="holDefault"]:checked');
-  if(holChecked) localStorage.setItem('yi_hol_'+patId,holChecked.value);
-  var name=pat?'['+pat.pattern_code+'] '+pat.pattern_name:'';
-  toast('✅ '+name+' の曜日デフォルトを保存しました','green');
-}
-
-// ─── ユーティリティ ──────────────────────────────────────────
-function p2(n){return String(n).padStart(2,'0');}
-function lastDay(y,m){return new Date(y,m,0).getDate();}
-var WDAYS=['日','月','火','水','木','金','土'];
-function getWeek(dt){
-  var d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
-  var day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
-  var y1=new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d-y1)/86400000)+1)/7);
-}
-function dlCSV(rows,filename){
-  var csv='\uFEFF'+rows.map(function(r){return r.join(',');}).join('\n');
-  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-}
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('open');});
-function toast(msg,type){
-  var wrap=document.getElementById('toastWrap'); if(!wrap) return;
-  var colors={green:['#e1f5ee','#0F6E56'],red:['#fee2e2','#dc2626'],amber:['#fef3c7','#d97706'],blue:['#eff6ff','#185FA5']};
-  var c=colors[type]||colors.blue;
-  var t=document.createElement('div');
-  t.style.cssText='background:'+c[0]+';color:'+c[1]+';padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,.1);transition:opacity .3s';
-  t.textContent=msg;
-  wrap.appendChild(t);
-  setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove();},300);},2800);
+  if(!patId) return;
+  var wd={};
+  for(var i=0;i<7;i++){
+    var r=document.querySelector('input[name="wd_'+i+'"]:checked');
+    if(r) wd[String(i)]=r.value;
+  }
+  localStorage.setItem('yi_wd_'+patId,JSON.stringify(wd));
+  var holEl=document.querySelector('input[name="holDefault"]:checked');
+  if(holEl) localStorage.setItem('yi_hol_'+patId,holEl.value);
+  toast('曜日デフォルト設定を保存しました','green');
+  // 年度初期設定のプレビューも更新
+  updateYiWdPreview();
 }
 </script>
 </body>
