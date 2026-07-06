@@ -735,6 +735,18 @@ var _calYear = new Date().getFullYear(), _calMonth = new Date().getMonth()+1;
 var _calEmpId = null, _calData = {};
 var _yiData = [], _yiYear = 2026;
 
+// ─── ユーティリティ ──────────────────────────────────────────
+var WDAYS = ['日','月','火','水','木','金','土'];
+function p2(n){ return String(n).padStart(2,'0'); }
+function lastDay(y,m){ return new Date(y,m,0).getDate(); }
+function getWeek(dt){
+  var d=new Date(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate()));
+  var dayNum=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-dayNum);
+  var yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
 // ─── 起動 ────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
   var _sbWait=0;
@@ -1379,16 +1391,46 @@ function runYearCheck(){
 }
 function saveYearInit(){
   if(!_yiData.length){toast('先にプレビューを生成してください','red');return;}
-  if(!confirm('全パターンの年間カレンダーを一括保存します（既存上書き）。よろしいですか？')) return;
-  var upserts=_yiData.map(function(r){return {work_pattern_id:r.patId,work_date:r.date,day_of_week:WDAYS[r.wd],day_type:r.type,scheduled_hours:r.hours,start_time:r.start||null,end_time:r.end||null,break_minutes:r.brk,updated_at:new Date().toISOString()};});
+  if(!confirm('全パターンの年間カレンダーを一括保存します（既存データは上書き）。よろしいですか？')) return;
+  var btn=document.getElementById('yiSaveBtn');
+  if(btn){btn.disabled=true;btn.textContent='保存中...';}
+  var upserts=_yiData.map(function(r){
+    return {
+      work_pattern_id:r.patId,
+      work_date:r.date,
+      day_of_week:WDAYS[r.wd],
+      day_type:r.type,
+      scheduled_hours:r.hours,
+      start_time:r.start||null,
+      end_time:r.end||null,
+      break_minutes:r.brk,
+      updated_at:new Date().toISOString()
+    };
+  });
   var chunks=[]; for(var i=0;i<upserts.length;i+=100) chunks.push(upserts.slice(i,i+100));
-  var done=0;
+  var done=0, errors=0;
   function next(idx){
-    if(idx>=chunks.length){toast('✅ '+upserts.length+'日分を保存しました','green');return;}
-    sb.from('work_calendar_days').upsert(chunks[idx],{onConflict:'work_pattern_id,work_date'}).then(function(r){
-      if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
-      done+=chunks[idx].length; toast(done+'/'+upserts.length+' 件...','blue'); next(idx+1);
-    });
+    if(idx>=chunks.length){
+      if(btn){btn.disabled=false;btn.textContent='💾 全職員に一括保存';}
+      if(errors>0){
+        toast('保存完了（一部エラー '+errors+'件）','amber');
+      } else {
+        toast('✅ '+upserts.length+'日分を保存しました','green');
+      }
+      return;
+    }
+    sb.from('work_calendar_days')
+      .upsert(chunks[idx],{onConflict:'work_pattern_id,work_date',ignoreDuplicates:false})
+      .then(function(r){
+        if(r.error){ errors++; console.warn('chunk '+idx+' error:',r.error.message); }
+        else { done+=chunks[idx].length; }
+        toast(Math.min(done+errors*100,upserts.length)+'/'+upserts.length+' 件...','blue');
+        next(idx+1);
+      }).catch(function(e){
+        errors++;
+        console.warn('chunk '+idx+' exception:',e);
+        next(idx+1);
+      });
   }
   next(0);
 }
@@ -1875,7 +1917,6 @@ function saveWeekdayDefaults(){
   var holEl=document.querySelector('input[name="holDefault"]:checked');
   if(holEl) localStorage.setItem('yi_hol_'+patId,holEl.value);
   toast('曜日デフォルト設定を保存しました','green');
-  // 年度初期設定のプレビューも更新
   updateYiWdPreview();
 }
 </script>
