@@ -333,10 +333,24 @@ html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Yu Gothic',sa
       <div class="punch-area">
         <div class="punch-prompt" id="punchPrompt">職員を選択すると打刻できます</div>
         <div class="punch-grid">
-          <button class="pbtn in" id="pb-出勤"    onclick="doPunch('出勤')"    disabled><div class="pbtn-icon">🟢</div><div class="pbtn-lbl">出勤</div><div class="pbtn-cd" id="cd-出勤"></div></button>
-          <button class="pbtn out" id="pb-退勤"   onclick="doPunch('退勤')"    disabled><div class="pbtn-icon">🔴</div><div class="pbtn-lbl">退勤</div><div class="pbtn-cd" id="cd-退勤"></div></button>
-          <button class="pbtn br"  id="pb-休憩開始" onclick="doPunch('休憩開始')" disabled><div class="pbtn-icon">⏸</div><div class="pbtn-lbl">休憩開始</div><div class="pbtn-cd" id="cd-休憩開始"></div></button>
-          <button class="pbtn br2" id="pb-休憩終了" onclick="doPunch('休憩終了')" disabled><div class="pbtn-icon">▶️</div><div class="pbtn-lbl">休憩終了</div><div class="pbtn-cd" id="cd-休憩終了"></div></button>
+          <button class="pbtn in" id="pb-出勤"    onclick="doPunch('出勤','本業')"    disabled><div class="pbtn-icon">🟢</div><div class="pbtn-lbl">出勤</div><div class="pbtn-cd" id="cd-出勤"></div></button>
+          <button class="pbtn out" id="pb-退勤"   onclick="doPunch('退勤','本業')"    disabled><div class="pbtn-icon">🔴</div><div class="pbtn-lbl">退勤</div><div class="pbtn-cd" id="cd-退勤"></div></button>
+          <button class="pbtn br"  id="pb-休憩開始" onclick="doPunch('休憩開始','本業')" disabled><div class="pbtn-icon">⏸</div><div class="pbtn-lbl">休憩開始</div><div class="pbtn-cd" id="cd-休憩開始"></div></button>
+          <button class="pbtn br2" id="pb-休憩終了" onclick="doPunch('休憩終了','本業')" disabled><div class="pbtn-icon">▶️</div><div class="pbtn-lbl">休憩終了</div><div class="pbtn-cd" id="cd-休憩終了"></div></button>
+        </div>
+        <!-- 副業打刻ボタン -->
+        <div id="kiosk-sidejob-wrap" style="display:none;margin-top:16px">
+          <div style="font-size:11px;font-weight:700;color:#7c3aed;letter-spacing:.04em;margin-bottom:8px;text-align:center">💼 副業打刻</div>
+          <div class="punch-grid" style="max-width:300px;margin:0 auto">
+            <button class="pbtn" id="pb-副業出勤" onclick="doPunch('出勤','副業')" disabled
+              style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff">
+              <div class="pbtn-icon">💼</div><div class="pbtn-lbl">副業出勤</div><div class="pbtn-cd" id="cd-副業出勤"></div>
+            </button>
+            <button class="pbtn" id="pb-副業退勤" onclick="doPunch('退勤','副業')" disabled
+              style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff">
+              <div class="pbtn-icon">🏠</div><div class="pbtn-lbl">副業退勤</div><div class="pbtn-cd" id="cd-副業退勤"></div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -538,6 +552,14 @@ function updateSelBanner(){
 }
 
 // ══ 打刻ボタン制御 ════════════════════════════════════
+function getSideJobEnabled(){
+  return localStorage.getItem('sidejob_enabled')==='1'
+      && localStorage.getItem('sidejob_show_kiosk')==='1';
+}
+function applySideJobVisibility(){
+  var wrap=document.getElementById('kiosk-sidejob-wrap');
+  if(wrap) wrap.style.display=getSideJobEnabled()?'':'none';
+}
 function enablePunchBtns(){
   ['出勤','退勤','休憩開始','休憩終了'].forEach(function(t){
     var btn = document.getElementById('pb-'+t);
@@ -546,10 +568,17 @@ function enablePunchBtns(){
       btn.classList.add('enabled');
     }
   });
+  // 副業ボタン
+  if(getSideJobEnabled()){
+    ['副業出勤','副業退勤'].forEach(function(t){
+      var btn=document.getElementById('pb-'+t);
+      if(btn&&!btn.classList.contains('cooling')){btn.disabled=false;btn.classList.add('enabled');}
+    });
+  }
   document.getElementById('punchPrompt').textContent = '打刻種別を選択してください';
 }
 function disablePunchBtns(){
-  ['出勤','退勤','休憩開始','休憩終了'].forEach(function(t){
+  ['出勤','退勤','休憩開始','休憩終了','副業出勤','副業退勤'].forEach(function(t){
     var btn = document.getElementById('pb-'+t);
     if(btn && !btn.classList.contains('cooling')){
       btn.disabled = true;
@@ -586,7 +615,7 @@ function startCooldown(type){
 }
 
 // ══ 打刻実行 ════════════════════════════════════════
-async function doPunch(type){
+async function doPunch(type, jobType){
   var emp = selectedEmp;
   if(!emp) return;
   startCooldown(type);
@@ -604,6 +633,7 @@ async function doPunch(type){
     await sb.from('punch_records').insert({
       user_id:    emp.auth_id,
       punch_type: type,
+      job_type:   jobType||'本業',
       punched_at: now.toISOString(),
       note:       faceEnabled && document.getElementById('faceRecResult').classList.contains('show')
                   ? '顔認証補助・手動確定' : '手動打刻'
