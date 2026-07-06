@@ -1276,14 +1276,28 @@ function genYearInit(){
       _yiData.push({date:ds,m:m,d:d,wd:wd,type:dtype,hours:schH,start:schSt,end:schEn,brk:brk,hol:JP_HOL[ds]||null,patId:patId});
     }
   }
-  // サマリー
+  // 年間所定時間を優先: 勤務日数で割った1日あたり実働時間を再計算して適用
   var wd2=_yiData.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
+  if(wd2>0 && annH>0){
+    var actualDayH=Math.round(annH/wd2*100)/100;
+    var stParts=st.split(':');
+    var stMin=parseInt(stParts[0])*60+parseInt(stParts[1]);
+    var enMin=stMin+Math.round(actualDayH*60)+brk;
+    var actualEn=p2(Math.floor(enMin/60)%24)+':'+p2(enMin%60);
+    _yiData.forEach(function(r){
+      if(r.type==='勤務'||r.type==='振替出勤'){
+        r.hours=actualDayH;
+        r.end=actualEn;
+      }
+    });
+  }
+  // サマリー
   var hd=_yiData.filter(function(r){return r.type!=='勤務'&&r.type!=='振替出勤';}).length;
   var th=_yiData.reduce(function(s,r){return s+r.hours;},0);
   document.getElementById('yi_summary').innerHTML=
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">勤務日: <strong>'+wd2+'</strong>日</div>'+
     '<div style="background:var(--lgreen);border-radius:7px;padding:6px 12px;font-size:11px">休日: <strong>'+hd+'</strong>日</div>'+
-    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">年間時間: <strong>'+th.toFixed(0)+'</strong>h（目標'+annH+'h、差'+(th-annH>0?'+':'')+(th-annH).toFixed(0)+'）</div>';
+    '<div style="background:var(--lamber);border-radius:7px;padding:6px 12px;font-size:11px">年間所定: <strong>'+annH+'</strong>h（1日'+Math.round(annH/wd2*100)/100+'h / 終業'+(_yiData.find(function(r){return r.end;})||{end:en}).end+'）</div>';
   document.getElementById('yiSaveBtn').style.display='';
   document.getElementById('yi_preview').style.display='';
   var sw=document.getElementById('yi_summary_wrap'); if(sw) sw.style.display='';
