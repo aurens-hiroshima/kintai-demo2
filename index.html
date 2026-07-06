@@ -380,6 +380,23 @@ tr:hover td{background:#fafafa}
         <input type="checkbox" id="tcShowSideJob" onchange="loadTimecard()"> 副業も表示
       </label>
     </div>
+    <!-- 合計KPI（上部） -->
+    <div id="tcTopSummary" style="display:none;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:10px 14px;text-align:center">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">🏢 本業 実働</div>
+          <div style="font-size:20px;font-weight:800;color:var(--blue)" id="tcTopMain">—</div>
+        </div>
+        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:10px 14px;text-align:center">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">💼 副業 実働</div>
+          <div style="font-size:20px;font-weight:800;color:#7c3aed" id="tcTopSide">—</div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;text-align:center">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:2px">📊 合計</div>
+          <div style="font-size:20px;font-weight:800;color:var(--green)" id="tcTopGrand">—</div>
+        </div>
+      </div>
+    </div>
     <!-- 本業 -->
     <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">🏢 本業</div>
     <table>
@@ -438,7 +455,7 @@ tr:hover td{background:#fafafa}
     <div class="tab" onclick="switchTab(this,'tab-ot-app')">残業申請</div>
     <div class="tab" onclick="switchTab(this,'tab-punch-app')">打刻申請</div>
     <div class="tab" onclick="switchTab(this,'tab-shift-app');loadShiftApprovals()">📋 シフト申請</div>
-    <div class="tab" id="tab-sidejob-nav" onclick="switchTab(this,'tab-sidejob-app');loadSideJobApprovals()" style="display:none">💼 副業申請</div>
+    <div class="tab" id="tab-sidejob-nav" onclick="switchTab(this,'tab-sidejob-app');loadSideJobApprovals()">💼 副業申請</div>
   </div>
   <div class="tab-content active" id="tab-leave-app">
     <div class="card">
@@ -2647,10 +2664,18 @@ window.loadTimecard = function(){
       var tcSum=document.getElementById('tcSummary');
       if(tcSum) tcSum.textContent='本業 実働合計：'+Math.floor(totalWork/60)+'h'+totalWork%60+'m　時間外合計：'+Math.floor(totalOt/60)+'h'+totalOt%60+'m';
 
+      // 上部KPI（本業確定後に表示）
+      var topBox = document.getElementById('tcTopSummary');
+      var topMain = document.getElementById('tcTopMain');
+      var topSide = document.getElementById('tcTopSide');
+      var topGrand = document.getElementById('tcTopGrand');
+      if(topBox) topBox.style.display='';
+      if(topMain) topMain.textContent=Math.floor(totalWork/60)+'h'+String(totalWork%60).padStart(2,'0')+'m';
+
       // 副業テーブル
       if(sjWrap) sjWrap.style.display=showSideJob?'':'none';
-      if(showSideJob && sjTbody){
-        var sjTotal=0;
+      var sjTotal=0;
+      if(sjTbody){
         sjTbody.innerHTML=days.map(function(ds){
           var dw=new Date(ds).getDay();
           var dayColor=dw===0||dw===6?'color:var(--red)':'';
@@ -2666,11 +2691,16 @@ window.loadTimecard = function(){
             +'<td>'+inT+'</td><td>'+outT+'</td>'
             +'<td>'+workStr+'</td><td></td></tr>';
         }).join('');
-        var sjSumEl=document.getElementById('tcSideJobSummary');
-        if(sjSumEl) sjSumEl.textContent='副業 実働合計：'+Math.floor(sjTotal/60)+'h'+sjTotal%60+'m';
-        // 合計行
+      }
+      var sjSumEl=document.getElementById('tcSideJobSummary');
+      if(sjSumEl) sjSumEl.textContent='副業 実働合計：'+Math.floor(sjTotal/60)+'h'+sjTotal%60+'m';
+      // 上部KPI 副業・合計
+      if(topSide) topSide.textContent= sjTotal>0 ? Math.floor(sjTotal/60)+'h'+String(sjTotal%60).padStart(2,'0')+'m' : '—';
+      var grandWork=totalWork+sjTotal;
+      if(topGrand) topGrand.textContent=Math.floor(grandWork/60)+'h'+String(grandWork%60).padStart(2,'0')+'m';
+      // 下部合計行
+      if(showSideJob && sjTotal>0){
         if(tcTotal){
-          var grandWork=totalWork+sjTotal;
           tcTotal.innerHTML='📊 合計（本業＋副業）　実働：<strong>'+Math.floor(grandWork/60)+'h'+grandWork%60+'m</strong>　'
             +'本業時間外：<strong style="color:var(--red)">'+Math.floor(totalOt/60)+'h'+totalOt%60+'m</strong>';
           tcTotal.style.display='';
@@ -2886,9 +2916,6 @@ window.saveSideJobFeatureSettings = function(){
   localStorage.setItem('sidejob_enabled', enabled?'1':'0');
   localStorage.setItem('sidejob_require_approval', requireApproval?'1':'0');
   localStorage.setItem('sidejob_show_kiosk', showKiosk?'1':'0');
-  // 承認管理タブの副業タブを表示/非表示
-  var navBtn = document.getElementById('tab-sidejob-nav');
-  if(navBtn) navBtn.style.display = enabled?'':'none';
   showToast('副業機能設定を保存しました','green');
 };
 
@@ -2910,9 +2937,6 @@ function loadSideJobFeatureSettings(){
   if(sk) sk.checked = showKiosk;
   var sub = document.getElementById('sideJobSubSettings');
   if(sub) sub.style.display = enabled?'':'none';
-  // 承認管理タブの副業タブ表示制御
-  var navBtn = document.getElementById('tab-sidejob-nav');
-  if(navBtn) navBtn.style.display = enabled?'':'none';
 }
 
 // ══════════════════════════════════════════════
@@ -2981,15 +3005,8 @@ window.rejectSideJob = function(id){
 //  タイムカード（副業対応版）
 // ══════════════════════════════════════════════
 function loadApprovals(){
-  // 副業機能が有効なら副業タブを表示
-  var enabled = localStorage.getItem('sidejob_enabled')==='1';
-  var navBtn = document.getElementById('tab-sidejob-nav');
-  if(navBtn) navBtn.style.display = enabled?'':'none';
-
   loadLeaveApprovals(); loadOtApprovals(); loadPunchApprovals();
-  // シフト申請タブが開いている場合は再取得
-  var shiftTab = document.getElementById('tab-shift-app');
-  if(shiftTab && shiftTab.classList.contains('active')) loadShiftApprovals();
+  loadShiftApprovals(); loadSideJobApprovals();
 }
 
 // ── シフト申請承認（page-approval） ──
@@ -6619,19 +6636,19 @@ window.onWdPatSettingsChange = function(){
   var opts=['勤務日','休日','法定休日'];
   tbody.innerHTML=wdLabels.map(function(label,i){
     return '<tr>'
-      +'<td style="padding:6px 10px;font-weight:600">'+label+'曜日</td>'
+      +'<td style="padding:6px 10px;font-weight:600">'+label+'</td>'
       +opts.map(function(opt){
-        var checked=(wd[String(i)]===opt)?'checked':'';
-        return '<td style="padding:6px 12px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer">'
-          +'<input type="radio" name="wdSet_'+i+'" value="'+opt+'" '+checked+' style="cursor:pointer">'
-          +opt+'</label></td>';
+        return '<td style="padding:6px 10px;text-align:center"><input type="radio" name="wdSet_'+i+'" value="'+opt+'"'+(wd[String(i)]===opt?' checked':'')+' onchange="saveWdPatSettings()"></td>';
       }).join('')
       +'</tr>';
   }).join('');
   // 祝日ラジオ
-  document.querySelectorAll('input[name="wdSettingHol"]').forEach(function(rb){
-    rb.checked=(rb.value===hol);
+  var holHtml='';
+  opts.forEach(function(opt){
+    holHtml+='<td style="padding:6px 10px;text-align:center"><input type="radio" name="wdSettingHol" value="'+opt+'"'+(hol===opt?' checked':'')+' onchange="saveWdPatSettings()"></td>';
   });
+  var holRow=document.getElementById('wdSettingHolRow');
+  if(holRow) holRow.innerHTML=holHtml;
 };
 
 window.saveWdPatSettings = function(){
@@ -6640,14 +6657,13 @@ window.saveWdPatSettings = function(){
   var patId=sel.value;
   var wd={};
   for(var i=0;i<7;i++){
-    var rb=document.querySelector('input[name="wdSet_'+i+'"]:checked');
-    wd[String(i)]=rb?rb.value:'勤務日';
+    var r=document.querySelector('input[name="wdSet_'+i+'"]:checked');
+    if(r) wd[String(i)]=r.value;
   }
-  var holRb=document.querySelector('input[name="wdSettingHol"]:checked');
-  var hol=holRb?holRb.value:'法定休日';
   localStorage.setItem('yi_wd_'+patId,JSON.stringify(wd));
-  localStorage.setItem('yi_hol_'+patId,hol);
-  showToast('曜日デフォルトを保存しました','green');
+  var holEl=document.querySelector('input[name="wdSettingHol"]:checked');
+  if(holEl) localStorage.setItem('yi_hol_'+patId,holEl.value);
+  showToast('曜日デフォルト設定を保存しました','green');
 };
 </script>
 </body>
