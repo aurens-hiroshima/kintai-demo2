@@ -916,6 +916,8 @@ function populateSelects(){
 function initCalendar(){
   _calYear=new Date().getFullYear();
   filterCalEmp();
+  // 既に職員が選択済みなら最新データで再描画
+  if(_calEmpId) loadAllMonthsCalendar();
 }
 
 function filterCalEmp(){
@@ -1918,6 +1920,28 @@ function saveWeekdayDefaults(){
   if(holEl) localStorage.setItem('yi_hol_'+patId,holEl.value);
   toast('曜日デフォルト設定を保存しました','green');
   updateYiWdPreview();
+}
+
+function openModal(id){
+  var el=document.getElementById(id);
+  if(el) el.classList.add('open');
+}
+function closeModal(id){
+  var el=document.getElementById(id);
+  if(el) el.classList.remove('open');
+}
+function toast(msg, type){
+  var wrap=document.getElementById('toastWrap');
+  if(!wrap) return;
+  var colors={green:'#16a34a',red:'#dc2626',amber:'#d97706',blue:'#2563eb'};
+  var el=document.createElement('div');
+  el.style.cssText='background:'+(colors[type]||colors.blue)+';color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .3s;cursor:default';
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(function(){
+    el.style.opacity='0';
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },300);
+  },3000);
 }
 </script>
 </body>
