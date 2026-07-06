@@ -733,7 +733,7 @@ var SB_KEY = localStorage.getItem('sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX
 var sb = null, me = null;
 var _patterns = [], _employees = [], _departments = [], _holidays = {};
 var _calYear = new Date().getFullYear(), _calMonth = new Date().getMonth()+1;
-var _calEmpId = null, _calData = {};
+var _calEmpId = null, _calData = {}, _calPat = {};
 var _yiData = [], _yiYear = 2026;
 
 // ─── ユーティリティ ──────────────────────────────────────────
@@ -990,6 +990,7 @@ function loadAllMonthsCalendar(){
 
 function renderAllMonths(emp){
   var pat=_patterns.find(function(p){return p.id===emp.work_pattern_id;})||{};
+  _calPat=pat;
   var defSt=(pat.default_start||'08:30').slice(0,5);
   var defEn=(pat.default_end||'17:30').slice(0,5);
   var today=new Date().toISOString().slice(0,10);
@@ -1005,8 +1006,8 @@ function renderAllMonths(emp){
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 14px;font-size:12px">年間出勤: <strong>'+yearWork+'</strong>日</div>'+
     '<div style="background:var(--lgreen);border-radius:7px;padding:6px 14px;font-size:12px">年間休日: <strong>'+(yearHoli+yearLegal)+'</strong>日（法定:'+yearLegal+'）</div>'+
     '<div style="background:var(--lamber);border-radius:7px;padding:6px 14px;font-size:12px">年間所定: <strong>'+yearH.toFixed(0)+'</strong>h</div>'+
-    '<div style="background:'+(yearWork>280?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">日数判定: <strong>'+(yearWork>280?'⚠️'+yearWork+'日(280超)':'✅'+yearWork+'日')+'</strong></div>'+
-    '<div style="background:'+((yearHoli+yearLegal)<118?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">休日判定: <strong>'+((yearHoli+yearLegal)<118?'⚠️'+(yearHoli+yearLegal)+'日(118未満)':'✅'+(yearHoli+yearLegal)+'日')+'</strong></div>';
+    '<div style="background:'+(yearWork>(_calPat.annual_days_limit||280)?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">日数判定: <strong>'+(yearWork>(_calPat.annual_days_limit||280)?'⚠️'+yearWork+'日('+((_calPat.annual_days_limit||280))+'超)':'✅'+yearWork+'日')+'</strong></div>'+
+    '<div style="background:'+((yearHoli+yearLegal)<(_calPat.annual_holiday_min||118)?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">休日判定: <strong>'+((yearHoli+yearLegal)<(_calPat.annual_holiday_min||118)?'⚠️'+(yearHoli+yearLegal)+'日('+((_calPat.annual_holiday_min||118))+'未満)':'✅'+(yearHoli+yearLegal)+'日')+'</strong></div>';
 }
 
 function buildMonthCard(emp,m,defSt,defEn,today,pat){
@@ -1042,7 +1043,7 @@ function buildMonthCard(emp,m,defSt,defEn,today,pat){
       return '<option value="'+t+'"'+(dtype===t?' selected':'')+'>'+t+'</option>';
     }).join('');
     var holBadge=hol?'<span class="cal-hol-name">'+hol.name+'</span>':'';
-    var hoursEl=isWork?'<input type="number" class="cal-hours" value="'+schH.toFixed(1)+'" step="0.25" min="0" max="24" data-date="'+ds+'">':'';
+    var hoursEl=isWork?'<input type="number" class="cal-hours" value="'+schH.toFixed(1)+'" step="0.25" min="0" max="24" data-date="'+ds+'" oninput="recomputeSummary()">':'';
     var timesEl=isWork?'<div class="cal-times">'+st+'〜'+en+'</div>':'';
     cells.push(
       '<div class="'+cellCls+'" data-date="'+ds+'">'+
@@ -1075,10 +1076,51 @@ function buildMonthCard(emp,m,defSt,defEn,today,pat){
   return {html:html,workD:workD,holiD:holiD,legalD:legalD,totalH:totalH};
 }
 
+function recomputeSummary(){
+  var yearWork=0,yearHoli=0,yearLegal=0,yearH=0;
+  document.querySelectorAll('.cal-cell[data-date]:not(.other-month)').forEach(function(cell){
+    var tSel=cell.querySelector('.cal-type-sel');
+    var hEl=cell.querySelector('.cal-hours');
+    if(!tSel) return;
+    var dtype=tSel.value;
+    var isWork=dtype==='勤務'||dtype==='振替出勤';
+    if(isWork){ yearWork++; yearH+=hEl?parseFloat(hEl.value)||0:0; }
+    else if(dtype==='法定休日') yearLegal++;
+    else yearHoli++;
+    // 月カードの統計も更新
+    var card=cell.closest('.cal-month-card');
+    if(card){
+      var stats=card.querySelector('.cal-month-stats');
+      if(stats){
+        var cellsInCard=card.querySelectorAll('.cal-cell[data-date]:not(.other-month)');
+        var mW=0,mH=0,mL=0,mTH=0;
+        cellsInCard.forEach(function(cc){
+          var ts=cc.querySelector('.cal-type-sel'),hs=cc.querySelector('.cal-hours');
+          if(!ts) return;
+          var dt=ts.value,iW=dt==='勤務'||dt==='振替出勤';
+          if(iW){mW++;mTH+=hs?parseFloat(hs.value)||0:0;}
+          else if(dt==='法定休日') mL++;
+          else mH++;
+        });
+        stats.innerHTML='<span>出勤'+mW+'日</span><span>休日'+(mH+mL)+'日</span><span>'+mTH.toFixed(0)+'h</span>';
+      }
+    }
+  });
+  var dLim=_calPat.annual_days_limit||280, hMin=_calPat.annual_holiday_min||118;
+  var sumEl=document.getElementById('calMonthSummary');
+  if(!sumEl) return;
+  sumEl.innerHTML=
+    '<div style="background:var(--lblue);border-radius:7px;padding:6px 14px;font-size:12px">年間出勤: <strong>'+yearWork+'</strong>日</div>'+
+    '<div style="background:var(--lgreen);border-radius:7px;padding:6px 14px;font-size:12px">年間休日: <strong>'+(yearHoli+yearLegal)+'</strong>日（法定:'+yearLegal+'）</div>'+
+    '<div style="background:var(--lamber);border-radius:7px;padding:6px 14px;font-size:12px">年間所定: <strong>'+yearH.toFixed(0)+'</strong>h</div>'+
+    '<div style="background:'+(yearWork>dLim?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">日数判定: <strong>'+(yearWork>dLim?'⚠️'+yearWork+'日('+dLim+'超)':'✅'+yearWork+'日')+'</strong></div>'+
+    '<div style="background:'+((yearHoli+yearLegal)<hMin?'var(--lred)':'var(--lgreen)')+';border-radius:7px;padding:6px 14px;font-size:12px">休日判定: <strong>'+((yearHoli+yearLegal)<hMin?'⚠️'+(yearHoli+yearLegal)+'日('+hMin+'未満)':'✅'+(yearHoli+yearLegal)+'日')+'</strong></div>';
+}
 function onCalTypeChange(sel){
   var ds=sel.getAttribute('data-date');
   var cell=document.querySelector('[data-date="'+ds+'"].cal-cell');
   if(!cell) return;
+  setTimeout(recomputeSummary,0);
   var wd=new Date(ds).getDay();
   var isWork=sel.value==='勤務'||sel.value==='振替出勤';
   var wdCls=wd===0?'sun ':wd===6?'sat ':'';
@@ -1123,7 +1165,7 @@ function saveCalendar(){
   var chunks=[]; for(var i=0;i<upserts.length;i+=100) chunks.push(upserts.slice(i,i+100));
   var done=0;
   function nextChunk(idx){
-    if(idx>=chunks.length){toast('✅ '+upserts.length+'日分を保存しました','green');return;}
+    if(idx>=chunks.length){toast('✅ '+upserts.length+'日分を保存しました','green');loadAllMonthsCalendar();return;}
     sb.from('work_calendar_days').upsert(chunks[idx],{onConflict:'work_pattern_id,work_date'}).then(function(r){
       if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
       done+=chunks[idx].length; nextChunk(idx+1);
