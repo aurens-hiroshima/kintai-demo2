@@ -1982,7 +1982,15 @@ function saveWeekdayDefaults(){
   if(!patId) return;
   var wd={};
   for(var i=0;i<7;i++){
-    var r=document.querySelector('input[name="wd_'+i+'"]:
+    var r=document.querySelector('input[name="wd_'+i+'"]:checked');
+    if(r) wd[String(i)]=r.value;
+  }
+  var holEl=document.querySelector('input[name="holDefault"]:checked');
+  var hol=holEl?holEl.value:'法定休日';
+  localStorage.setItem('yi_wd_'+patId,JSON.stringify(wd));
+  localStorage.setItem('yi_hol_'+patId,hol);
+  toast('曜日デフォルトを保存しました','green');
+}
 function toast(msg, type){
   var wrap=document.getElementById('toastWrap');
   if(!wrap) return;
