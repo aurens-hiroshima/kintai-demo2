@@ -27,22 +27,22 @@ body{font-family:'Hiragino Sans','Meiryo',sans-serif;background:var(--bg);color:
 .hdr{display:none !important}
 
 /* ── フローティング戻るボタン ── */
-#floatBack{position:fixed;top:10px;left:10px;z-index:300;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:20px;padding:6px 14px 6px 8px;font-size:13px;font-weight:600;color:var(--pri);display:none;align-items:center;gap:2px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+#floatBack{position:fixed;top:calc(var(--nh)+6px);left:10px;z-index:300;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:20px;padding:6px 14px 6px 8px;font-size:13px;font-weight:600;color:var(--pri);display:none;align-items:center;gap:2px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12)}
 #floatBack.show{display:flex}
 #floatBack i{font-size:18px}
 
-/* ── Bottom Nav ── */
-.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nh);background:#fff;border-top:1px solid var(--border);display:flex;z-index:200;box-shadow:0 -2px 12px rgba(0,0,0,.08)}
+/* ── Top Nav ── */
+.bnav{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nh);background:#fff;border-bottom:1px solid var(--border);display:flex;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.08)}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;font-size:10px;color:var(--muted);cursor:pointer;padding:6px 0;position:relative;transition:color .15s}
 .bnav-btn i{font-size:22px;line-height:1}
 .bnav-btn.on{color:var(--pri)}
 .bnav-dot{position:absolute;top:6px;right:calc(50% - 14px);width:8px;height:8px;background:var(--dan);border-radius:50%;border:2px solid #fff}
 
 /* ── Page ── */
-.pg{display:none;padding-top:8px;padding-bottom:calc(var(--nh)+8px);min-height:100vh}
+.pg{display:none;padding-top:calc(var(--nh)+8px);padding-bottom:16px;min-height:100vh}
 .pg.on{display:block}
-.pg.no-hdr{padding-top:0}
-.pg.no-nav{padding-bottom:16px}
+.pg.no-hdr{padding-top:calc(var(--nh))}
+.pg.no-nav{padding-top:16px;padding-bottom:16px}
 .pg.full{padding-top:0;padding-bottom:0}
 
 /* ── Sections ── */
@@ -76,8 +76,8 @@ body{font-family:'Hiragino Sans','Meiryo',sans-serif;background:var(--bg);color:
 
 /* ── Punch Buttons ── */
 .punch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px 12px}
-.pbtn{border:none;border-radius:18px;padding:20px 8px;font-size:16px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;transition:transform .1s,opacity .1s;box-shadow:0 4px 16px rgba(0,0,0,.12)}
-.pbtn i{font-size:32px}
+.pbtn{border:none;border-radius:14px;padding:10px 8px;font-size:14px;font-weight:800;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .1s,opacity .1s;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.pbtn i{font-size:22px}
 .pbtn:active{transform:scale(.96)}
 .pbtn-in{background:var(--pri);color:#fff}
 .pbtn-out{background:var(--dan);color:#fff}
@@ -169,7 +169,7 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
 .tl-label{font-size:14px;font-weight:700}
 
 /* ── Toast ── */
-.app-toast{position:fixed;top:68px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.app-toast{position:fixed;top:calc(var(--nh)+8px);left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .app-toast.show{opacity:1}
 
 /* ── Info rows ── */
@@ -277,6 +277,24 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
   <div class="list-wrap" id="homeNoticeList">
     <div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">読み込み中...</div>
   </div>
+  <!-- 打刻ボタン（ホーム） -->
+  <div class="sec-title" style="margin-top:12px" data-i18n="home.punch_status">🖐️ 打刻</div>
+  <div class="punch-grid" style="padding:0 16px 8px">
+    <button class="pbtn pbtn-in"  id="hpbtn-in"  onclick="doPunch('出勤','本業')"><i class="bi bi-box-arrow-in-right"></i><span>出勤</span></button>
+    <button class="pbtn pbtn-out" id="hpbtn-out" onclick="doPunch('退勤','本業')"><i class="bi bi-box-arrow-left"></i><span>退勤</span></button>
+    <button class="pbtn pbtn-brk" onclick="doPunch('休憩開始','本業')"><i class="bi bi-cup-hot"></i><span>休憩開始</span></button>
+    <button class="pbtn pbtn-ret" onclick="doPunch('休憩終了','本業')"><i class="bi bi-arrow-return-left"></i><span>休憩終了</span></button>
+    <button class="pbtn pbtn-go"  onclick="doPunch('外出','本業')"><i class="bi bi-door-open"></i><span>外出</span></button>
+    <button class="pbtn pbtn-back" onclick="doPunch('戻り','本業')"><i class="bi bi-door-closed"></i><span>戻り</span></button>
+  </div>
+  <!-- 副業打刻（ホーム・副業機能ON時のみ） -->
+  <div id="sideJobPunchWrapHome" style="display:none;padding:0 16px 8px">
+    <div style="font-size:11px;font-weight:700;color:#4f46e5;margin-bottom:6px;letter-spacing:.04em">💼 副業打刻</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <button class="pbtn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff" onclick="doPunch('出勤','副業')"><i class="bi bi-briefcase"></i><span>副業出勤</span></button>
+      <button class="pbtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff" onclick="doPunch('退勤','副業')"><i class="bi bi-briefcase-fill"></i><span>副業退勤</span></button>
+    </div>
+  </div>
   <!-- 打刻状況 -->
   <div class="sec-title" data-i18n="home.punch_status">打刻状況</div>
   <div class="card-app">
@@ -294,9 +312,8 @@ select.f-ctrl{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xm
         <div class="tl-content" style="color:var(--muted)"><div class="tl-time">--:--</div><div class="tl-label" data-i18n="punch.waiting_out">退勤待ち</div></div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-      <button class="btn-app btn-pri" onclick="goScreen('screen-punch')" style="padding:12px;font-size:14px"><i class="bi bi-box-arrow-in-right"></i> <span data-i18n="home.punch_btn">打刻する</span></button>
-      <button class="btn-app btn-out" style="padding:12px;font-size:14px" onclick="goScreen('screen-punch-history')"><i class="bi bi-clock-history"></i> <span data-i18n="home.history_btn">履歴</span></button>
+    <div style="margin-top:8px">
+      <button class="btn-app btn-out" style="padding:10px;font-size:13px" onclick="goScreen('screen-punch-history')"><i class="bi bi-clock-history"></i> <span data-i18n="home.history_btn">打刻履歴</span></button>
     </div>
   </div>
   <!-- 申請状況 -->
@@ -1382,15 +1399,20 @@ function goScreen(id){
   pg.classList.add('on');
 
   // 副業機能の表示制御
+  var _sjEnabled = localStorage.getItem('sidejob_enabled')==='1';
   if(id==='screen-punch'){
-    var enabled = localStorage.getItem('sidejob_enabled')==='1';
     var wrap = document.getElementById('sideJobPunchWrap');
-    if(wrap) wrap.style.display = enabled?'':'none';
+    if(wrap) wrap.style.display = _sjEnabled?'':'none';
   }
-  if(id==='screen-home'||id==='screen-apply'){
-    var enabled = localStorage.getItem('sidejob_enabled')==='1';
+  if(id==='screen-home'){
+    var wrapHome = document.getElementById('sideJobPunchWrapHome');
+    if(wrapHome) wrapHome.style.display = _sjEnabled?'':'none';
     var row = document.getElementById('sidejob-apply-row');
-    if(row) row.style.display = enabled?'':'none';
+    if(row) row.style.display = _sjEnabled?'':'none';
+  }
+  if(id==='screen-apply'){
+    var row = document.getElementById('sidejob-apply-row');
+    if(row) row.style.display = _sjEnabled?'':'none';
   }
 
   var isNavRoot = !!_navScreens[id];
@@ -2098,35 +2120,37 @@ var _i18n = {
     'apply_type.holiday_work':'节假日上班','apply_type.punch_fix':'修正打卡',
     'apply_type.shift_wish':'班次意愿','apply_type.shift_change':'换班申请','apply_type.shift_swap':'班次互换',
     'form.start_date':'开始日期','form.end_date':'结束日期','form.reason':'理由','form.comment':'备注',
-    'form.submit':'提交','form.register':'登记','form.am':'上午','form.pm':'下午',
-    'form.start_time':'开始时间','form.end_time':'结束时间','form.hours':'小时数','form.date':'日期','form.type':'类型','form.body':'内容',
-    'leave.remaining':'剩余','leave.used':'已使用','leave.granted':'已授予',
-    'leave.history':'历史','leave.grant_hist':'授予记录','leave.expire':'到期',
+    'form.submit':'提交','form.register':'登记','form.am':'上午','form.pm':'下午',    'form.start_time':'开始时间','form.end_time':'结束时间','form.hours':'工时','form.date':'日期','form.type':'类型','form.body':'内容',
+    'leave.remaining':'年假剩余','leave.used':'今年已用','leave.granted':'授予天数',
+    'leave.history':'使用记录','leave.grant_hist':'授予记录','leave.expire':'即将到期',
     'notice.post_btn':'✏️ 发布','notice.see_all':'查看全部','notice.category':'类别',
-    'notice.attach_photo':'📷 附加照片（可选）','notice.submit_btn':'📢 发布',
-    'profile.name':'姓名','profile.dept':'部门','profile.emp_no':'员工号',
-    'profile.emp_type':'合同类型','profile.hire_date':'入职日期','profile.edit':'编辑资料',
-    'notif.notice':'通知','notif.shift':'班次','notif.apply_result':'申请结果','notif.punch_reminder':'打卡提醒'
+    'notice.attach_photo':'📷 附加照片（选填）','notice.submit_btn':'📢 发布',
+    'profile.name':'姓名','profile.dept':'部门','profile.emp_no':'员工编号',
+    'profile.emp_type':'雇用形式','profile.hire_date':'入职日期','profile.edit':'编辑资料',
+    'notif.notice':'通知提醒','notif.shift':'班次通知','notif.apply_result':'申请结果','notif.punch_reminder':'打卡提醒'
   }
 };
-function t(key){ return (_i18n[_lang]&&_i18n[_lang][key])||_i18n['ja'][key]||key; }
+
+var _lang = (function(){
+  try{ return localStorage.getItem('staff_lang')||'ja'; }catch(e){ return 'ja'; }
+})();
+
+function t(key){ return (_i18n[_lang]&&_i18n[_lang][key])||_i18n.ja[key]||key; }
+
 function applyI18n(){
   document.querySelectorAll('[data-i18n]').forEach(function(el){
-    var k=el.getAttribute('data-i18n');
-    var v=t(k);
-    if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') el.placeholder=v;
-    else el.textContent=v;
-  });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){
-    el.placeholder=t(el.getAttribute('data-i18n-placeholder'));
+    var key = el.getAttribute('data-i18n');
+    var val = t(key);
+    if(val) el.textContent = val;
   });
 }
 
-// ── 副業機能チェック ──
 function checkSideJobFeature(){
   var enabled = localStorage.getItem('sidejob_enabled')==='1';
   var wrap = document.getElementById('sideJobPunchWrap');
   if(wrap) wrap.style.display = enabled?'':'none';
+  var wrapHome = document.getElementById('sideJobPunchWrapHome');
+  if(wrapHome) wrapHome.style.display = enabled?'':'none';
   var row = document.getElementById('sidejob-apply-row');
   if(row) row.style.display = enabled?'':'none';
 }
