@@ -1729,6 +1729,8 @@ function filterEmps(){
   var pat=document.getElementById('empPatFilter').value;
   renderEmps(_employees.filter(function(e){return (!q||e.name.toLowerCase().includes(q))&&(!dept||e.department===dept)&&(!pat||e.work_pattern_id===pat);}));
 }
+function openModal(id){ var el=document.getElementById(id); if(el) el.classList.add('open'); }
+function closeModal(id){ var el=document.getElementById(id); if(el) el.classList.remove('open'); }
 function openEmpModal(){
   ['emId','emCode','emName','emNote','emEmail','emPassword'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('emEmpType').value='正職員';
