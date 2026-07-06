@@ -778,7 +778,7 @@ tr:hover td{background:#fafafa}
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
+        <thead><tr><th>氏名</th><th>メール</th><th>部署</th><th>課</th><th>権限</th><th>入社日</th><th>有休 残/付与</th><th>ステータス</th><th>操作</th></tr></thead>
         <tbody id="usersTbl"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr></tbody>
       </table>
     </div>
@@ -786,28 +786,56 @@ tr:hover td{background:#fafafa}
 
   <!-- ── 部署設定タブ ── -->
   <div class="tab-content" id="tab-users-dept">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="card-title" style="margin:0">🏢 部署一覧</div>
-        <button class="btn btn-primary btn-sm" onclick="openDeptModal()">＋ 部署追加</button>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <!-- 左: 部一覧 -->
+      <div class="card" style="flex:1;min-width:280px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="card-title" style="margin:0">🏢 部 一覧</div>
+          <button class="btn btn-primary btn-sm" onclick="openDeptModal()">＋ 部を追加</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+          calendar_system.html の部署設定と共通DBです。
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px">コード</th>
+              <th>部名</th>
+              <th style="width:60px;text-align:center">人数</th>
+              <th style="width:100px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="deptMasterTbl">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
-        ここで管理する部署は <strong>calendar_system.html</strong> の部署設定と共通（同じDBテーブル）です。
+      <!-- 右: 課一覧 -->
+      <div class="card" style="flex:1;min-width:280px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="card-title" style="margin:0">📂 課 一覧</div>
+          <button class="btn btn-primary btn-sm" onclick="openSectionModal()">＋ 課を追加</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div class="form-label" style="margin:0;white-space:nowrap">所属する部：</div>
+          <select class="form-control" id="sectionDeptFilter" style="max-width:200px" onchange="filterSectionList()">
+            <option value="">— 部を選択 —</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px">コード</th>
+              <th>課名</th>
+              <th style="width:60px;text-align:center">人数</th>
+              <th style="width:100px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="sectionMasterTbl">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">← 部を選択してください</td></tr>
+          </tbody>
+        </table>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:100px">部署コード</th>
-            <th>部署名</th>
-            <th style="width:80px;text-align:center">人数</th>
-            <th style="width:80px">備考</th>
-            <th style="width:120px">操作</th>
-          </tr>
-        </thead>
-        <tbody id="deptMasterTbl">
-          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">読み込み中...</td></tr>
-        </tbody>
-      </table>
     </div>
   </div>
 </div>
@@ -881,6 +909,17 @@ tr:hover td{background:#fafafa}
 
 <!-- ── Settings ── -->
 <div class="page" id="page-settings">
+  <!-- ── 設定タブナビ ── -->
+  <div class="tabs" style="margin-bottom:0">
+    <div class="tab active" onclick="switchTab(this,'stab-basic')">🏢 基本設定</div>
+    <div class="tab" onclick="switchTab(this,'stab-leave-cfg')">🌴 休暇設定</div>
+    <div class="tab" onclick="switchTab(this,'stab-shift-cfg')">📅 シフト設定</div>
+    <div class="tab" onclick="switchTab(this,'stab-alert-cfg')">🚨 アラート・残業</div>
+    <div class="tab" onclick="switchTab(this,'stab-link')">🖥️ 外部リンク</div>
+  </div>
+
+  <!-- ┌── 基本設定タブ ──┐ -->
+  <div class="tab-content active" id="stab-basic">
   <div class="settings-section">
     <div class="settings-header">
       <span>🏢 会社情報</span>
@@ -913,6 +952,10 @@ tr:hover td{background:#fafafa}
       </table>
     </div>
   </div>
+  </div><!-- /stab-basic -->
+
+  <!-- ┌── 休暇設定タブ ──┐ -->
+  <div class="tab-content" id="stab-leave-cfg">
   <div class="settings-section">
     <div class="settings-header">
       <span>🌴 有給・付与設定</span>
@@ -960,6 +1003,10 @@ tr:hover td{background:#fafafa}
       </table>
     </div>
   </div>
+  </div><!-- /stab-leave-cfg -->
+
+  <!-- ┌── アラート・残業タブ ──┐ -->
+  <div class="tab-content" id="stab-alert-cfg">
   <div class="settings-section">
     <div class="settings-header">
       <span>🔔 通知設定</span>
@@ -1004,6 +1051,47 @@ tr:hover td{background:#fafafa}
       </div>
     </div>
   </div>
+  <!-- ── みなし残業設定 ── -->
+  <div class="settings-section">
+    <div class="settings-header">
+      <span>💼 みなし残業設定</span>
+      <button class="btn btn-sm btn-primary" onclick="saveDeemedOtSettings()">保存</button>
+    </div>
+    <div class="settings-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        みなし残業（固定残業代）が有効な場合、設定時間以内の残業は残業扱いとなりません。
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="deemedOtEnable" onchange="toggleDeemedOtFields()">
+          <strong>みなし残業を有効にする</strong>
+        </label>
+      </div>
+      <div id="deemedOtFields" style="display:none">
+        <div class="form-row3">
+          <div class="form-group">
+            <div class="form-label">みなし残業時間（時間/月）</div>
+            <input class="form-control" id="deemedOtHours" type="number" min="0" max="80" value="20" placeholder="例: 20">
+          </div>
+          <div class="form-group">
+            <div class="form-label">対象（雇用形態）</div>
+            <select class="form-control" id="deemedOtTarget">
+              <option value="all">全員</option>
+              <option value="fulltime">正社員のみ</option>
+              <option value="contract">契約社員のみ</option>
+            </select>
+          </div>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--muted);margin-top:4px">
+          ⓘ 月間残業が <strong id="deemedOtHoursDisp">20</strong> 時間以内の場合、残業ゼロとして表示されます。超過分のみ追加残業として集計されます。
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /stab-alert-cfg -->
+
+  <!-- ┌── シフト設定タブ ──┐ -->
+  <div class="tab-content" id="stab-shift-cfg">
   <div class="settings-section">
     <div class="settings-header">
       <span>📅 シフト申請設定</span>
@@ -1068,6 +1156,10 @@ tr:hover td{background:#fafafa}
       </div>
     </div>
   </div>
+  </div><!-- /stab-shift-cfg -->
+
+  <!-- ┌── 外部リンクタブ ──┐ -->
+  <div class="tab-content" id="stab-link">
   <div class="settings-section">
     <div class="settings-header"><span>🖥️ 外部リンク</span></div>
     <div class="settings-body" style="display:flex;gap:12px;flex-wrap:wrap">
@@ -1076,6 +1168,7 @@ tr:hover td{background:#fafafa}
       <a href="calendar_system.html" target="_blank" class="btn btn-outline">📅 変形労働カレンダー</a>
     </div>
   </div>
+  </div><!-- /stab-link -->
 </div>
 
 
@@ -1410,8 +1503,10 @@ tr:hover td{background:#fafafa}
       <div class="form-group"><div class="form-label">入社日</div><input class="form-control" id="newUserJoin" type="date"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">部署</div>
-        <select class="form-control" id="newUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+      <div class="form-group"><div class="form-label">部 (部署)</div>
+        <select class="form-control" id="newUserDept" onchange="updateSectionSelect('newUserSection','newUserDept')"><option value="">選択してください</option></select></div>
+      <div class="form-group"><div class="form-label">課</div>
+        <select class="form-control" id="newUserSection"><option value="">（課なし）</option></select></div>
       <div class="form-group"><div class="form-label">雇用形態</div>
         <select class="form-control" id="newUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>業務委託</option></select></div>
     </div>
@@ -1473,7 +1568,8 @@ tr:hover td{background:#fafafa}
       </div>
       <div class="form-row">
         <div class="form-group"><div class="form-label">社員番号</div><input class="form-control" id="editUserEmpNo" placeholder="例: EMP001"></div>
-        <div class="form-group"><div class="form-label">部署</div><select class="form-control" id="editUserDept"><option value="">選択してください</option><option>営業部</option><option>開発部</option><option>総務部</option><option>人事部</option><option>経理部</option></select></div>
+        <div class="form-group"><div class="form-label">部 (部署)</div><select class="form-control" id="editUserDept" onchange="updateSectionSelect('editUserSection','editUserDept')"><option value="">選択してください</option></select></div>
+        <div class="form-group"><div class="form-label">課</div><select class="form-control" id="editUserSection"><option value="">（課なし）</option></select></div>
       </div>
       <div class="form-row">
         <div class="form-group"><div class="form-label">雇用形態</div><select class="form-control" id="editUserEmp"><option>正社員</option><option>契約社員</option><option>パート</option><option>アルバイト</option><option>業務委託</option></select></div>
@@ -1661,6 +1757,37 @@ tr:hover td{background:#fafafa}
       <button class="btn btn-red btn-sm" id="dpDelBtn" onclick="deleteDept()" style="margin-right:auto;display:none">削除</button>
       <button class="btn btn-outline" onclick="closeModal('deptModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveDept()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Section Modal -->
+<div class="modal-overlay" id="sectionModal">
+  <div class="modal" style="width:460px">
+    <div class="modal-title" id="sectionModalTitle">📂 課を追加<span class="modal-close" onclick="closeModal('sectionModal')">×</span></div>
+    <input type="hidden" id="scId">
+    <div class="form-group">
+      <div class="form-label">所属する部 <span style="color:var(--red)">*</span></div>
+      <select class="form-control" id="scDeptId">
+        <option value="">— 部を選択 —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <div class="form-label">課コード</div>
+      <input class="form-control" id="scCode" placeholder="例: SALES-1">
+    </div>
+    <div class="form-group">
+      <div class="form-label">課名 <span style="color:var(--red)">*</span></div>
+      <input class="form-control" id="scName" placeholder="例: 第一営業課">
+    </div>
+    <div class="form-group">
+      <div class="form-label">備考</div>
+      <input class="form-control" id="scNote" placeholder="（任意）">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-red btn-sm" id="scDelBtn" onclick="deleteSection()" style="margin-right:auto;display:none">削除</button>
+      <button class="btn btn-outline" onclick="closeModal('sectionModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSection()">💾 保存</button>
     </div>
   </div>
 </div>
@@ -2128,7 +2255,7 @@ window.nav = function(id){
   if(id==='shift') loadShiftPage();
   if(id==='face') loadFacePage();
   if(id==='notice') loadNotices();
-  if(id==='settings') loadWdPatSettings();
+  if(id==='settings'){ loadWdPatSettings(); loadDeemedOtSettings(); }
 };
 
 // ── Clock ──
@@ -3204,6 +3331,11 @@ function loadDepts(){
     _departments = r.data||[];
     renderDepts();
     populateDeptSelects();
+    // 課も全件ロード
+    sb.from('sections').select('*').order('section_code').then(function(r2){
+      if(!r2.error) _sections=r2.data||[];
+      populateSectionSelects();
+    });
   });
 }
 
@@ -3283,24 +3415,255 @@ function deleteDept(){
 }
 
 function populateDeptSelects(){
-  var names = _departments.map(function(d){ return d.dept_name; });
-  // 先頭オプションを保持して部署名リストで上書き
-  var selIds = [
-    'editUserDept','newUserDept',
-    'attDept','leaveFilterDept',
-    'shiftDailyDept','shiftMonthDept','autoShiftDept','csvDept'
-  ];
-  selIds.forEach(function(sid){
-    var sel = document.getElementById(sid);
-    if(!sel) return;
-    var cur = sel.value;
-    var opts = sel.querySelectorAll('option');
-    var firstOpt = opts[0]?opts[0].outerHTML:'<option value="">選択してください</option>';
-    sel.innerHTML = firstOpt + names.map(function(n){
-      return '<option value="'+escHtml(n)+'"'+(n===cur?' selected':'')+'>'+escHtml(n)+'</option>';
+  // 職員割当用select（部だけ）
+  var assignSelIds = ['editUserDept','newUserDept'];
+  assignSelIds.forEach(function(sid){
+    var sel=document.getElementById(sid); if(!sel) return;
+    var cur=sel.value;
+    var firstOpt='<option value="">選択してください</option>';
+    sel.innerHTML=firstOpt+_departments.map(function(d){
+      return '<option value="'+escHtml(d.dept_name)+'"'+(d.dept_name===cur?' selected':'')+'>'+escHtml(d.dept_name)+'</option>';
     }).join('');
+    // 課selectも連動更新
+    var sectionSelId=sid.replace('Dept','Section');
+    updateSectionSelect(sectionSelId,sid);
+  });
+  // フィルター用select（部 → optgroupで課も表示）
+  var filterSelIds=['attDept','leaveFilterDept','shiftDailyDept','shiftMonthDept','autoShiftDept','csvDept'];
+  filterSelIds.forEach(function(sid){
+    var sel=document.getElementById(sid); if(!sel) return;
+    var cur=sel.value;
+    var firstOpt=sel.querySelectorAll('option')[0]?sel.querySelectorAll('option')[0].outerHTML:'<option value="">全部署</option>';
+    var opts=firstOpt;
+    _departments.forEach(function(d){
+      var sects=_sections.filter(function(s){return s.dept_id===d.id;});
+      if(sects.length){
+        opts+='<optgroup label="'+escHtml(d.dept_name)+'">';
+        opts+='<option value="'+escHtml(d.dept_name)+'"'+(d.dept_name===cur?' selected':'')+'>'+escHtml(d.dept_name)+'（全課）</option>';
+        sects.forEach(function(s){
+          var v=d.dept_name+'::'+s.section_name;
+          opts+='<option value="'+escHtml(v)+'"'+(v===cur?' selected':'')+'>　└ '+escHtml(s.section_name)+'</option>';
+        });
+        opts+='</optgroup>';
+      } else {
+        opts+='<option value="'+escHtml(d.dept_name)+'"'+(d.dept_name===cur?' selected':'')+'>'+escHtml(d.dept_name)+'</option>';
+      }
+    });
+    sel.innerHTML=opts;
   });
 }
+// ───────────── 課(section) CRUD ─────────────
+var _sections = [];
+
+function loadSections(deptId){
+  if(!sb) return;
+  var q = sb.from('sections').select('*').order('section_code');
+  if(deptId) q = q.eq('dept_id', deptId);
+  q.then(function(r){
+    if(r.error){ showToast('課取得エラー: '+r.error.message,'red'); return; }
+    _sections = r.data||[];
+    renderSections();
+    populateSectionSelects();
+  });
+}
+
+function renderDepts(){
+  var tb = document.getElementById('deptMasterTbl');
+  if(!tb) return;
+  if(!_departments.length){
+    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">部署がありません。「＋ 部を追加」から登録してください。</td></tr>';
+    // sectionDeptFilterも更新
+    var sf=document.getElementById('sectionDeptFilter');
+    if(sf) sf.innerHTML='<option value="">— 部を選択 —</option>';
+    return;
+  }
+  var cntMap={};
+  (allUsers||[]).forEach(function(e){ if(e.department) cntMap[e.department]=(cntMap[e.department]||0)+1; });
+  tb.innerHTML = _departments.map(function(d){
+    var cnt = cntMap[d.dept_name]||0;
+    return '<tr>'
+      +'<td>'+escHtml(d.dept_code||'')+'</td>'
+      +'<td><strong>'+escHtml(d.dept_name||'')+'</strong></td>'
+      +'<td style="text-align:center">'+cnt+'人</td>'
+      +'<td><button class="btn btn-outline btn-sm" onclick="openDeptModal(\''+d.id+'\')">編集</button></td>'
+      +'</tr>';
+  }).join('');
+  // 課一覧の部フィルター更新
+  var sf=document.getElementById('sectionDeptFilter');
+  if(sf){
+    var cur=sf.value;
+    sf.innerHTML='<option value="">— 部を選択 —</option>'
+      +_departments.map(function(d){
+        return '<option value="'+d.id+'"'+(d.id===cur?' selected':'')+'>'+escHtml(d.dept_name)+'</option>';
+      }).join('');
+    if(!cur && _departments.length) sf.value='';
+  }
+}
+
+function filterSectionList(){
+  var sf=document.getElementById('sectionDeptFilter');
+  var deptId=sf?sf.value:'';
+  if(!deptId){ 
+    var tb=document.getElementById('sectionMasterTbl');
+    if(tb) tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">← 部を選択してください</td></tr>';
+    return;
+  }
+  loadSections(deptId);
+}
+
+function renderSections(){
+  var tb=document.getElementById('sectionMasterTbl');
+  if(!tb) return;
+  var sf=document.getElementById('sectionDeptFilter');
+  var deptId=sf?sf.value:'';
+  var rows=deptId?_sections.filter(function(s){return s.dept_id===deptId;}):_sections;
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">この部に課はありません</td></tr>'; return;
+  }
+  var cntMap={};
+  (allUsers||[]).forEach(function(e){ if(e.section) cntMap[e.section]=(cntMap[e.section]||0)+1; });
+  tb.innerHTML=rows.map(function(s){
+    var cnt=cntMap[s.section_name]||0;
+    return '<tr>'
+      +'<td>'+escHtml(s.section_code||'')+'</td>'
+      +'<td><strong>'+escHtml(s.section_name)+'</strong></td>'
+      +'<td style="text-align:center">'+cnt+'人</td>'
+      +'<td><button class="btn btn-outline btn-sm" onclick="openSectionModal(\''+s.id+'\')">編集</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function openSectionModal(id){
+  document.getElementById('scId').value='';
+  document.getElementById('scCode').value='';
+  document.getElementById('scName').value='';
+  document.getElementById('scNote').value='';
+  document.getElementById('scDelBtn').style.display='none';
+  document.getElementById('sectionModalTitle').innerHTML='📂 課を追加<span class="modal-close" onclick="closeModal(\'sectionModal\')">×</span>';
+  // scDeptIdを部一覧で構築
+  var sel=document.getElementById('scDeptId');
+  if(sel){
+    var sf=document.getElementById('sectionDeptFilter');
+    var curDept=sf?sf.value:'';
+    sel.innerHTML='<option value="">— 部を選択 —</option>'
+      +_departments.map(function(d){
+        return '<option value="'+d.id+'"'+(d.id===curDept?' selected':'')+'>'+escHtml(d.dept_name)+'</option>';
+      }).join('');
+  }
+  if(id){
+    var s=_sections.find(function(x){return x.id===id;});
+    if(!s) return;
+    document.getElementById('scId').value=s.id;
+    if(sel) sel.value=s.dept_id||'';
+    document.getElementById('scCode').value=s.section_code||'';
+    document.getElementById('scName').value=s.section_name||'';
+    document.getElementById('scNote').value=s.notes||'';
+    document.getElementById('scDelBtn').style.display='';
+    document.getElementById('sectionModalTitle').innerHTML='📂 課を編集<span class="modal-close" onclick="closeModal(\'sectionModal\')">×</span>';
+  }
+  openModal('sectionModal');
+}
+
+function saveSection(){
+  var id    =document.getElementById('scId').value.trim();
+  var deptId=document.getElementById('scDeptId').value.trim();
+  var code  =document.getElementById('scCode').value.trim();
+  var name  =document.getElementById('scName').value.trim();
+  var note  =document.getElementById('scNote').value.trim();
+  if(!deptId){ showToast('所属する部を選択してください','amber'); return; }
+  if(!name)  { showToast('課名を入力してください','amber'); return; }
+  var payload={dept_id:deptId,section_code:code||null,section_name:name,notes:note||null};
+  var p=id ? sb.from('sections').update(payload).eq('id',id)
+           : sb.from('sections').insert(payload);
+  p.then(function(r){
+    if(r.error){showToast('保存エラー: '+r.error.message,'red');return;}
+    showToast(id?'課を更新しました':'課を追加しました','green');
+    closeModal('sectionModal');
+    loadSections(deptId);
+    populateSectionSelects();
+  });
+}
+
+function deleteSection(){
+  var id  =document.getElementById('scId').value.trim();
+  var name=document.getElementById('scName').value.trim();
+  if(!id) return;
+  if(!confirm('「'+name+'」を削除しますか？')) return;
+  sb.from('sections').delete().eq('id',id).then(function(r){
+    if(r.error){showToast('削除エラー: '+r.error.message,'red');return;}
+    showToast('削除しました','amber');
+    closeModal('sectionModal');
+    var deptId=document.getElementById('scDeptId').value;
+    loadSections(deptId);
+  });
+}
+
+// 課セレクトを部選択に連動して更新
+function updateSectionSelect(sectionSelId, deptSelId){
+  var deptSel=document.getElementById(deptSelId);
+  var sectSel=document.getElementById(sectionSelId);
+  if(!deptSel||!sectSel) return;
+  var deptName=deptSel.value;
+  var dept=_departments.find(function(d){return d.dept_name===deptName;});
+  var rows=dept?_sections.filter(function(s){return s.dept_id===dept.id;}):[];
+  var cur=sectSel.value;
+  sectSel.innerHTML='<option value="">（課なし）</option>'
+    +rows.map(function(s){
+      return '<option value="'+escHtml(s.section_name)+'"'+(s.section_name===cur?' selected':'')+'>'+escHtml(s.section_name)+'</option>';
+    }).join('');
+}
+
+function populateSectionSelects(){
+  // scDeptId は openSectionModal で都度構築するのでここでは cascade のみ
+  ['editUserSection','newUserSection'].forEach(function(sid){
+    var sel=document.getElementById(sid); if(!sel) return;
+    var deptSelId=sid.replace('Section','Dept');
+    updateSectionSelect(sid,deptSelId);
+  });
+}
+
+// ───────────── みなし残業 ─────────────
+window.toggleDeemedOtFields = function(){
+  var cb=document.getElementById('deemedOtEnable');
+  var fields=document.getElementById('deemedOtFields');
+  if(fields) fields.style.display=cb&&cb.checked?'':'none';
+};
+
+window.saveDeemedOtSettings = function(){
+  var cb=document.getElementById('deemedOtEnable');
+  var hrs=document.getElementById('deemedOtHours');
+  var tgt=document.getElementById('deemedOtTarget');
+  localStorage.setItem('deemed_ot_enable', cb&&cb.checked?'1':'0');
+  localStorage.setItem('deemed_ot_hours',  hrs?hrs.value:'20');
+  localStorage.setItem('deemed_ot_target', tgt?tgt.value:'all');
+  showToast('みなし残業設定を保存しました','green');
+};
+
+function loadDeemedOtSettings(){
+  var enabled=localStorage.getItem('deemed_ot_enable')==='1';
+  var hours  =localStorage.getItem('deemed_ot_hours')||'20';
+  var target =localStorage.getItem('deemed_ot_target')||'all';
+  var cb =document.getElementById('deemedOtEnable');
+  var hrs=document.getElementById('deemedOtHours');
+  var tgt=document.getElementById('deemedOtTarget');
+  var disp=document.getElementById('deemedOtHoursDisp');
+  if(cb)  cb.checked=enabled;
+  if(hrs) hrs.value=hours;
+  if(tgt) tgt.value=target;
+  if(disp) disp.textContent=hours;
+  var fields=document.getElementById('deemedOtFields');
+  if(fields) fields.style.display=enabled?'':'none';
+}
+
+// みなし残業を考慮した残業時間計算
+function calcEffectiveOt(rawOtHours){
+  var enabled=localStorage.getItem('deemed_ot_enable')==='1';
+  if(!enabled) return rawOtHours;
+  var deemed=parseFloat(localStorage.getItem('deemed_ot_hours')||'20');
+  return Math.max(0, rawOtHours-deemed);
+}
+// ─────────────────────────────────────
+
 // ─────────────────────────────────────
 
 function loadAllUsers(){
@@ -3320,7 +3683,7 @@ function loadAllUsers(){
 }
 function renderUserTable(users){
   const tbody = document.getElementById('usersTbl');
-  if(!users||!users.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
+  if(!users||!users.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">ユーザーなし</td></tr>';return;}
   tbody.innerHTML = users.map(function(u){
     const roleMap={'管理者':'badge-red','部門長':'badge-blue','一般':'badge-gray'};
     const emailHtml = u.email
@@ -3337,7 +3700,7 @@ function renderUserTable(users){
     return '<tr>'
       +'<td><strong>'+u.name+'</strong></td>'
       +'<td>'+emailHtml+'</td>'
-      +'<td>'+(u.department||'—')+'</td>'
+      +'<td>'+(u.department||'—')+'</td>'+'<td style="font-size:11px;color:var(--muted)">'+(u.section||'—')+'</td>'
       +'<td><span class="badge '+(roleMap[u.role]||'badge-gray')+'">'+u.role+'</span></td>'
       +'<td>'+(u.hire_date||'—')+'</td>'
       +'<td style="text-align:center">'+leaveCol+'</td>'
@@ -3377,6 +3740,8 @@ window.openEditUser = function(id){
   var kanaEl = document.getElementById('editUserKana'); if(kanaEl) kanaEl.value = u.kana||'';
   var empNoEl = document.getElementById('editUserEmpNo'); if(empNoEl) empNoEl.value = u.employee_number||'';
   document.getElementById('editUserDept').value = u.department||'';
+  updateSectionSelect('editUserSection','editUserDept');
+  setTimeout(function(){ document.getElementById('editUserSection').value = u.section||''; }, 0);
   document.getElementById('editUserEmp').value = u.employment_type||'正社員';
   document.getElementById('editUserRole').value = u.role||'一般';
   var posEl = document.getElementById('editUserPosition'); if(posEl) posEl.value = u.position||'';
@@ -3448,6 +3813,7 @@ window.saveUser = function(){
     kana:                   g('editUserKana'),
     employee_number:        g('editUserEmpNo'),
     department:             g('editUserDept'),
+    section:                g('editUserSection'),
     employment_type:        g('editUserEmp'),
     role:                   g('editUserRole'),
     position:               g('editUserPosition'),
@@ -3581,11 +3947,12 @@ function saveDependents(empId){
   });
 }
 window.addUser = function(){
-  const name  = document.getElementById('newUserName').value.trim();
-  const email = document.getElementById('newUserEmail').value.trim();
-  const pass  = document.getElementById('newUserPass').value;
-  const dept  = document.getElementById('newUserDept').value;
-  const emp   = document.getElementById('newUserEmp').value;
+  const name    = document.getElementById('newUserName').value.trim();
+  const email   = document.getElementById('newUserEmail').value.trim();
+  const pass    = document.getElementById('newUserPass').value;
+  const dept    = document.getElementById('newUserDept').value;
+  const section = document.getElementById('newUserSection')?document.getElementById('newUserSection').value:'';
+  const emp     = document.getElementById('newUserEmp').value;
   const role  = document.getElementById('newUserRole').value;
   const join  = document.getElementById('newUserJoin').value;
   const leave = parseInt(document.getElementById('newUserLeave').value)||10;
@@ -3610,6 +3977,7 @@ window.addUser = function(){
     body: {
       email, password: pass, name,
       department:           dept||null,
+      section:              section||null,
       employment_type:      emp,
       role,
       hire_date:            join||null,
