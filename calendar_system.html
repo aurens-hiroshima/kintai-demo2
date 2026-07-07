@@ -1363,25 +1363,13 @@ function genYearInit(){
       else { r.type='休日'; r.hours=0; r.start=''; r.end=''; }
     });
   }
-  // 年間所定時間を全勤務日に均等配分（合計がannHに一致するよう1日時間を算出）
+  // 1日所定時間は固定（パターンの daily_hours = yi_day_hours の値）
+  // 不定期調整で勤務日数を調整済みのためここでは dayH をそのまま使用
   var wd2=_yiData.filter(function(r){return r.type==='勤務'||r.type==='振替出勤';}).length;
-  if(wd2>0 && annH>0){
-    var actualDayH=Math.round(annH/wd2*100)/100;
-    var stParts=st.split(':');
-    var stMin=parseInt(stParts[0])*60+parseInt(stParts[1]);
-    var enMin=stMin+Math.round(actualDayH*60)+brk;
-    var actualEn=p2(Math.floor(enMin/60)%24)+':'+p2(enMin%60);
-    _yiData.forEach(function(r){
-      if(r.type==='勤務'||r.type==='振替出勤'){
-        r.hours=actualDayH;
-        r.end=actualEn;
-      }
-    });
-  }
   // サマリー
   var hd=_yiData.filter(function(r){return r.type!=='勤務'&&r.type!=='振替出勤';}).length;
   var th=_yiData.reduce(function(s,r){return s+r.hours;},0);
-  var actualDayHDisp=wd2>0?Math.round(annH/wd2*100)/100:dayH;
+  var actualDayHDisp=dayH;
   var futeikiInfo=futeikiIdxs.length>0?'<div style="background:#f3e8ff;border-radius:7px;padding:6px 12px;font-size:11px">不定期: <strong>'+futeikiIdxs.length+'</strong>日中 <strong>'+futeikiWorkCount+'</strong>日を勤務に均等配置</div>':'';
   document.getElementById('yi_summary').innerHTML=
     '<div style="background:var(--lblue);border-radius:7px;padding:6px 12px;font-size:11px">勤務日: <strong>'+wd2+'</strong>日</div>'+
