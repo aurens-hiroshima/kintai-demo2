@@ -337,7 +337,7 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
               </div>
               <div class="form-group">
                 <label class="form-label">1日所定時間 (h)</label>
-                <input id="yi_day_hours" type="number" class="form-control" value="8" step="0.25">
+                <input id="yi_day_hours" type="number" class="form-control" value="8" step="0.25" readonly style="background:var(--border);color:var(--muted);cursor:not-allowed">
               </div>
               <div class="form-row mb12">
                 <div class="form-group">
@@ -680,6 +680,7 @@ body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:#1a1a2e
       <div class="form-group"><label class="form-label">基準始業</label><input id="pmDefStart" type="time" class="form-control" value="08:30"></div>
       <div class="form-group"><label class="form-label">基準終業</label><input id="pmDefEnd" type="time" class="form-control" value="17:30"></div>
       <div class="form-group"><label class="form-label">基準休憩(分)</label><input id="pmDefBreak" type="number" class="form-control" value="60"></div>
+      <div class="form-group"><label class="form-label">1日所定時間(h)</label><input id="pmDailyHours" type="number" class="form-control" value="8" step="0.25"></div>
     </div>
     <div class="form-group"><label class="form-label">備考</label><textarea id="pmNote" class="form-control" rows="2"></textarea></div>
     <div class="modal-foot">
@@ -1260,18 +1261,17 @@ function fillYiFromPattern(patId){
   if(pat.default_break!=null) document.getElementById('yi_break').value=pat.default_break;
   // 週労働時間上限
   if(pat.weekly_limit) document.getElementById('yi_week_limit').value=pat.weekly_limit;
-  // 1日所定時間 = 終了 - 開始 - 休憩
+  // 1日所定時間: パターンの daily_hours を優先、なければ始終業から計算
   var st=pat.default_start||'08:30', en=pat.default_end||'17:30';
   var brk=parseInt(pat.default_break)||60;
   var sp=st.split(':'), ep=en.split(':');
   var stM=parseInt(sp[0])*60+parseInt(sp[1]), enM=parseInt(ep[0])*60+parseInt(ep[1]);
-  var dayH=(enM-stM-brk)/60;
-  if(dayH>0){
-    document.getElementById('yi_day_hours').value=Math.round(dayH*100)/100;
-    // 年間所定時間 = annual_days_limit × 1日時間
-    if(pat.annual_days_limit>0){
-      document.getElementById('yi_annual_hours').value=Math.round(pat.annual_days_limit*dayH);
-    }
+  var calcH=(enM-stM-brk)/60;
+  var dayH=pat.daily_hours>0?pat.daily_hours:(calcH>0?calcH:8);
+  document.getElementById('yi_day_hours').value=Math.round(dayH*100)/100;
+  // 年間所定時間 = annual_days_limit × 1日時間
+  if(pat.annual_days_limit>0){
+    document.getElementById('yi_annual_hours').value=Math.round(pat.annual_days_limit*dayH);
   }
 }
 function initYearInit(){
@@ -1353,7 +1353,7 @@ function genYearInit(){
   var futeikiWorkCount=0;
   if(futeikiIdxs.length>0){
     var fixedWork=_yiData.filter(function(r){ return r.type==='勤務'||r.type==='振替出勤'; }).length;
-    var targetWork=(pat.annual_days_limit>0)?pat.annual_days_limit:(dayH>0?Math.round(annH/dayH):245);
+    var targetWork=dayH>0?Math.round(annH/dayH):(pat.annual_days_limit||245);
     var needWork=Math.max(0,Math.min(targetWork-fixedWork, futeikiIdxs.length));
     futeikiIdxs.forEach(function(dataIdx,k){
       var r=_yiData[dataIdx];
@@ -1844,6 +1844,7 @@ function openPatModal(){
   document.getElementById('pmDefStart').value='08:30';
   document.getElementById('pmDefEnd').value='17:30';
   document.getElementById('pmDefBreak').value=60;
+  document.getElementById('pmDailyHours').value=8;
   document.getElementById('patModalTitle').textContent='勤務パターン登録';
   document.getElementById('pmDelBtn').style.display='none';
   openModal('patModal');
@@ -1863,6 +1864,7 @@ function editPat(id){
   document.getElementById('pmDefStart').value=(p.default_start||'08:30').slice(0,5);
   document.getElementById('pmDefEnd').value=(p.default_end||'17:30').slice(0,5);
   document.getElementById('pmDefBreak').value=p.default_break||60;
+  document.getElementById('pmDailyHours').value=p.daily_hours||8;
   document.getElementById('pmNote').value=p.note||'';
   document.getElementById('patModalTitle').textContent='パターン編集：'+p.pattern_name;
   document.getElementById('pmDelBtn').style.display='';
@@ -1872,7 +1874,7 @@ function savePat(){
   var code=document.getElementById('pmCode').value.trim(), name=document.getElementById('pmName').value.trim();
   if(!code||!name){toast('IDと名前は必須です','red');return;}
   var id=document.getElementById('pmId').value;
-  var data={pattern_code:code,pattern_name:name,employment_type:document.getElementById('pmEmpType').value,fiscal_year:parseInt(document.getElementById('pmYear').value)||null,start_date:document.getElementById('pmStart').value||null,end_date:document.getElementById('pmEnd').value||null,weekly_limit:parseFloat(document.getElementById('pmWeekLim').value)||40,annual_days_limit:parseInt(document.getElementById('pmAnnualDays').value)||280,annual_holiday_min:parseInt(document.getElementById('pmAnnualHoli').value)||118,default_start:document.getElementById('pmDefStart').value||null,default_end:document.getElementById('pmDefEnd').value||null,default_break:parseInt(document.getElementById('pmDefBreak').value)||60,note:document.getElementById('pmNote').value||null,updated_at:new Date().toISOString()};
+  var data={pattern_code:code,pattern_name:name,employment_type:document.getElementById('pmEmpType').value,fiscal_year:parseInt(document.getElementById('pmYear').value)||null,start_date:document.getElementById('pmStart').value||null,end_date:document.getElementById('pmEnd').value||null,weekly_limit:parseFloat(document.getElementById('pmWeekLim').value)||40,annual_days_limit:parseInt(document.getElementById('pmAnnualDays').value)||280,annual_holiday_min:parseInt(document.getElementById('pmAnnualHoli').value)||118,default_start:document.getElementById('pmDefStart').value||null,default_end:document.getElementById('pmDefEnd').value||null,default_break:parseInt(document.getElementById('pmDefBreak').value)||60,daily_hours:parseFloat(document.getElementById('pmDailyHours').value)||8,note:document.getElementById('pmNote').value||null,updated_at:new Date().toISOString()};
   (id?sb.from('work_patterns').update(data).eq('id',id):sb.from('work_patterns').insert(data)).then(function(r){
     if(r.error){toast('保存失敗: '+r.error.message,'red');return;}
     closeModal('patModal'); toast('✅ 保存しました','green'); loadPatterns().then(populateSelects);
